@@ -1,4 +1,6 @@
 import { COLORS } from '@/constants/theme';
+import { useDrawer } from '@/hooks/useDrawer';
+import { useTabs } from '@/hooks/useTabs';
 import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -17,8 +19,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDrawer } from '@/hooks/useDrawer';
-import { useTabs } from '@/hooks/useTabs';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -107,7 +107,11 @@ export default function CustomDrawer() {
 
   const handleRowPress = (route: string) => {
     closeDrawer();
-    router.push(`/(tabs)/${route}` as any);
+    if (route === 'index') {
+      router.push('/(tabs)' as any);
+    } else {
+      router.push(`/(tabs)/${route}` as any);
+    }
   };
 
   const getActiveTabId = () => {
@@ -131,7 +135,11 @@ export default function CustomDrawer() {
     const activeTabId = getActiveTabId();
     if (!newConfigured.includes(activeTabId)) {
       const targetTab = newConfigured[0] || 'index';
-      router.push(`/(tabs)/${targetTab}` as any);
+      if (targetTab === 'index') {
+        router.push('/(tabs)' as any);
+      } else {
+        router.push(`/(tabs)/${targetTab}` as any);
+      }
     }
 
     setEditNavigationVisible(false);
@@ -230,9 +238,7 @@ export default function CustomDrawer() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickActionBox}
-            onPress={() => {
-              Alert.alert('Company Information', 'Basalt CRM v1.0.0\nSecure Enterprise Systems');
-            }}
+            onPress={() => handleRowPress('company')}
             activeOpacity={0.7}
           >
             <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
@@ -422,7 +428,7 @@ export default function CustomDrawer() {
                   )}
 
                   {/* Emails */}
-                  {matchesSearch('Emails') && (
+                  {/*matchesSearch('Emails') && (
                     <TouchableOpacity
                       style={styles.listItemNested}
                       onPress={() => handleRowPress('email')}
@@ -434,7 +440,7 @@ export default function CustomDrawer() {
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                     </TouchableOpacity>
-                  )}
+                  )*/}
 
                   {/* Attendance */}
                   {matchesSearch('Attendance') && (
@@ -503,10 +509,7 @@ export default function CustomDrawer() {
             {matchesSearch('Company Information') && (
               <TouchableOpacity
                 style={styles.listItem}
-                onPress={() => {
-                  closeDrawer();
-                  Alert.alert('Company Information', 'Basalt CRM v1.0.0\nSecure Enterprise Systems');
-                }}
+                onPress={() => handleRowPress('company')}
                 activeOpacity={0.7}
               >
                 <View style={styles.listItemLeft}>
@@ -529,7 +532,6 @@ export default function CustomDrawer() {
               !matchesSearch('Meetings') &&
               !matchesSearch('Tasks') &&
               !matchesSearch('Visits') &&
-              !matchesSearch('Emails') &&
               !matchesSearch('Attendance') &&
               !matchesSearch('Profile') &&
               !matchesSearch('Settings') &&
@@ -692,7 +694,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 1,
   },
   headerTitle: {
     fontSize: 22,
@@ -708,7 +710,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 8,
+    marginVertical: 1,
   },
   searchSection: {
     flex: 1,
@@ -719,11 +721,11 @@ const styles = StyleSheet.create({
     borderColor: '#C2D1CB',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 48,
+    height: 40,
   },
   moreBtn: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#C2D1CB',
@@ -744,11 +746,11 @@ const styles = StyleSheet.create({
   quickActionsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginVertical: 12,
+    marginVertical: 5,
   },
   quickActionBox: {
     flex: 1,
-    height: 52,
+    height: 40,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: COLORS.border,
@@ -760,14 +762,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContainer: {
-    marginTop: 8,
-    gap: 2,
+    marginTop: 1,
+    gap: 1,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F4F2',
   },
@@ -775,7 +777,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingLeft: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F7FAF8',
@@ -850,22 +852,22 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
   },
   previewTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: '#8E8E93',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   previewBox: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     backgroundColor: '#F2F2F7',
     borderRadius: 16,
-    padding: 16,
+    padding: 8,
     borderWidth: 1,
     borderColor: '#E5E5EA',
   },
@@ -878,13 +880,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#000000',
-    marginTop: 4,
+    marginTop: 2,
   },
   selectInfoText: {
     fontSize: 14,
     color: '#8E8E93',
     textAlign: 'center',
-    marginVertical: 8,
+    marginVertical: 1,
     fontWeight: '600',
   },
   editSearchSection: {
@@ -892,10 +894,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#E5E5EA',
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     height: 40,
-    marginHorizontal: 20,
-    marginVertical: 8,
+    marginHorizontal: 16,
+    marginVertical: 1,
   },
   editSearchInput: {
     flex: 1,
@@ -906,17 +908,17 @@ const styles = StyleSheet.create({
   },
   editListScroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   editListContainer: {
-    marginTop: 8,
-    gap: 4,
+    marginTop: 1,
+    gap: 2,
   },
   editListRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F4F2',
   },

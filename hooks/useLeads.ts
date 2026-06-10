@@ -1,5 +1,5 @@
 import { updateLeadsState } from '@/components/LeadState';
-import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, updateLead } from '@/services/api/leads';
+import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, updateLead, getLeadTags } from '@/services/api/leads';
 import { getUsers } from '@/services/api/users';
 import { LeadRecord } from '@/types/leads';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -183,4 +183,15 @@ export function useUsers() {
     }
   });
 }
+
+export function useLeadTags() {
+  return useQuery({
+    queryKey: ['leadTags'],
+    queryFn: async () => {
+      const res = await getLeadTags();
+      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    }
+  });
+}
+
 

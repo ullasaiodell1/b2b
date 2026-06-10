@@ -2,9 +2,10 @@ import { activeOrderFilter, updateOrderFilterState } from '@/components/OrderSta
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  BackHandler,
   Modal,
   Platform,
   ScrollView,
@@ -36,7 +37,31 @@ const FILTER_OPTIONS = ['Complete', 'Process', 'Pending', 'Out Of Delivery', 'Ca
 
 export default function OrderFilterScreen() {
   const router = useRouter();
+  const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer])
+  );
 
   const [selectedStatus, setSelectedStatus] = useState<string>('');
 
@@ -72,7 +97,7 @@ export default function OrderFilterScreen() {
       status: backendStatus,
       dateRange: rangeStr,
     });
-    router.back();
+    handleBack();
   };
 
   const handleResetAll = () => {
@@ -92,7 +117,7 @@ export default function OrderFilterScreen() {
 
       {/* ── 1. HEADER ROW ─────────────────────────── */}
       <View style={[s.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>ORDER FILTER</Text>
@@ -181,7 +206,7 @@ export default function OrderFilterScreen() {
       {/* ── 3. BOTTOM BUTTON PANEL ───────────────── */}
       <View style={s.footer}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={[s.footerBtn, s.cancelBtn]}
           activeOpacity={0.8}
         >

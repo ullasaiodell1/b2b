@@ -24,7 +24,7 @@ export const updateProfile = async (backendData: any) => {
   return response;
 };
 
-export const uploadAvatar = async (photoUri: string) => {
+export const uploadAvatar = async (photoUri: string): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', {
     uri: photoUri,
@@ -34,7 +34,7 @@ export const uploadAvatar = async (photoUri: string) => {
 
   console.log('[API uploadAvatar] Request URI:', photoUri);
 
-  const res = await axios({
+  const res: any = await axios({
     method: 'POST',
     url: `/files/uploads`,
     data: formData,
@@ -43,6 +43,23 @@ export const uploadAvatar = async (photoUri: string) => {
     },
   });
 
-  console.log('[API uploadAvatar] Response:', res?.data || res);
-  return res;
+  console.log('[API uploadAvatar] Response:', JSON.stringify(res));
+
+  // Interceptor returns response.data — try all known shapes
+  const url: string | null =
+    (typeof res === 'string' ? res : null) ||
+    res?.url ||
+    res?.file_url ||
+    res?.location ||
+    res?.path ||
+    res?.key ||
+    res?.data?.url ||
+    res?.data?.file_url ||
+    res?.data?.location ||
+    res?.data?.path ||
+    res?.data?.key ||
+    null;
+
+  console.log('[API uploadAvatar] Resolved URL:', url);
+  return url;
 };

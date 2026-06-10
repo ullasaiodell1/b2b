@@ -1,9 +1,13 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTasks, useUpdateTask } from '@/hooks/useTasks';
+import { TaskRecord } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,76 +21,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type TaskStatus = 'Completed' | 'Not Started' | 'waiting for input' | 'in progress';
 type PriorityType = 'High' | 'Normal' | 'Lowest';
 
-interface Task {
-  id: string;
-  title: string;
-  due: string;
-  priority: PriorityType;
-  status: TaskStatus;
-}
+type Task = TaskRecord;
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: '1',
-    title: 'Website Redesign',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'High',
-    status: 'Completed',
-  },
-  {
-    id: '2',
-    title: 'Product Demo',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'Normal',
-    status: 'Not Started',
-  },
-  {
-    id: '3',
-    title: 'Api Rate Limiting Setup',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'Lowest',
-    status: 'Not Started',
-  },
-  {
-    id: '4',
-    title: 'Update CRM Database',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'High',
-    status: 'waiting for input',
-  },
-  {
-    id: '5',
-    title: 'Send Follow-Up Emails',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'Lowest',
-    status: 'in progress',
-  },
-  {
-    id: '6',
-    title: 'Website Redesign',
-    due: '16 Feb 2026 • 10:00 AM',
-    priority: 'High',
-    status: 'Completed',
-  },
-];
 
 export default function TaskScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    leadId?: string;
+    leadName?: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
 
-  const toggleTaskCompletion = (id: string) => {
-    setTasks(prev =>
-      prev.map(task => {
-        if (task.id === id) {
-          const nextStatus: TaskStatus = task.status === 'Completed' ? 'Not Started' : 'Completed';
-          return { ...task, status: nextStatus };
-        }
-        return task;
-      })
-    );
+  const { tasks, isLoading, isFetching, refetch } = useTasks();
+  const updateTaskMutation = useUpdateTask();
+
+  const toggleTaskCompletion = async (task: Task) => {
+    const nextStatus: TaskStatus = task.status === 'Completed' ? 'Not Started' : 'Completed';
+    try {
+      await updateTaskMutation.mutateAsync({ id: task.id, data: { status: nextStatus } });
+    } catch (err) {
+      console.error('[TaskScreen] toggle completion error:', err);
+    }
   };
 
   const getStatusStyle = (status: TaskStatus) => {
@@ -99,6 +59,8 @@ export default function TaskScreen() {
         return { color: '#F97316' };
       case 'in progress':
         return { color: '#3B82F6' };
+      default:
+        return { color: '#707A76' };
     }
   };
 
@@ -109,6 +71,8 @@ export default function TaskScreen() {
       case 'Normal':
         return { color: '#3B82F6' };
       case 'Lowest':
+        return { color: '#707A76' };
+      default:
         return { color: '#707A76' };
     }
   };
@@ -127,141 +91,183 @@ export default function TaskScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      <CustomHeader title="Task" showSearch={false} />
+      <CustomHeader
+        title="Task"
+        showSearch={false}
+        showBack={!!params.leadId}
+        onBackPress={() => {
+          if (params.leadId) {
+            router.push({
+              pathname: '/(tabs)/leads/lead-details',
+              params: {
+                id: params.leadId,
+                name: params.leadName,
+                company: params.company,
+                phone: params.phone,
+                email: params.email,
+              }
+            } as any);
+          } else {
+            router.back();
+          }
+        }}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+        }
+      >
 
-        {/* Search & Filters Row */}
-        <View style={styles.searchFilterRow}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-            <TextInput
-              placeholder="Search Taks..."
-              placeholderTextColor={COLORS.textMuted}
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+        {isLoading && tasks.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>Loading tasks...</Text>
           </View>
-          <TouchableOpacity
-            style={styles.filterBtn}
-            activeOpacity={0.8}
-            onPress={() => router.push('/(tabs)/task/task-filter' as any)}
-          >
-            <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} />
-            <Text style={styles.filterBtnText}>Filters</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats horizontal row */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
-          <TouchableOpacity
-            style={[styles.statChip, selectedFilter === 'All' && styles.statChipActive]}
-            onPress={() => setSelectedFilter('All')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-            <Text style={styles.statChipText}>Total Task {totalCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.statChip, selectedFilter === 'Completed' && styles.statChipActive]}
-            onPress={() => setSelectedFilter('Completed')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-            <Text style={styles.statChipText}>Complete {completedCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.statChip, selectedFilter === 'Not Started' && styles.statChipActive]}
-            onPress={() => setSelectedFilter('Not Started')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.statDot, { backgroundColor: '#707A76' }]} />
-            <Text style={styles.statChipText}>Not Started {notStartedCount}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-
-        {/* Tasks List */}
-        <View style={styles.tasksList}>
-          {filteredTasks.map(task => {
-            const isCompleted = task.status === 'Completed';
-            const statusConfig = getStatusStyle(task.status);
-            const priorityConfig = getPriorityStyle(task.priority);
-
-            return (
+        ) : (
+          <>
+            {/* Search & Filters Row */}
+            <View style={styles.searchFilterRow}>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
+                <TextInput
+                  placeholder="Search Tasks..."
+                  placeholderTextColor={COLORS.textMuted}
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
               <TouchableOpacity
-                key={task.id}
-                style={styles.taskCard}
-                activeOpacity={0.9}
-                onPress={() => router.push({
-                  pathname: '/(tabs)/task/task-details',
-                  params: {
-                    title: task.title,
-                    due: task.due,
-                    priority: task.priority,
-                    status: task.status,
-                  }
-                } as any)}
+                style={styles.filterBtn}
+                activeOpacity={0.8}
+                onPress={() => router.push('/(tabs)/task/task-filter' as any)}
               >
-
-                {/* Header Row: Checkbox, Title, Status */}
-                <View style={styles.cardHeader}>
-                  <TouchableOpacity
-                    onPress={() => toggleTaskCompletion(task.id)}
-                    style={styles.checkboxTouch}
-                    activeOpacity={0.7}
-                  >
-                    {isCompleted ? (
-                      <Ionicons name="checkmark-circle" size={22} color="#10B981" />
-                    ) : (
-                      <View style={styles.emptyCircle} />
-                    )}
-                  </TouchableOpacity>
-
-                  <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
-                    {task.title}
-                  </Text>
-
-                  <View style={styles.statusLabelContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-                    <Text style={[styles.statusLabelText, { color: statusConfig.color }]}>
-                      {task.status}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Meta details */}
-                <View style={styles.cardMeta}>
-                  {/* Due Date */}
-                  <View style={styles.metaRow}>
-                    <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
-                    <Text style={styles.metaText}>{task.due}</Text>
-                  </View>
-
-                  {/* Priority */}
-                  <View style={[styles.metaRow, { marginTop: 4 }]}>
-                    <Ionicons name="close-circle-outline" size={15} color={priorityConfig.color} />
-                    <Text style={[styles.metaText, { color: priorityConfig.color }]}>
-                      {task.priority}
-                    </Text>
-                  </View>
-                </View>
-
+                <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} />
+                <Text style={styles.filterBtnText}>Filters</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            </View>
 
+            {/* Stats horizontal row */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
+              <TouchableOpacity
+                style={[styles.statChip, selectedFilter === 'All' && styles.statChipActive]}
+                onPress={() => setSelectedFilter('All')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={styles.statChipText}>Total Task {totalCount}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.statChip, selectedFilter === 'Completed' && styles.statChipActive]}
+                onPress={() => setSelectedFilter('Completed')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
+                <Text style={styles.statChipText}>Complete {completedCount}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.statChip, selectedFilter === 'Not Started' && styles.statChipActive]}
+                onPress={() => setSelectedFilter('Not Started')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.statDot, { backgroundColor: '#707A76' }]} />
+                <Text style={styles.statChipText}>Not Started {notStartedCount}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Tasks List */}
+            <View style={styles.tasksList}>
+              {filteredTasks.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Ionicons name="checkmark-done-outline" size={48} color="#C2D3CC" />
+                  <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>No tasks found</Text>
+                </View>
+              ) : (
+                filteredTasks.map(task => {
+                  const isCompleted = task.status === 'Completed';
+                  const statusConfig = getStatusStyle(task.status as TaskStatus);
+                  const priorityConfig = getPriorityStyle(task.priority as PriorityType);
+
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={styles.taskCard}
+                      activeOpacity={0.9}
+                      onPress={() => router.push({
+                        pathname: '/(tabs)/task/task-details',
+                        params: {
+                          id: task.id,
+                          title: task.title,
+                          due: task.due,
+                          priority: task.priority,
+                          status: task.status,
+                        }
+                      } as any)}
+                    >
+                      {/* Header Row: Checkbox, Title, Status */}
+                      <View style={styles.cardHeader}>
+                        <TouchableOpacity
+                          onPress={() => toggleTaskCompletion(task)}
+                          style={styles.checkboxTouch}
+                          activeOpacity={0.7}
+                        >
+                          {isCompleted ? (
+                            <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                          ) : (
+                            <View style={styles.emptyCircle} />
+                          )}
+                        </TouchableOpacity>
+
+                        <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
+                          {task.title}
+                        </Text>
+
+                        <View style={styles.statusLabelContainer}>
+                          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+                          <Text style={[styles.statusLabelText, { color: statusConfig.color }]}>
+                            {task.status}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Meta details */}
+                      <View style={styles.cardMeta}>
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
+                          <Text style={styles.metaText}>{task.due}</Text>
+                        </View>
+                        <View style={[styles.metaRow, { marginTop: 4 }]}>
+                          <Ionicons name="close-circle-outline" size={15} color={priorityConfig.color} />
+                          <Text style={[styles.metaText, { color: priorityConfig.color }]}>
+                            {task.priority}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Floating Action Button */}
       <TouchableOpacity
         style={[styles.fab, { bottom: Math.max(insets.bottom + 90, 100) }]}
         activeOpacity={0.85}
-        onPress={() => router.push('/(tabs)/task/add-task')}
+        onPress={() => router.push({
+          pathname: '/(tabs)/task/add-task',
+          params: {
+            leadId: params.leadId || '',
+            leadName: params.leadName || '',
+          }
+        } as any)}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>

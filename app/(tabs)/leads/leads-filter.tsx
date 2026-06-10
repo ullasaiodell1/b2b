@@ -13,9 +13,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUsers, useLeadSources } from '@/hooks/useLeads';
 
-const INDUSTRIES = ['Hardware', 'Software', 'IT Services', 'Cybersecurity'];
-const OWNERS = ['Select Owner', 'Arjun Maheta', 'Parth Solanki', 'Khushal Nadiyapara', 'Jigar Kalariya'];
+const FallbackINDUSTRIES: string[] = [];
+const FallbackOWNERS = ['Select Owner'];
 const DATE_RANGES = ['Select Date', '28 Dec 22 – 10 Jan 23', 'Last 30 Days', 'This Month', 'Last Month'];
 
 export default function LeadsFilterScreen() {
@@ -27,15 +28,26 @@ export default function LeadsFilterScreen() {
   const [priority, setPriority] = useState<'High' | 'Normal' | 'Low'>(
     (params.priority as 'High' | 'Normal' | 'Low') || 'Normal'
   );
-  const [dateRange, setDateRange] = useState(params.dateRange || '28 Dec 22 – 10 Jan 23');
+  const [dateRange, setDateRange] = useState(params.dateRange || 'Select Date');
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
-    params.tag ? params.tag.split(',').filter(Boolean) : ['Hardware']
+    params.tag ? params.tag.split(',').filter(Boolean) : []
   );
   const [owner, setOwner] = useState(params.owner || 'Select Owner');
 
   // Modals visibility
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
+
+  const { data: usersData } = useUsers();
+  const { data: sourcesData } = useLeadSources();
+
+  const dynamicOwners = usersData && usersData.length > 0
+    ? ['Select Owner', ...usersData.map((u: any) => u.name)]
+    : FallbackOWNERS;
+
+  const dynamicIndustries = sourcesData && sourcesData.length > 0
+    ? sourcesData.map((s: any) => s.name)
+    : FallbackINDUSTRIES;
 
   // Multi select handler for Industry
   const toggleIndustry = (ind: string) => {
@@ -162,11 +174,11 @@ export default function LeadsFilterScreen() {
           </View>
 
           <View style={{ gap: 10 }}>
-            {INDUSTRIES.map((ind) => {
+            {dynamicIndustries.map((ind, idx) => {
               const isSelected = selectedIndustries.includes(ind);
               return (
                 <TouchableOpacity
-                  key={ind}
+                  key={ind + '_' + idx}
                   style={styles.industryRow}
                   onPress={() => toggleIndustry(ind)}
                   activeOpacity={0.85}
@@ -234,9 +246,9 @@ export default function LeadsFilterScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={{ paddingHorizontal: 20 }}>
-              {OWNERS.map((o) => (
+              {dynamicOwners.map((o, idx) => (
                 <TouchableOpacity
-                  key={o}
+                  key={o + '_' + idx}
                   style={styles.modalRowItem}
                   onPress={() => {
                     setOwner(o);

@@ -1,16 +1,17 @@
-import { COLORS } from '@/constants/theme';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
-} from 'react-native';
+import { COLORS, setThemeColor } from '@/constants/theme';
+import CustomHeader from '@/components/custom/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 // Standard premium theme colors to match the design grid
 const GRID_COLORS = [
@@ -30,23 +31,23 @@ const GRID_COLORS = [
 export default function ThemeSettingsScreen() {
   const navigation = useNavigation<any>();
 
-  const [selectedColor, setSelectedColor] = useState('#346556');
+  const [selectedColor, setSelectedColor] = useState(COLORS.primary);
   const [activeTab, setActiveTab] = useState<'solid' | 'gradient' | 'palette'>('solid');
+
+  const handleSave = () => {
+    setThemeColor(selectedColor);
+    navigation.goBack();
+  };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* ── HEADER ────────────────────────────────── */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>THEME</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+      <CustomHeader
+        showBack={true}
+        showSearch={false}
+        onBackPress={() => navigation.goBack()}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Color Preview Block */}
@@ -99,12 +100,26 @@ export default function ThemeSettingsScreen() {
                 { backgroundColor: color },
                 selectedColor === color && styles.colorCircleSelected,
               ] as any}
-              onPress={() => setSelectedColor(color)}
+              onPress={() => {
+                setSelectedColor(color);
+                setThemeColor(color);
+              }}
               activeOpacity={0.8}
             />
           ))}
         </View>
       </ScrollView>
+
+      {/* Save Button Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: selectedColor }]}
+          onPress={handleSave}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.saveBtnText}>Save Theme</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -114,44 +129,18 @@ const styles: any = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bgPage,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleContainer: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.textDark,
-    letterSpacing: 1,
-  },
+
 
   scrollContent: {
     padding: 16,
-    gap: 16,
-    paddingBottom: 40,
+    gap: 5,
+    paddingBottom: 100,
   },
 
   // Preview block
   previewBlock: {
     height: 100,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -172,7 +161,7 @@ const styles: any = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
     borderRadius: 10,
-    padding: 4,
+    padding: 2,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -200,14 +189,14 @@ const styles: any = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
     color: COLORS.textDark,
-    marginTop: 6,
+    marginTop: 1,
   },
 
   // Color selection grid
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
     borderRadius: 12,
@@ -226,5 +215,30 @@ const styles: any = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#0D0F0E',
     transform: [{ scale: 1.1 }],
+  },
+  footer: {
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 88 : 62,
+    backgroundColor: COLORS.bgWhite,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  saveBtn: {
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

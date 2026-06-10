@@ -5,7 +5,7 @@ export const fetchRawLeads = async () => {
 };
 
 export const fetchRawCallLogs = async (leadId: string) => {
-  return axios({ method: 'GET', url: `/leads/${leadId}/call-logs` });
+  return axios({ method: 'GET', url: `/leads/${leadId}/call-logs`, params: { lead_id: leadId } });
 };
 
 export const addCallRaw = async (leadId: string, payload: any) => {

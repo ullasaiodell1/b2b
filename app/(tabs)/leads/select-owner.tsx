@@ -18,38 +18,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUsers } from '@/hooks/useLeads';
 
 interface OwnerRecord {
+  id: string;
   name: string;
   email: string;
   avatar: any;
 }
 
-const OWNERS: OwnerRecord[] = [
-  {
-    name: 'Parth Solanki',
-    email: 'Parth123@Gmail.Com',
-    avatar: require('@/assets/images/lead_avatar.png'),
-  },
-  {
-    name: 'Khushal Nadiyapara',
-    email: 'Khushal123@Gmail.Com',
-    avatar: require('@/assets/images/avatar_luis.png'),
-  },
-  {
-    name: 'Mukesh Chaudhary',
-    email: 'Mukesh123@Gmail.Com',
-    avatar: require('@/assets/images/avatar_sherry.png'),
-  },
-  {
-    name: 'Tejas Parmar',
-    email: 'Tejas123@Gmail.Com',
-    avatar: require('@/assets/images/lead_avatar.png'),
-  },
-];
+const OWNERS: OwnerRecord[] = [];
 
 export default function SelectOwnerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     currentOwner?: string;
+    currentOwnerId?: string;
     company?: string;
     fullname?: string;
     email?: string;
@@ -59,10 +40,12 @@ export default function SelectOwnerScreen() {
 
   const { data: usersData } = useUsers();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOwner, setSelectedOwner] = useState(params.currentOwner || '');
+  const [selectedOwnerId, setSelectedOwnerId] = useState(params.currentOwnerId || '');
+  const [selectedOwnerName, setSelectedOwnerName] = useState(params.currentOwner || '');
 
   const dynamicOwners = usersData && usersData.length > 0
     ? usersData.map((u: any) => ({
+        id: String(u.id),
         name: u.name,
         email: u.email,
         avatar: require('@/assets/images/lead_avatar.png'),
@@ -75,16 +58,17 @@ export default function SelectOwnerScreen() {
   );
 
   const handleSelect = () => {
-    if (!selectedOwner) {
+    if (!selectedOwnerName) {
       Alert.alert('Selection Required', 'Please select a lead owner to proceed.');
       return;
     }
     // Navigate back and pass parameters
-    router.replace({
+    router.navigate({
       pathname: '/(tabs)/leads/add-lead',
       params: { 
         ...params,
-        owner: selectedOwner,
+        owner: selectedOwnerName,
+        ownerId: selectedOwnerId,
       },
     });
   };
@@ -145,13 +129,16 @@ export default function SelectOwnerScreen() {
           contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         >
-          {filteredOwners.map((owner: OwnerRecord) => {
-            const isSelected = selectedOwner === owner.name;
+          {filteredOwners.map((owner: OwnerRecord, idx: number) => {
+            const isSelected = selectedOwnerId ? selectedOwnerId === owner.id : selectedOwnerName === owner.name;
             return (
               <TouchableOpacity
-                key={owner.name}
+                key={owner.name + '_' + idx}
                 style={[styles.ownerCard, isSelected && styles.ownerCardSelected]}
-                onPress={() => setSelectedOwner(owner.name)}
+                onPress={() => {
+                  setSelectedOwnerId(owner.id);
+                  setSelectedOwnerName(owner.name);
+                }}
                 activeOpacity={0.9}
               >
                 <Image source={owner.avatar} style={styles.avatarImage} />

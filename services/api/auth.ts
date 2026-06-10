@@ -17,11 +17,12 @@ export const accountLogin = (data: any) => {
     });
 };
 
-export const accountLogout = () => {
+export const accountLogout = (token?: string) => {
   console.log('[Auth API Request] accountLogout (DELETE /auth/logout)');
   return axios({
     method: 'DELETE',
-    url: `/auth/logout`
+    url: `/auth/logout`,
+    headers: token ? { Authorization: token } : undefined
   })
     .then((res) => {
       console.log('[Auth API Response] accountLogout (DELETE /auth/logout) - Success:', JSON.stringify(res, null, 2));
@@ -79,6 +80,23 @@ export const updateAuthSession = (data: any) => {
     })
     .catch((err) => {
       console.error('[Auth API Error] updateAuthSession (PUT /auth/session) - Error:', JSON.stringify(err, null, 2));
+      throw err;
+    });
+};
+
+export const deleteSession = (sessionId: string, token: string) => {
+  console.log(`[Auth API Request] deleteSession (DELETE /auth/session/${sessionId})`);
+  return axios({
+    method: 'DELETE',
+    url: `/auth/session/${sessionId}`,
+    headers: { Authorization: token }
+  })
+    .then((res) => {
+      console.log(`[Auth API Response] deleteSession (DELETE /auth/session/${sessionId}) - Success:`, JSON.stringify(res, null, 2));
+      return res;
+    })
+    .catch((err) => {
+      console.error(`[Auth API Error] deleteSession (DELETE /auth/session/${sessionId}) - Error:`, JSON.stringify(err, null, 2));
       throw err;
     });
 };

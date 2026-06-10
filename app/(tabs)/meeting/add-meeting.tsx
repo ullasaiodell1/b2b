@@ -1,99 +1,103 @@
-import { MeetingRecord, meetingsState, updateMeetingsState } from '@/components/MeetingState';
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useCreateMeeting } from '@/hooks/useMeetings';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
+
+// ── Constants ──────────────────────────────────────────────────────
+const STATUS_OPTIONS = ['SCHEDULED', 'CANCELLED', 'RESCHEDULED'] as const;
+type MeetingStatus = typeof STATUS_OPTIONS[number];
+
+const METHOD_OPTIONS = ['Online', 'Offline'] as const;
+type MeetingMethod = typeof METHOD_OPTIONS[number];
 
 export default function AddMeetingScreen() {
-  const navigation = useNavigation<any>();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ leadId?: string; leadName?: string; company?: string }>();
   const insets = useSafeAreaInsets();
-  const [showAllFields, setShowAllFields] = useState(false);
+  const createMeetingMutation = useCreateMeeting();
+
+  // ─── Form State ────────────────────────────────────────────────
   const [syncToCalendar, setSyncToCalendar] = useState(true);
+  const [status, setStatus] = useState<MeetingStatus | null>(null);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [method, setMethod] = useState<MeetingMethod | null>(null);
+  const [methodDropdownOpen, setMethodDropdownOpen] = useState(false);
+  const [purpose, setPurpose] = useState('');
+  const [remarks, setRemarks] = useState('');
 
-  // Form State
-  const [title, setTitle] = useState('');
-  const [venue, setVenue] = useState('Development Room');
-  const [location, setLocation] = useState('Hybrid');
-  const [isAllDay, setIsAllDay] = useState(false);
-
-  // DateTimePicker State
-  const [meetingDate, setMeetingDate] = useState<Date>(new Date());
-  const [fromTime, setFromTime] = useState<Date>(() => {
+  // ─── DateTime State ───────────────────────────────────────────
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
+  const [scheduledTime, setScheduledTime] = useState<Date>(() => {
     const d = new Date();
     d.setHours(11, 0, 0, 0);
     return d;
   });
-  const [toTime, setToTime] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(12, 0, 0, 0);
-    return d;
-  });
-  const [host, setHost] = useState('Parth Solanki');
 
-  // Picker visibilities
+  // ─── Picker Visibility ────────────────────────────────────────
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showFromTimePicker, setShowFromTimePicker] = useState(false);
-  const [showToTimePicker, setShowToTimePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  // ─── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!title.trim()) {
-      alert('Please enter a Meeting Title.');
+    if (!purpose.trim()) {
+      Alert.alert('Required', 'Please enter a Meeting Purpose.');
+      return;
+    }
+    if (!status) {
+      Alert.alert('Required', 'Please select a Status.');
+      return;
+    }
+    if (!method) {
+      Alert.alert('Required', 'Please select a Method.');
       return;
     }
 
-    const fromTimeStr = fromTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const toTimeStr = toTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-    const newMeeting: MeetingRecord = {
-      id: Date.now().toString(),
-      title,
-      venue,
-      location,
-      isAllDay,
-      fromTime: fromTimeStr,
-      toTime: toTimeStr,
-      host,
-      status: 'Pending',
-      notes: [],
-      attachments: [],
-      createdTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      modifiedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    };
+    // Build ISO scheduled_at from selected date + time
+    const combined = new Date(scheduledDate);
+    combined.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
 
     if (syncToCalendar) {
       try {
-        const { status } = await Calendar.requestCalendarPermissionsAsync();
-        if (status === 'granted') {
+        const { status: permStatus } = await Calendar.requestCalendarPermissionsAsync();
+        if (permStatus === 'granted') {
           const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-          const editableCal = calendars.find((c) => c.isPrimary && c.allowsModifications) || calendars.find((c) => c.allowsModifications);
+          const editableCal =
+            calendars.find((c) => c.isPrimary && c.allowsModifications) ||
+            calendars.find((c) => c.allowsModifications);
           if (editableCal) {
-            const startDate = new Date(meetingDate);
-            startDate.setHours(fromTime.getHours(), fromTime.getMinutes(), 0, 0);
-
-            const endDate = new Date(meetingDate);
-            endDate.setHours(toTime.getHours(), toTime.getMinutes(), 0, 0);
-
+            const endDate = new Date(combined);
+            endDate.setHours(endDate.getHours() + 1);
             await Calendar.createEventAsync(editableCal.id, {
-              title,
-              startDate,
+              title: purpose,
+              startDate: combined,
               endDate,
-              location: `${venue}, ${location}`,
-              notes: `Meeting hosted by ${host}.`,
+              location: method,
+              notes: remarks || undefined,
             });
           }
         }
@@ -102,198 +106,357 @@ export default function AddMeetingScreen() {
       }
     }
 
-    updateMeetingsState([...meetingsState, newMeeting]);
-    navigation.goBack();
+    try {
+      await createMeetingMutation.mutateAsync({
+        leadId: params.leadId,
+        title: purpose,
+        venue: remarks,
+        location: method,
+        isAllDay: false,
+        fromTime: formatTime(scheduledTime),
+        toTime: formatTime(scheduledTime),
+        host: params.leadName || '',
+        status: 'Pending',
+        notes: [],
+        attachments: [],
+        // Pass extra backend fields via hook
+        _scheduledAt: combined.toISOString(),
+        _status: status ?? 'SCHEDULED',
+        _followUpMethod: method ?? 'Online',
+        _purpose: purpose,
+        _remarks: remarks,
+      } as any);
+      router.back();
+    } catch (err: any) {
+      console.error('[AddMeeting] save error:', err);
+      Alert.alert('Error', err?.message || 'Failed to save meeting. Please try again.');
+    }
   };
+
+  const isLoading = createMeetingMutation.isPending;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* ── HEADER ────────────────────────────────── */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
+      {/* ── HEADER ──────────────────────────────────── */}
+      <View style={[styles.header, {
+        paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16),
+      }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>ADD MEETING</Text>
+          <Text style={styles.headerTitle}>
+            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: COLORS.textDark }}>MEETING</Text>
+          </Text>
           <Text style={styles.headerSubtitle}>Fill in the Details Below</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Toggle Options */}
-        <View style={{ gap: 10 }}>
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Show All Fields</Text>
-            <Switch
-              value={showAllFields}
-              onValueChange={setShowAllFields}
-              trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          <View style={styles.toggleRow}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Sync Toggle ─────────────────────────── */}
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleLeft}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
             <Text style={styles.toggleLabel}>Sync with System Calendar</Text>
-            <Switch
-              value={syncToCalendar}
-              onValueChange={setSyncToCalendar}
-              trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
-              thumbColor="#FFFFFF"
-            />
           </View>
+          <Switch
+            value={syncToCalendar}
+            onValueChange={setSyncToCalendar}
+            trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+            thumbColor="#FFFFFF"
+          />
         </View>
 
-        {/* Form Fields */}
-        <View style={styles.form}>
-          {/* Title */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Title *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Enter Title"
-              placeholderTextColor="#9CA3AF"
-              value={title}
-              onChangeText={setTitle}
-            />
-          </View>
+        {/* ── FORM CARD ───────────────────────────── */}
+        <View style={styles.formCard}>
 
-          {/* Meeting Venue */}
+          {/* ── Status ──────────────────────────────── */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Meeting Venue *</Text>
-            <View style={styles.selectorContainer}>
-              <TextInput
-                style={styles.selectorInput}
-                placeholder="Enter Meeting Venue"
-                placeholderTextColor="#9CA3AF"
-                value={venue}
-                onChangeText={setVenue}
+            <Text style={styles.inputLabel}>
+              Status <Text style={styles.required}>*</Text>
+            </Text>
+            {/* Dropdown trigger */}
+            <TouchableOpacity
+              style={[styles.inputRow, statusDropdownOpen && styles.inputRowFocused]}
+              onPress={() => setStatusDropdownOpen(!statusDropdownOpen)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="ellipse-outline"
+                size={16}
+                color={status ? COLORS.primary : COLORS.textMuted}
+                style={styles.inputIcon}
               />
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </View>
-          </View>
-
-          {/* Location */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Location *</Text>
-            <View style={styles.selectorContainer}>
-              <TextInput
-                style={styles.selectorInput}
-                placeholder="Enter Location (e.g. Hybrid, Online)"
-                placeholderTextColor="#9CA3AF"
-                value={location}
-                onChangeText={setLocation}
-              />
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </View>
-          </View>
-
-          {/* Date Picker */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date *</Text>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.selectorContainer}>
-              <Text style={styles.selectorInputText}>
-                {meetingDate.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+              <Text style={[styles.textInput, !status && { color: '#9CA3AF' }]}>
+                {status ?? 'Select status'}
               </Text>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={meetingDate}
-                mode="date"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowDatePicker(false);
-                  if (selected) setMeetingDate(selected);
-                }}
+              <Ionicons
+                name={statusDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={COLORS.textMuted}
               />
+            </TouchableOpacity>
+
+            {/* Dropdown list */}
+            {statusDropdownOpen && (
+              <View style={styles.dropdownList}>
+                {STATUS_OPTIONS.map((opt, idx) => {
+                  const isSelected = status === opt;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.dropdownItem,
+                        isSelected && styles.dropdownItemSelected,
+                        idx < STATUS_OPTIONS.length - 1 && styles.dropdownItemBorder,
+                      ]}
+                      onPress={() => {
+                        setStatus(opt);
+                        setStatusDropdownOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.dropdownItemText,
+                        isSelected && styles.dropdownItemTextSelected,
+                      ]}>
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           </View>
 
-          {/* All Day Toggle (Yes / No side-by-side buttons) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>All Day</Text>
-            <View style={styles.yesNoContainer}>
-              <TouchableOpacity
-                onPress={() => setIsAllDay(true)}
-                style={[styles.yesNoBtn, isAllDay && styles.yesNoBtnActive]}
-              >
-                <Text style={[styles.yesNoText, isAllDay && styles.yesNoTextActive]}>Yes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setIsAllDay(false)}
-                style={[styles.yesNoBtn, !isAllDay && styles.yesNoBtnActive]}
-              >
-                <Text style={[styles.yesNoText, !isAllDay && styles.yesNoTextActive]}>No</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <View style={styles.divider} />
 
-          {/* Time Picker From */}
+          {/* ── Method ──────────────────────────────── */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>From *</Text>
-            <TouchableOpacity onPress={() => setShowFromTimePicker(true)} style={styles.selectorContainer}>
-              <Text style={styles.selectorInputText}>
-                {fromTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-              </Text>
-              <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            <CustomTimePicker
-              visible={showFromTimePicker}
-              onClose={() => setShowFromTimePicker(false)}
-              selectedDate={fromTime}
-              onSelect={(selected) => {
-                setShowFromTimePicker(false);
-                setFromTime(selected);
-              }}
-            />
-          </View>
-
-          {/* Time Picker To */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>To *</Text>
-            <TouchableOpacity onPress={() => setShowToTimePicker(true)} style={styles.selectorContainer}>
-              <Text style={styles.selectorInputText}>
-                {toTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-              </Text>
-              <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            <CustomTimePicker
-              visible={showToTimePicker}
-              onClose={() => setShowToTimePicker(false)}
-              selectedDate={toTime}
-              onSelect={(selected) => {
-                setShowToTimePicker(false);
-                setToTime(selected);
-              }}
-            />
-          </View>
-
-          {/* Host Dropdown */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Host</Text>
-            <View style={styles.selectorContainer}>
-              <TextInput
-                style={styles.selectorInput}
-                placeholder="Enter Host Name"
-                placeholderTextColor="#9CA3AF"
-                value={host}
-                onChangeText={setHost}
+            <Text style={styles.inputLabel}>Method</Text>
+            {/* Dropdown trigger */}
+            <TouchableOpacity
+              style={[styles.inputRow, methodDropdownOpen && styles.inputRowFocused]}
+              onPress={() => setMethodDropdownOpen(!methodDropdownOpen)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="git-merge-outline"
+                size={16}
+                color={method ? COLORS.primary : COLORS.textMuted}
+                style={styles.inputIcon}
               />
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+              <Text style={[styles.textInput, !method && { color: '#9CA3AF' }]}>
+                {method ?? 'Select method'}
+              </Text>
+              <Ionicons
+                name={methodDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={COLORS.textMuted}
+              />
+            </TouchableOpacity>
+
+            {/* Dropdown list */}
+            {methodDropdownOpen && (
+              <View style={styles.dropdownList}>
+                {METHOD_OPTIONS.map((opt, idx) => {
+                  const isSelected = method === opt;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.dropdownItem,
+                        isSelected && styles.dropdownItemSelected,
+                        idx < METHOD_OPTIONS.length - 1 && styles.dropdownItemBorder,
+                      ]}
+                      onPress={() => {
+                        setMethod(opt);
+                        setMethodDropdownOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.dropdownItemText,
+                        isSelected && styles.dropdownItemTextSelected,
+                      ]}>
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* ── Purpose ─────────────────────────────── */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>
+              Purpose <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={[styles.inputRow, !purpose.trim() && styles.inputError]}>
+              <Ionicons name="briefcase-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Product Demo, Follow-up Discussion"
+                placeholderTextColor="#9CA3AF"
+                value={purpose}
+                onChangeText={setPurpose}
+              />
             </View>
           </View>
+
+          <View style={styles.divider} />
+
+          {/* ── Scheduled Date & Time ────────────────── */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>
+              Scheduled Date &amp; Time <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.dateTimeRow}>
+              {/* Date */}
+              <TouchableOpacity
+                style={[styles.inputRow, { flex: 1 }]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Text style={[styles.textInput, { paddingTop: 2 }]} numberOfLines={1}>
+                  {formatDate(scheduledDate)}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+
+              {/* Time */}
+              <TouchableOpacity
+                style={[styles.inputRow, { flex: 1 }]}
+                onPress={() => setShowTimePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="time-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Text style={[styles.textInput, { paddingTop: 2 }]}>
+                  {formatTime(scheduledTime)}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* ── Remarks ─────────────────────────────── */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Remarks</Text>
+            <View style={[styles.inputRow, styles.textareaRow]}>
+              <Ionicons name="document-text-outline" size={16} color={COLORS.textMuted} style={[styles.inputIcon, { marginTop: 2 }]} />
+              <TextInput
+                style={[styles.textInput, styles.textarea]}
+                placeholder="Add any notes or remarks..."
+                placeholderTextColor="#9CA3AF"
+                value={remarks}
+                onChangeText={setRemarks}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+          {/* ── Lead (read-only if passed) ───────────── */}
+          {params.leadName ? (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Lead</Text>
+                <View style={[styles.inputRow, styles.readonlyRow]}>
+                  <Ionicons name="person-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
+                  <Text style={[styles.textInput, { color: COLORS.textMuted }]} numberOfLines={1}>
+                    {params.leadName}{params.company ? ` · ${params.company}` : ''}
+                  </Text>
+                  <Ionicons name="lock-closed-outline" size={13} color={COLORS.textMuted} />
+                </View>
+              </View>
+            </>
+          ) : null}
+
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Actions */}
-      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} activeOpacity={0.9}>
-          <Text style={styles.saveBtnText}>SAVE</Text>
+      {/* ── STICKY SAVE BUTTON ───────────────────────── */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={[styles.saveBtn, isLoading && { opacity: 0.7 }]}
+          activeOpacity={0.9}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveBtnText}>SAVE MEETING</Text>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* ── DATE PICKER ───────────────────────────────── */}
+      {showDatePicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="fade" visible={showDatePicker}>
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Date</Text>
+                <DateTimePicker
+                  value={scheduledDate}
+                  mode="date"
+                  display="inline"
+                  onChange={(_e, selected) => { if (selected) setScheduledDate(selected); }}
+                />
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={() => setShowDatePicker(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={scheduledDate}
+            mode="date"
+            display="default"
+            onChange={(_e, selected) => {
+              setShowDatePicker(false);
+              if (selected) setScheduledDate(selected);
+            }}
+          />
+        )
+      )}
+
+      {/* ── TIME PICKER ───────────────────────────────── */}
+      <CustomTimePicker
+        visible={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        selectedDate={scheduledTime}
+        onSelect={(selected) => {
+          setShowTimePicker(false);
+          setScheduledTime(selected);
+        }}
+      />
     </View>
   );
 }
@@ -303,45 +466,181 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bgPage,
   },
+
+  // ── Header ──────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 66 : 26,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F4F7F5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
     alignItems: 'center',
+    gap: 1,
   },
   headerTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '900',
-    color: COLORS.textDark,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 11,
     color: COLORS.textMuted,
     fontWeight: '600',
-    marginTop: 2,
   },
 
+  // ── Scroll ──────────────────────────────────────────
   scrollContent: {
-    padding: 20,
-    paddingBottom: 110,
-    gap: 5,
+    padding: 12,
+    paddingBottom: 120,
+    gap: 10,
   },
-  bottomStickyBar: {
+
+  // ── Sync Toggle ─────────────────────────────────────
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgWhite,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  toggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  toggleLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+
+  // ── Form Card ────────────────────────────────────────
+  formCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 14,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  required: {
+    color: '#EF4444',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+
+  // ── Status Dropdown ──────────────────────────────────
+  dropdownList: {
+    backgroundColor: COLORS.bgWhite,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  dropdownItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#EBF8FF',
+  },
+  dropdownItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  dropdownItemTextSelected: {
+    color: '#0EA5E9',
+    fontWeight: '900',
+  },
+
+  // ── Input Row ────────────────────────────────────────
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  inputRowFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  readonlyRow: {
+    backgroundColor: '#F3F4F6',
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    padding: 0,
+  },
+
+  // ── Textarea ─────────────────────────────────────────
+  textareaRow: {
+    height: 90,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
+  textarea: {
+    height: 68,
+  },
+
+  // ── Date + Time row ──────────────────────────────────
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  // ── Bottom bar ───────────────────────────────────────
+  bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -352,111 +651,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.bgWhite,
-    paddingVertical: 2,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  toggleLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-
-  form: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 15,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 8,
-  },
-  inputGroup: {
-    gap: 5,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  textInput: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 46,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '600',
-  },
-  selectorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 46,
-  },
-  selectorInput: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '600',
-  },
-  selectorInputText: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '600',
-    textAlignVertical: 'center',
-  },
-
-  // Yes/No Selector Buttons
-  yesNoContainer: {
-    flexDirection: 'row',
-    gap: 15,
-  },
-  yesNoBtn: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: '#F9FAFB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yesNoBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
-  },
-  yesNoText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  yesNoTextActive: {
-    color: COLORS.primary,
-    fontWeight: '900',
-  },
-
-  // Save Button
   saveBtn: {
     backgroundColor: '#000000',
-    borderRadius: 10,
-    height: 48,
+    borderRadius: 12,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -466,6 +667,34 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+  },
+
+  // ── Date Modal (iOS) ─────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textDark,
+    textAlign: 'center',
   },
 });

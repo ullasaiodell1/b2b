@@ -15,8 +15,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CompanyListScreen() {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -128,7 +130,7 @@ export default function CompanyListScreen() {
           data={companies}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderCompanyItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
           onRefresh={refetch}
           refreshing={isFetching}
           ListEmptyComponent={

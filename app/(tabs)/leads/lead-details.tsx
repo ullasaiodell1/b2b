@@ -1,23 +1,22 @@
 import { COLORS } from '@/constants/theme';
+import { useLeadDetails, useLeads } from '@/hooks/useLeads';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  StatusBar,
-  Platform,
   Alert,
-  TextInput,
+  Image,
+  Platform,
   RefreshControl,
-  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLeadDetails } from '@/hooks/useLeads';
 
 type TabType = 'Overview' | 'Quotation' | 'Order' | 'Emails';
 
@@ -52,14 +51,15 @@ export default function LeadDetailsScreen() {
   const insets = useSafeAreaInsets();
 
   const { data: dbLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
+  const { deleteLead } = useLeads();
 
-  const leadName = dbLead?.name || params.name || 'Parth Solanki';
-  const leadCompany = dbLead?.company || params.company || 'Parth Pvt. Ltd.';
-  const leadEmail = dbLead?.email || params.email || 'parth123@gmail.com';
-  const leadPhone = dbLead?.phone || params.phone || '+91 45637 12345';
-  const leadTag = dbLead?.tag || params.tag || 'Hardware';
+  const leadName = dbLead?.name || params.name || '----';
+  const leadCompany = dbLead?.company || params.company || '----';
+  const leadEmail = dbLead?.email || params.email || '----';
+  const leadPhone = dbLead?.phone || params.phone || '----';
+  const leadTag = dbLead?.tag || params.tag || '----';
   const leadPriority = dbLead?.priority || params.priority || 'Normal';
-  const leadOwner = dbLead?.owner || params.owner || 'Arjun Maheta';
+  const leadOwner = dbLead?.owner || params.owner || '----';
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>('Overview');
@@ -89,6 +89,71 @@ export default function LeadDetailsScreen() {
     } else {
       Alert.alert('Action triggered', `Performing ${type} action...`);
     }
+  };
+
+  const handleEditLead = () => {
+    if (!params.id) {
+      Alert.alert('Error', 'Lead ID is missing.');
+      return;
+    }
+    router.push({
+      pathname: '/(tabs)/leads/add-lead',
+      params: {
+        id: params.id,
+        fullname: leadName,
+        company: leadCompany,
+        email: leadEmail,
+        phone: leadPhone,
+        tags: leadTag,
+        priority: leadPriority,
+        owner: leadOwner,
+        ownerId: dbLead?.assigned_to ? String(dbLead.assigned_to) : '',
+        status: dbLead?.status || '',
+        source: dbLead?.source || '',
+        whatsapp: dbLead?.alternate_phone || '',
+        country: dbLead?.country_name || dbLead?.country || '',
+        stateName: dbLead?.state_name || dbLead?.state || '',
+        cityName: dbLead?.city_name || dbLead?.city || '',
+        pincode: dbLead?.pincode || '',
+        propertyType: dbLead?.property_type || '',
+        businessType: dbLead?.business_type || '',
+        designation: dbLead?.designation || '',
+        website: dbLead?.website || '',
+        gstNo: dbLead?.gst_number || '',
+        interestedCategory: dbLead?.interested_category || '',
+        panNo: dbLead?.pan_number || '',
+        addressLine1: dbLead?.address_line1 || '',
+        addressLine2: dbLead?.address_line2 || '',
+        expectedRevenue: dbLead?.expected_revenue ? String(dbLead.expected_revenue) : '',
+        remark: dbLead?.remarks || '',
+        emailOptOut: dbLead?.email_opt_out ? 'true' : 'false',
+      }
+    });
+  };
+
+  const handleDeleteLead = () => {
+    if (!params.id) return;
+    Alert.alert(
+      'Delete Lead',
+      `Are you sure you want to delete lead "${leadName}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteLead(params.id!);
+              Alert.alert('Success', 'Lead deleted successfully.', [
+                { text: 'OK', onPress: () => router.back() }
+              ]);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete lead.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Dynamic Header Title Helper
@@ -126,84 +191,10 @@ export default function LeadDetailsScreen() {
   };
 
   // Mock data for Quotation Tab
-  const QUOTATIONS = [
-    {
-      id: 'QT-2026-001',
-      type: 'Product Quotation',
-      status: 'Sent',
-      statusColor: COLORS.orange,
-      company: 'NovaTech Solutions Pvt. Ltd.',
-      contact: 'Arjun Maheta',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '22 March 2026',
-      itemsCount: 21,
-      amount: '₹ 10,00,000.00',
-    },
-    {
-      id: 'QT-2026-002',
-      type: 'Project Based Quotation',
-      status: 'Accepted',
-      statusColor: COLORS.green,
-      company: 'NovaTech Solutions Pvt. Ltd.',
-      contact: 'Arjun Maheta',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '22 March 2026',
-      itemsCount: 21,
-      amount: '₹ 10,00,000.00',
-    },
-    {
-      id: 'QT-2026-003',
-      type: 'Services Based Quotation',
-      status: 'Sent',
-      statusColor: COLORS.orange,
-      company: 'NovaTech Solutions Pvt. Ltd.',
-      contact: 'Arjun Maheta',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '22 March 2026',
-      itemsCount: 21,
-      amount: '₹ 10,00,000.00',
-    },
-  ];
+  const QUOTATIONS: any[] = [];
 
   // Mock data for Order Tab
-  const ORDERS = [
-    {
-      id: 'QT-2026-001',
-      status: 'Complete',
-      statusColor: COLORS.green,
-      company: 'NovaTech Solutions Pvt. Ltd.',
-      contact: 'Arjun Maheta',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '22 March 2026',
-      itemsCount: 21,
-      paymentMethod: 'Advance Payment',
-      amount: '₹ 10,00,000.00',
-    },
-    {
-      id: 'QT-2026-012',
-      status: 'Pending',
-      statusColor: COLORS.orange,
-      company: 'Zenith System Pvt. Ltd.',
-      contact: 'Khushal Nadiyapara',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '12 April 2026',
-      itemsCount: 21,
-      paymentMethod: 'Advance Payment',
-      amount: '₹ 40,00,000.00',
-    },
-    {
-      id: 'QT-2026-013',
-      status: 'Pending',
-      statusColor: COLORS.orange,
-      company: 'Zenith System Pvt. Ltd.',
-      contact: 'Parth Solanki',
-      location: 'The Grand Thakar Hotel , Rajkot',
-      date: '20 May 2026',
-      itemsCount: 21,
-      paymentMethod: 'Advance Payment',
-      amount: '₹ 10,00,000.00',
-    },
-  ];
+  const ORDERS: any[] = [];
 
   return (
     <View style={styles.root}>
@@ -211,17 +202,32 @@ export default function LeadDetailsScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
         </TouchableOpacity>
-        
+
         {renderHeaderTitle()}
 
-        <View style={{ width: 36 }} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.actionHeaderBtn}
+            onPress={handleEditLead}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionHeaderBtn}
+            onPress={handleDeleteLead}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SUB-TABS SELECTOR */}
@@ -245,8 +251,8 @@ export default function LeadDetailsScreen() {
         </View>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} 
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
@@ -258,14 +264,14 @@ export default function LeadDetailsScreen() {
             {/* PROFILE CARD */}
             <View style={styles.profileCard}>
               <View style={styles.profileTopRow}>
-                <Image 
-                  source={require('@/assets/images/lead_avatar.png')} 
+                <Image
+                  source={require('@/assets/images/lead_avatar.png')}
                   style={styles.profileImage}
                   resizeMode="cover"
                 />
                 <View style={styles.profileInfoCol}>
                   <Text style={styles.profileName}>{leadName}</Text>
-                  
+
                   <View style={styles.profileDetailLine}>
                     <Ionicons name="business-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.profileDetailText}>{leadCompany}</Text>
@@ -278,7 +284,9 @@ export default function LeadDetailsScreen() {
 
                   <View style={styles.profileDetailLine}>
                     <Ionicons name="home-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.profileDetailText}>Rajkot</Text>
+                    <Text style={styles.profileDetailText}>
+                      {[dbLead?.city_name || dbLead?.city, dbLead?.state_name || dbLead?.state].filter(Boolean).join(', ') || '----'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -304,9 +312,9 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* ACCORDION 1: LEAD INFORMATION */}
-            <View style={styles.accordionCard}>
-              <TouchableOpacity 
-                style={styles.accordionHeader} 
+            <View style={[styles.accordionCard, { marginBottom: 1 }]}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
                 onPress={() => setLeadInfoExpanded(!leadInfoExpanded)}
                 activeOpacity={0.85}
               >
@@ -315,10 +323,10 @@ export default function LeadDetailsScreen() {
                   <Text style={styles.accordionTitleText}>LEAD INFORMATION</Text>
                 </View>
                 <View style={styles.chevronBg}>
-                  <Ionicons 
-                    name={leadInfoExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color={COLORS.textDark} 
+                  <Ionicons
+                    name={leadInfoExpanded ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color={COLORS.textDark}
                   />
                 </View>
               </TouchableOpacity>
@@ -356,9 +364,9 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* ACCORDION 2: ADDRESS */}
-            <View style={styles.accordionCard}>
-              <TouchableOpacity 
-                style={styles.accordionHeader} 
+            <View style={[styles.accordionCard, { marginBottom: 1 }]}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
                 onPress={() => setAddressExpanded(!addressExpanded)}
                 activeOpacity={0.85}
               >
@@ -367,39 +375,39 @@ export default function LeadDetailsScreen() {
                   <Text style={styles.accordionTitleText}>ADDRESS</Text>
                 </View>
                 <View style={styles.chevronBg}>
-                  <Ionicons 
-                    name={addressExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color={COLORS.textDark} 
+                  <Ionicons
+                    name={addressExpanded ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color={COLORS.textDark}
                   />
                 </View>
               </TouchableOpacity>
 
               {addressExpanded && (
                 <View style={styles.accordionContent}>
-                  <DetailRow 
-                    label="Address" 
+                  <DetailRow
+                    label="Address"
                     value={
-                      dbLead 
+                      dbLead
                         ? [
-                            dbLead.address_line1,
-                            dbLead.address_line2,
-                            dbLead.city_name || dbLead.city,
-                            dbLead.state_name || dbLead.state,
-                            dbLead.country_name || dbLead.country,
-                            dbLead.pincode
-                          ].filter(Boolean).join(', ') || '-----'
+                          dbLead.address_line1,
+                          dbLead.address_line2,
+                          dbLead.city_name || dbLead.city,
+                          dbLead.state_name || dbLead.state,
+                          dbLead.country_name || dbLead.country,
+                          dbLead.pincode
+                        ].filter(Boolean).join(', ') || '-----'
                         : '-----'
-                    } 
+                    }
                   />
                 </View>
               )}
             </View>
 
             {/* ACCORDION 3: DESCRIPTION */}
-            <View style={styles.accordionCard}>
-              <TouchableOpacity 
-                style={styles.accordionHeader} 
+            <View style={[styles.accordionCard, { marginBottom: 1 }]}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
                 onPress={() => setDescExpanded(!descExpanded)}
                 activeOpacity={0.85}
               >
@@ -408,10 +416,10 @@ export default function LeadDetailsScreen() {
                   <Text style={styles.accordionTitleText}>DESCRIPTION</Text>
                 </View>
                 <View style={styles.chevronBg}>
-                  <Ionicons 
-                    name={descExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color={COLORS.textDark} 
+                  <Ionicons
+                    name={descExpanded ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color={COLORS.textDark}
                   />
                 </View>
               </TouchableOpacity>
@@ -424,8 +432,8 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* NAVIGATION BADGES CARD ROWS */}
-            <TouchableOpacity 
-              style={styles.badgeRowCard}
+            <TouchableOpacity
+              style={[styles.badgeRowCard, { marginBottom: 1 }]}
               onPress={() => handleAction('Visit')}
               activeOpacity={0.85}
             >
@@ -433,7 +441,7 @@ export default function LeadDetailsScreen() {
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>VISIT</Text>
                 <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>12</Text>
+                  <Text style={styles.badgeCountText}>0</Text>
                 </View>
               </View>
               <View style={styles.arrowCircleBg}>
@@ -441,8 +449,8 @@ export default function LeadDetailsScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.badgeRowCard}
+            <TouchableOpacity
+              style={[styles.badgeRowCard, { marginBottom: 1 }]}
               onPress={() => handleAction('Follow Up')}
               activeOpacity={0.85}
             >
@@ -450,7 +458,7 @@ export default function LeadDetailsScreen() {
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>FOLLOW UP</Text>
                 <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>12</Text>
+                  <Text style={styles.badgeCountText}>0</Text>
                 </View>
               </View>
               <View style={styles.arrowCircleBg}>
@@ -458,8 +466,8 @@ export default function LeadDetailsScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.badgeRowCard}
+            <TouchableOpacity
+              style={[styles.badgeRowCard, { marginBottom: 1 }]}
               onPress={() => handleAction('Meeting')}
               activeOpacity={0.85}
             >
@@ -467,7 +475,7 @@ export default function LeadDetailsScreen() {
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>MEETING</Text>
                 <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>5</Text>
+                  <Text style={styles.badgeCountText}>0</Text>
                 </View>
               </View>
               <View style={styles.arrowCircleBg}>
@@ -475,8 +483,8 @@ export default function LeadDetailsScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.badgeRowCard}
+            <TouchableOpacity
+              style={[styles.badgeRowCard, { marginBottom: 1 }]}
               onPress={() => handleAction('Task')}
               activeOpacity={0.85}
             >
@@ -484,7 +492,7 @@ export default function LeadDetailsScreen() {
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>TASK</Text>
                 <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>10</Text>
+                  <Text style={styles.badgeCountText}>0</Text>
                 </View>
               </View>
               <View style={styles.arrowCircleBg}>
@@ -492,8 +500,8 @@ export default function LeadDetailsScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.badgeRowCard}
+            <TouchableOpacity
+              style={[styles.badgeRowCard, { marginBottom: 1 }]}
               onPress={() => handleAction('Call')}
               activeOpacity={0.85}
             >
@@ -501,7 +509,7 @@ export default function LeadDetailsScreen() {
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>CALL</Text>
                 <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>20</Text>
+                  <Text style={styles.badgeCountText}>0</Text>
                 </View>
               </View>
               <View style={styles.arrowCircleBg}>
@@ -520,9 +528,12 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.datePickerBtnText}>15 Sep 25 – 31 Dec 26</Text>
                 <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.filterIconBtn} 
-                onPress={() => router.push('/(tabs)/Quotation/quotation-filter')}
+              <TouchableOpacity
+                style={styles.filterIconBtn}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/Quotation/quotation-filter',
+                  params: { referrer: 'lead-details' }
+                })}
                 activeOpacity={0.8}
               >
                 <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} style={{ marginRight: 6 }} />
@@ -590,9 +601,12 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.datePickerBtnText}>15 Sep 25 – 31 Dec 26</Text>
                 <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.filterIconBtn} 
-                onPress={() => router.push('/(tabs)/Order/order-filter')}
+              <TouchableOpacity
+                style={styles.filterIconBtn}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/Order/order-filter',
+                  params: { referrer: 'lead-details' }
+                })}
                 activeOpacity={0.8}
               >
                 <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} style={{ marginRight: 6 }} />
@@ -678,9 +692,12 @@ export default function LeadDetailsScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity 
-                style={styles.filterIconBtn} 
-                onPress={() => router.push('/(tabs)/email/email-filter')}
+              <TouchableOpacity
+                style={styles.filterIconBtn}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/email/email-filter',
+                  params: { referrer: 'lead-details' }
+                })}
                 activeOpacity={0.8}
               >
                 <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} style={{ marginRight: 6 }} />
@@ -689,10 +706,10 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* Horizontal Filter Chips */}
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
-              <TouchableOpacity 
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 1 }}>
+              <TouchableOpacity
                 style={[
-                  styles.tabChipStyle, 
+                  styles.tabChipStyle,
                   emailSelectedStatus === 'Opened' && styles.tabChipStyleActive
                 ]}
                 onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Opened' ? 'All' : 'Opened')}
@@ -702,9 +719,9 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.chipText}>Opened <Text style={{ fontWeight: '800' }}>12</Text></Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.tabChipStyle, 
+                  styles.tabChipStyle,
                   emailSelectedStatus === 'Sent' && styles.tabChipStyleActive
                 ]}
                 onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Sent' ? 'All' : 'Sent')}
@@ -714,9 +731,9 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.chipText}>Sent <Text style={{ fontWeight: '800' }}>20</Text></Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.tabChipStyle, 
+                  styles.tabChipStyle,
                   emailSelectedStatus === 'Draft' && styles.tabChipStyleActive
                 ]}
                 onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Draft' ? 'All' : 'Draft')}
@@ -726,9 +743,9 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.chipText}>Draft <Text style={{ fontWeight: '800' }}>05</Text></Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.tabChipStyle, 
+                  styles.tabChipStyle,
                   emailSelectedStatus === 'Bounce' && styles.tabChipStyleActive
                 ]}
                 onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Bounce' ? 'All' : 'Bounce')}
@@ -740,37 +757,16 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* Email Cards List */}
-            {[
-              {
-                id: '1',
-                subject: 'Order Confirmation - Website Redesi...',
-                company: 'Ullas India IT Solutions Limited.',
-                sentTo: 'Parth Solanki',
-                status: 'Opened',
-                statusColor: COLORS.green,
-                date: '22 March 2026',
-                deliveryStatus: 'Delivered',
-              },
-              {
-                id: '2',
-                subject: 'Order Confirmation - Website Redesi...',
-                company: 'Ullas India IT Solutions Limited.',
-                sentTo: 'Parth Solanki',
-                status: 'Sent',
-                statusColor: COLORS.blue,
-                date: '22 March 2026',
-                deliveryStatus: 'Delivered',
-              },
-            ]
-              .filter(item => {
-                const matchesSearch = 
+            {[]
+              .filter((item: any) => {
+                const matchesSearch =
                   item.subject.toLowerCase().includes(emailSearchQuery.toLowerCase()) ||
                   item.company.toLowerCase().includes(emailSearchQuery.toLowerCase()) ||
                   item.sentTo.toLowerCase().includes(emailSearchQuery.toLowerCase());
                 const matchesStatus = emailSelectedStatus === 'All' || item.status === emailSelectedStatus;
                 return matchesSearch && matchesStatus;
               })
-              .map((item, idx) => (
+              .map((item: any, idx) => (
                 <View key={item.id + '_' + idx} style={styles.emailCard}>
                   <View style={styles.emailCardHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -825,15 +821,24 @@ export default function LeadDetailsScreen() {
 
       {/* TAB FLOATING ACTION BUTTON */}
       {(activeTab === 'Quotation' || activeTab === 'Order' || activeTab === 'Emails') && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.fabBtn}
           onPress={() => {
             if (activeTab === 'Quotation') {
-              router.push('/(tabs)/Quotation/add-quotation');
+              router.push({
+                pathname: '/(tabs)/Quotation/add-quotation',
+                params: { referrer: 'lead-details' }
+              });
             } else if (activeTab === 'Order') {
-              router.push('/(tabs)/Order/add-order' as any);
+              router.push({
+                pathname: '/(tabs)/Order/add-order',
+                params: { referrer: 'lead-details' }
+              });
             } else {
-              router.push('/(tabs)/email/add-email');
+              router.push({
+                pathname: '/(tabs)/email/add-email',
+                params: { referrer: 'lead-details' }
+              });
             }
           }}
           activeOpacity={0.8}
@@ -873,12 +878,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
+  actionHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // Tabs style
   tabsContainer: {
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -915,9 +928,9 @@ const styles = StyleSheet.create({
 
   // Main scroll content
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
+    paddingHorizontal: 5,
+    paddingTop: 5,
+    gap: 5,
   },
 
   // Profile Card styling
@@ -926,7 +939,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 10,
   },
   profileTopRow: {
     flexDirection: 'row',
@@ -934,12 +947,12 @@ const styles = StyleSheet.create({
   profileImage: {
     width: 105,
     height: 105,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: '#F3F4F6',
   },
   profileInfoCol: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 16,
     justifyContent: 'center',
     gap: 5,
   },
@@ -961,10 +974,10 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 14,
+    marginTop: 5,
     borderTopWidth: 1,
     borderTopColor: '#F0F5F2',
-    paddingTop: 12,
+    paddingTop: 5,
   },
   actionCircleBtn: {
     width: 36,
@@ -989,7 +1002,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
-    marginBottom: 4,
   },
   accordionHeader: {
     flexDirection: 'row',
@@ -1023,14 +1035,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   accordionContent: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },

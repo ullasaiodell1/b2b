@@ -1,20 +1,23 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useCreateVisit } from '@/hooks/useVisits';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
-import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import * as Location from 'expo-location';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -22,43 +25,87 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
-const LOCATIONS = ['Western India.', 'South Korea', 'Rajkot, Gujarat', 'Ahmedabad, Gujarat'];
-const STATUSES = ['Pending', 'Complete', 'Draft', 'Bounce'];
-const SUBJECTS = ['Business Meet', 'Product Pitch', 'Follow-up Visit', 'Technical Support'];
+const VISIT_TYPE_OPTIONS = [
+  { label: 'Site Visit', icon: 'map-outline' as const },
+  { label: 'Business Meet', icon: 'briefcase-outline' as const },
+  { label: 'Product Pitch', icon: 'trending-up-outline' as const },
+  { label: 'Follow-up', icon: 'repeat-outline' as const },
+  { label: 'Technical Support', icon: 'build-outline' as const },
+];
 
 export default function AddVisitScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ leadId?: string }>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-
-  // Switch Toggle
-  const [showAllFields, setShowAllFields] = useState(false);
+  const createVisitMutation = useCreateVisit();
 
   // Form States
   const [title, setTitle] = useState('');
-  const [company, setCompany] = useState('');
-  const [location, setLocation] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [status, setStatus] = useState('');
-  const [subject, setSubject] = useState('');
-
-  // Dropdown Picker Modals
-  const [activePicker, setActivePicker] = useState<'company' | 'location' | 'status' | 'subject' | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dueDateObj, setDueDateObj] = useState(new Date());
-
-  // Photo State
+  const [visitType, setVisitType] = useState('Site Visit');
+  const [scheduledDateTime, setScheduledDateTime] = useState<Date>(new Date());
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [contactPersonName, setContactPersonName] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [phone, setPhone] = useState('');
+  const [outcomeSummary, setOutcomeSummary] = useState('');
+  const [nextSteps, setNextSteps] = useState('');
 
-  React.useEffect(() => {
+  // Location States
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+
+  // Picker Visibility
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Auto-fetch location on screen load
+  useEffect(() => {
+    fetchLocation();
+  }, []);
+
+  // Sync camera capture results
+  useEffect(() => {
     if (isFocused && cameraResult && cameraResult.target === 'visit') {
       const uri = cameraResult.uri;
       const pickedName = uri.split('/').pop() || 'photo.jpg';
+      setImageUri(uri);
       setPhotoName(pickedName);
       setCameraResult(null);
     }
   }, [isFocused]);
+
+  const fetchLocation = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationPermissionGranted(false);
+        setLocationError('Permission to access location was denied');
+        setLocationLoading(false);
+        return;
+      }
+      setLocationPermissionGranted(true);
+      const locResult = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = locResult.coords;
+      setLatitude(coords.latitude);
+      setLongitude(coords.longitude);
+    } catch (err: any) {
+      console.log('Error fetching location:', err);
+      setLocationError(err?.message || 'Failed to fetch location');
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const handleImagePick = async (useCamera: boolean) => {
     if (useCamera) {
@@ -88,6 +135,7 @@ export default function AddVisitScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const pickedName = result.assets[0].fileName || result.assets[0].uri.split('/').pop() || 'photo.jpg';
+        setImageUri(result.assets[0].uri);
         setPhotoName(pickedName);
       }
     } catch (err) {
@@ -95,23 +143,9 @@ export default function AddVisitScreen() {
     }
   };
 
-  const handleDocPick = async () => {
-    try {
-      const res = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        setPhotoName(res.assets[0].name);
-      }
-    } catch (err) {
-      console.log('Error picking document:', err);
-    }
-  };
-
   const handleUploadPress = () => {
     Alert.alert(
-      'Upload Attachment',
+      'Upload Visit Image',
       'Choose a source for your file:',
       [
         {
@@ -123,10 +157,6 @@ export default function AddVisitScreen() {
           onPress: () => handleImagePick(false),
         },
         {
-          text: 'Choose Document',
-          onPress: () => handleDocPick(),
-        },
-        {
           text: 'Cancel',
           style: 'cancel',
         },
@@ -134,35 +164,65 @@ export default function AddVisitScreen() {
     );
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatDateTime = (date: Date) => {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    const hrs = String(date.getHours()).padStart(2, '0');
+    const mins = String(date.getMinutes()).padStart(2, '0');
+    return `${d}-${m}-${y} ${hrs}:${mins}`;
   };
 
-  const handleSelectOption = (value: string) => {
-    if (activePicker === 'company') setCompany(value);
-    else if (activePicker === 'location') setLocation(value);
-    else if (activePicker === 'status') setStatus(value);
-    else if (activePicker === 'subject') setSubject(value);
-    setActivePicker(null);
+  const formatLatitude = (lat: number) => {
+    const dir = lat >= 0 ? 'N' : 'S';
+    return `${Math.abs(lat).toFixed(4)}° ${dir}`;
   };
 
-  const handleSave = () => {
-    if (!title || !subject) {
-      Alert.alert('Required Fields', 'Please fill in Title and Subject fields.');
+  const formatLongitude = (lng: number) => {
+    const dir = lng >= 0 ? 'E' : 'W';
+    return `${Math.abs(lng).toFixed(4)}° ${dir}`;
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      Alert.alert('Required', 'Please enter a Visit Title.');
+      return;
+    }
+    if (!visitType) {
+      Alert.alert('Required', 'Please select a Visit Type.');
       return;
     }
 
-    Alert.alert('Success', 'Visit detail saved successfully!', [
-      { text: 'OK', onPress: () => router.back() }
-    ]);
-  };
+    const scheduledStr = formatDateTime(scheduledDateTime);
+    const latStr = latitude !== null ? formatLatitude(latitude) : '0.0000° N';
+    const lngStr = longitude !== null ? formatLongitude(longitude) : '0.0000° E';
 
-  const getOptionsList = () => {
-    if (activePicker === 'company') return COMPANIES;
-    if (activePicker === 'location') return LOCATIONS;
-    if (activePicker === 'status') return STATUSES;
-    if (activePicker === 'subject') return SUBJECTS;
-    return [];
+    try {
+      await createVisitMutation.mutateAsync({
+        leadId: params.leadId || undefined,
+        name: title,
+        visitType: visitType,
+        scheduledDateTime: scheduledStr,
+        imageUri: imageUri || undefined,
+        description: description,
+        locationAddress: locationAddress,
+        lat: latStr,
+        lng: lngStr,
+        status: 'Pending',
+        contactPersonName: contactPersonName,
+        designation: designation,
+        phone: phone,
+        outcomeSummary: outcomeSummary,
+        nextSteps: nextSteps,
+      });
+
+      Alert.alert('Success', 'Visit detail saved successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (err: any) {
+      console.error('[AddVisit] save error:', err);
+      Alert.alert('Error', err?.message || 'Failed to save visit.');
+    }
   };
 
   return (
@@ -192,22 +252,11 @@ export default function AddVisitScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 220 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Toggle Option Switch */}
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Show All Fields</Text>
-          <Switch
-            value={showAllFields}
-            onValueChange={setShowAllFields}
-            trackColor={{ false: '#E5E7EB', true: COLORS.primary }}
-            thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
-          />
-        </View>
-
-        {/* Form Inputs Container */}
         <View style={styles.formContainer}>
+          
           {/* Title input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
@@ -215,174 +264,260 @@ export default function AddVisitScreen() {
             </Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter Title"
+              placeholder="Visit title"
               placeholderTextColor="#9CA3AF"
               value={title}
               onChangeText={setTitle}
             />
           </View>
 
-          {/* Company Name picker */}
+          {/* Visit Type Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Company Name</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('company')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
-                {company || 'Enter Company Name'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>
+              Visit Type <Text style={{ color: COLORS.danger }}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Site Visit, Meeting, etc."
+              placeholderTextColor="#9CA3AF"
+              value={visitType}
+              onChangeText={setVisitType}
+            />
           </View>
 
-          {/* Location picker */}
+          {/* Scheduled Date & Time Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Location</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('location')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !location && styles.placeholderText]}>
-                {location || 'Enter Location'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Due Date picker */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Due Date</Text>
+            <Text style={styles.inputLabel}>
+              Scheduled Date & Time <Text style={{ color: COLORS.danger }}>*</Text>
+            </Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.85}
             >
-              <Text style={[styles.pickerValueText, !dueDate && styles.placeholderText]}>
-                {dueDate || 'Select Date'}
+              <Text style={styles.pickerValueText}>
+                {formatDateTime(scheduledDateTime)}
               </Text>
               <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
+
+            {/* DateTimepicker modals */}
             {showDatePicker && (
-              <DateTimePicker
-                value={dueDateObj}
-                mode="date"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowDatePicker(false);
-                  if (selected) {
-                    setDueDateObj(selected);
-                    setDueDate(formatDate(selected));
-                  }
-                }}
-              />
+              Platform.OS === 'ios' ? (
+                <Modal transparent animationType="fade" visible={showDatePicker}>
+                  <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <View style={styles.modalContent}>
+                      <Text style={styles.modalTitle}>Select Date</Text>
+                      <DateTimePicker
+                        value={scheduledDateTime}
+                        mode="date"
+                        display="inline"
+                        onChange={(_event, selected) => {
+                          if (selected) {
+                            const newDateTime = new Date(scheduledDateTime);
+                            newDateTime.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+                            setScheduledDateTime(newDateTime);
+                          }
+                        }}
+                      />
+                      <TouchableOpacity
+                        style={styles.modalSaveBtn}
+                        onPress={() => {
+                          setShowDatePicker(false);
+                          setTimeout(() => setShowTimePicker(true), 250);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.modalSaveBtnText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
+              ) : (
+                <DateTimePicker
+                  value={scheduledDateTime}
+                  mode="date"
+                  display="default"
+                  onChange={(_event, selected) => {
+                    setShowDatePicker(false);
+                    if (selected) {
+                      const newDateTime = new Date(scheduledDateTime);
+                      newDateTime.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+                      setScheduledDateTime(newDateTime);
+                      setTimeout(() => setShowTimePicker(true), 150);
+                    }
+                  }}
+                />
+              )
+            )}
+
+            <CustomTimePicker
+              visible={showTimePicker}
+              onClose={() => setShowTimePicker(false)}
+              selectedDate={scheduledDateTime}
+              onSelect={(selected) => {
+                setShowTimePicker(false);
+                setScheduledDateTime(selected);
+              }}
+            />
+          </View>
+
+          {/* Contact Person Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Contact Person Name</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter contact person name"
+              placeholderTextColor="#9CA3AF"
+              value={contactPersonName}
+              onChangeText={setContactPersonName}
+            />
+          </View>
+
+          {/* Designation */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Designation</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter designation"
+              placeholderTextColor="#9CA3AF"
+              value={designation}
+              onChangeText={setDesignation}
+            />
+          </View>
+
+          {/* Phone */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Phone</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter phone number"
+              placeholderTextColor="#9CA3AF"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          {/* Visit Image Upload / Preview */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Visit Image</Text>
+            {imageUri ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                <View style={styles.imagePreviewDetails}>
+                  <Text style={styles.imageNameText} numberOfLines={1}>
+                    {photoName || 'visit-image.jpg'}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => {
+                      setImageUri(null);
+                      setPhotoName(null);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={COLORS.red} style={{ marginRight: 4 }} />
+                    <Text style={styles.removeImageBtnText}>Remove Image</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.uploadDropzone}
+                onPress={handleUploadPress}
+                activeOpacity={0.8}
+              >
+                <View style={styles.uploadIconContainer}>
+                  <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.uploadTextContainer}>
+                  <Text style={styles.uploadTitleText}>Upload visit image</Text>
+                  <Text style={styles.uploadSubText}>Click to choose an image for this visit</Text>
+                </View>
+                <View style={styles.browseBtn}>
+                  <Text style={styles.browseBtnText}>Browse</Text>
+                </View>
+              </TouchableOpacity>
             )}
           </View>
 
-          {/* Status picker */}
+          {/* Description input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Status</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('status')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !status && styles.placeholderText]}>
-                {status || 'Enter Status'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>Description</Text>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              placeholder="Enter visit description"
+              placeholderTextColor="#9CA3AF"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
 
-          {/* Subject * picker */}
+          {/* Location Address input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Subject <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('subject')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !subject && styles.placeholderText]}>
-                {subject || 'Select Subject'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>Location Address</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter visit location address"
+              placeholderTextColor="#9CA3AF"
+              value={locationAddress}
+              onChangeText={setLocationAddress}
+            />
           </View>
 
-          {/* Photo Dropzone Uploader */}
+          {/* Outcome Summary */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Photo</Text>
-            <TouchableOpacity
-              style={styles.uploadDropzone}
-              onPress={handleUploadPress}
-              activeOpacity={0.8}
-            >
-              <View style={styles.uploadIconContainer}>
-                <Ionicons name="arrow-up-circle-outline" size={20} color={COLORS.primary} />
-              </View>
-              <View style={styles.uploadTextContainer}>
-                <Text style={styles.uploadTitleText} numberOfLines={1}>
-                  {photoName || 'Select a file or drag and drop here'}
-                </Text>
-                <Text style={styles.uploadSubText}>JPG, PNG or PDF – max 10MB</Text>
-              </View>
-              <TouchableOpacity style={styles.browseBtn} activeOpacity={0.8} onPress={handleUploadPress}>
-                <Text style={styles.browseBtnText}>Browse</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>Outcome Summary</Text>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              placeholder="Enter visit outcome summary"
+              placeholderTextColor="#9CA3AF"
+              value={outcomeSummary}
+              onChangeText={setOutcomeSummary}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
+
+          {/* Next Steps */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Next Steps</Text>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              placeholder="Enter next steps"
+              placeholderTextColor="#9CA3AF"
+              value={nextSteps}
+              onChangeText={setNextSteps}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+
+
+
         </View>
-
       </ScrollView>
 
-      {/* Sticky Bottom Actions */}
+      {/* Sticky Bottom Action */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
         <TouchableOpacity
           style={styles.saveBtn}
           onPress={handleSave}
           activeOpacity={0.85}
         >
-          <Text style={styles.saveBtnText}>SAVE</Text>
+          <Text style={styles.saveBtnText}>SAVE VISIT</Text>
         </TouchableOpacity>
       </View>
-
-      {/* DROPDOWN OPTIONS MODAL */}
-      <Modal transparent animationType="slide" visible={activePicker !== null}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setActivePicker(null)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Select {activePicker ? activePicker.charAt(0).toUpperCase() + activePicker.slice(1) : ''}
-              </Text>
-              <TouchableOpacity onPress={() => setActivePicker(null)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {getOptionsList().map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={styles.modalRowItem}
-                  onPress={() => handleSelectOption(opt)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
     </View>
   );
 }
@@ -428,32 +563,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 48,
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  switchLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
   formContainer: {
     marginTop: 18,
-    gap: 5,
+    gap: 16,
   },
   inputGroup: {
-    gap: 5,
+    gap: 6,
   },
   inputLabel: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textDark,
   },
@@ -463,10 +581,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     height: 44,
     paddingHorizontal: 14,
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
+  },
+  textAreaInput: {
+    height: 90,
+    paddingVertical: 10,
   },
   pickerTrigger: {
     flexDirection: 'row',
@@ -480,53 +602,81 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   pickerValueText: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: COLORS.textDark,
   },
-  placeholderText: {
-    color: '#9CA3AF',
+  
+  // Visit Type Option Pills
+  pillsContainer: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: '#F4F7F5',
+    marginRight: 6,
+  },
+  pillActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  pillText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  pillTextActive: {
+    color: COLORS.primary,
+    fontWeight: '800',
   },
 
-  // Dashed upload dropzone styling
+  // Image Upload Dropzone
   uploadDropzone: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     borderStyle: 'dashed',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     backgroundColor: '#F9FAFB',
-    gap: 5,
+    gap: 8,
   },
   uploadIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    backgroundColor: '#EAFDF7',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   uploadTextContainer: {
     flex: 1,
-    gap: 5,
+    gap: 3,
   },
   uploadTitleText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.textDark,
   },
   uploadSubText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '600',
     color: COLORS.textMuted,
   },
   browseBtn: {
-    backgroundColor: '#EAFDF7',
+    backgroundColor: COLORS.primaryLight,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#C9E4D4',
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -534,10 +684,135 @@ const styles = StyleSheet.create({
   browseBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#065F46',
+    color: COLORS.primary,
   },
 
-  // Bottom Sticky Bar
+  // Image Preview Style
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#F9FAFB',
+    gap: 12,
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 6,
+    backgroundColor: '#F3F4F6',
+  },
+  imagePreviewDetails: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  imageNameText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  removeImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  removeImageBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.red,
+  },
+
+  // Live Location UI
+  locationContainer: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    backgroundColor: '#F4F7F5',
+    padding: 12,
+    gap: 10,
+  },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationHeaderText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  loadingLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  loadingLocationText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  errorLocationRow: {
+    paddingVertical: 4,
+    gap: 6,
+  },
+  errorLocationText: {
+    fontSize: 11,
+    color: COLORS.danger,
+    fontWeight: '600',
+  },
+  coordinatesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  coordinateBlock: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 2,
+  },
+  coordinateLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  coordinateVal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  refreshLocCircleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryLocationBtn: {
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: '#C9E4D4',
+    borderRadius: 8,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryLocationBtnText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+
+  // Sticky Bottom Bar
   bottomStickyBar: {
     position: 'absolute',
     bottom: 0,
@@ -550,12 +825,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   saveBtn: {
-    backgroundColor: COLORS.saveBtnBg,
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -568,45 +843,38 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Modals styling
+  // iOS modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '40%',
-    paddingBottom: 24,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+    gap: 16,
   },
   modalTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.textDark,
+    textAlign: 'center',
   },
-  modalRowItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  modalSaveBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    height: 40,
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    justifyContent: 'center',
   },
-  modalRowText: {
+  modalSaveBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textDark,
+    fontWeight: '800',
   },
 });

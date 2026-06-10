@@ -11,9 +11,10 @@ import {
   Platform,
   Alert,
   Modal,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
@@ -21,7 +22,31 @@ const RECIPIENTS = ['Parth Solanki', 'Khushal Nadiyapara', 'Arjun Maheta'];
 
 export default function AddEmailScreen() {
   const router = useRouter();
+  const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer])
+  );
 
   const [subject, setSubject] = useState('');
   const [company, setCompany] = useState('');
@@ -43,7 +68,7 @@ export default function AddEmailScreen() {
     }
 
     Alert.alert('Success', 'Email sent successfully!', [
-      { text: 'OK', onPress: () => router.back() }
+      { text: 'OK', onPress: handleBack }
     ]);
   };
 
@@ -55,7 +80,7 @@ export default function AddEmailScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity 
           style={styles.backBtn} 
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

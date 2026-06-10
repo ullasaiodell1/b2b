@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -69,6 +70,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 }
 
 export default function AttendanceScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { attendance: attState } = useAttendance();
   const [activeFilter, setActiveFilter] = useState<FilterType>('Present');
@@ -119,7 +121,7 @@ export default function AttendanceScreen() {
       <CustomHeader title="Attendance" showSearch={false} />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── TODAY'S ATTENDANCE CARD ────────────────── */}
@@ -347,8 +349,6 @@ export default function AttendanceScreen() {
             </View>
           ))}
         </View>
-
-        <View style={{ height: 24 }} />
       </ScrollView>
 
       <MonthYearPicker

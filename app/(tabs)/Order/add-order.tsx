@@ -1,10 +1,11 @@
 import { OrderRecord, ordersState, updateOrdersState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  BackHandler,
   Modal,
   Platform,
   ScrollView,
@@ -24,7 +25,31 @@ const PAYMENT_OPTIONS = ['Advance Payment', 'Cash on Delivery', 'Bank Transfer']
 
 export default function AddOrderScreen() {
   const router = useRouter();
+  const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer])
+  );
 
   const [orderNo, setOrderNo] = useState('');
   const [clientName, setClientName] = useState('');
@@ -79,7 +104,7 @@ export default function AddOrderScreen() {
     updateOrdersState([newOrder, ...ordersState]);
 
     Alert.alert('Success', 'Order created successfully!', [
-      { text: 'OK', onPress: () => router.back() }
+      { text: 'OK', onPress: handleBack }
     ]);
   };
 
@@ -91,7 +116,7 @@ export default function AddOrderScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

@@ -2,6 +2,7 @@ import { CallRecord, callsState, updateCallsState } from '@/components/CallState
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -198,20 +199,16 @@ export default function AddCallScreen() {
               </Text>
               <Ionicons name="time-outline" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                value={setTimeObj}
-                mode="time"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowTimePicker(false);
-                  if (selected) {
-                    setSetTimeObj(selected);
-                    setSetTime(formatTime(selected));
-                  }
-                }}
-              />
-            )}
+            <CustomTimePicker
+              visible={showTimePicker}
+              onClose={() => setShowTimePicker(false)}
+              selectedDate={setTimeObj}
+              onSelect={(selected) => {
+                setShowTimePicker(false);
+                setSetTimeObj(selected);
+                setSetTime(formatTime(selected));
+              }}
+            />
           </View>
         </View>
       </ScrollView>

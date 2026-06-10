@@ -1,9 +1,10 @@
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  BackHandler,
   Modal,
   Platform,
   ScrollView,
@@ -41,7 +42,31 @@ const USERS = [
 
 export default function QuotationFilterScreen() {
   const router = useRouter();
+  const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer])
+  );
 
   // Filters State
   const [priority, setPriority] = useState<PriorityType>('High');
@@ -85,7 +110,7 @@ export default function QuotationFilterScreen() {
 
   const handleApplyFilter = () => {
     // Apply filters logic goes here or saves to global filter state
-    router.back();
+    handleBack();
   };
 
   const renderDropdownModal = () => {
@@ -165,7 +190,7 @@ export default function QuotationFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
@@ -334,7 +359,7 @@ export default function QuotationFilterScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
         <TouchableOpacity
           style={styles.cancelBtn}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>

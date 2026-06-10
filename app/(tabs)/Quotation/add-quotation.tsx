@@ -3,18 +3,19 @@ import { useCreateQuotation } from '@/hooks/useQuotations';
 import { CreateQuotationPayload, QuotationItem } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  BackHandler,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -67,8 +68,32 @@ function formatAmount(n: number) {
 
 export default function AddQuotationScreen() {
   const router = useRouter();
+  const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const createMutation = useCreateQuotation();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer])
+  );
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [quotationDate, setQuotationDate] = useState<Date>(new Date());
@@ -163,7 +188,7 @@ export default function AddQuotationScreen() {
     createMutation.mutate(payload, {
       onSuccess: () => {
         Alert.alert('Success', 'Quotation created successfully!', [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: handleBack },
         ]);
       },
       onError: (err: any) => {
@@ -183,7 +208,7 @@ export default function AddQuotationScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
@@ -504,7 +529,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 14.5, fontWeight: '900', letterSpacing: 0.5 },
   headerSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
 
-  scrollContent: { padding: 12, paddingBottom: 48, gap: 10 },
+  scrollContent: { padding: 5, paddingBottom: 48, gap: 5 },
 
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -527,7 +552,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
-    gap: 12,
+    gap: 1,
   },
   formField: { gap: 5 },
   inputLabel: { fontSize: 11.5, fontWeight: '700', color: COLORS.textMuted },
@@ -563,7 +588,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
-    gap: 10,
+    gap: 1,
   },
   itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   itemIndexBadge: {
@@ -618,13 +643,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
   totalSummaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },

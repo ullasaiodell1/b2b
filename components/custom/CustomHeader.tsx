@@ -21,6 +21,8 @@ interface CustomHeaderProps {
   onSearchPress?: () => void;
   onAvatarPress?: () => void;
   onNotificationPress?: () => void;
+  showBack?: boolean;
+  onBackPress?: () => void;
 }
 
 export default function CustomHeader({
@@ -29,6 +31,8 @@ export default function CustomHeader({
   onSearchPress,
   onAvatarPress,
   onNotificationPress,
+  showBack = false,
+  onBackPress,
 }: CustomHeaderProps) {
   const router = useRouter();
   const slideAnim = useRef(new Animated.Value(-60)).current;
@@ -71,8 +75,18 @@ export default function CustomHeader({
     >
       {/* Top bar */}
       <View style={styles.topBar}>
-        {/* Left: Spacer to align layout */}
-        <View style={{ width: 38 }} />
+        {/* Left: Back button or Spacer */}
+        {showBack ? (
+          <TouchableOpacity
+            onPress={onBackPress || (() => router.back())}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 38 }} />
+        )}
 
         {/* Center Logo */}
         <View style={styles.centerLogoSection}>
@@ -176,6 +190,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     position: 'absolute',

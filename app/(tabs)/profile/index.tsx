@@ -1,3 +1,4 @@
+import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useLogout } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -6,21 +7,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Alert,
-  Image,
-  Linking,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  RefreshControl,
-  ActivityIndicator,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CustomHeader from '@/components/custom/CustomHeader';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
@@ -44,6 +43,17 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  const formatDob = (dob: string) => {
+    if (!dob) return '';
+    // Convert ISO "YYYY-MM-DD" to "DD MMM YYYY"
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      const [y, m, d] = dob.split('-').map(Number);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${String(d).padStart(2,'0')} ${months[m-1]} ${y}`;
+    }
+    return dob;
+  };
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -88,7 +98,7 @@ export default function ProfileScreen() {
 
       {/* ── 2. SCROLLABLE CONTAINER ────────────────── */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />

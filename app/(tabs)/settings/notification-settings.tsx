@@ -1,17 +1,17 @@
 import { COLORS } from '@/constants/theme';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Switch,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface SwitchRowProps {
   label: string;
@@ -133,8 +133,8 @@ const styles: any = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 46 : 36,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -157,8 +157,8 @@ const styles: any = StyleSheet.create({
   },
 
   scrollContent: {
-    padding: 16,
-    gap: 8,
+    padding: 1,
+    gap: 1,
     paddingBottom: 40,
   },
 
@@ -181,7 +181,7 @@ const styles: any = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 1,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F4F2',
   },

@@ -1,6 +1,7 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
-import { LeadRecord, leadsState, updateLeadsState } from '@/components/LeadState';
 import { COLORS } from '@/constants/theme';
+import { useLeads, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
+import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -21,8 +22,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCountries, useStates, useCities } from '@/hooks/useLocation';
-import { useLeads, useLeadStatuses, useLeadSources, useUsers } from '@/hooks/useLeads';
+
+const COMMON_TAGS = ['Follow-up', 'Urgent', 'Warm Lead', 'Cold Lead', 'Corporate', 'Retail'];
 
 export default function AddLeadScreen() {
   const router = useRouter();
@@ -34,16 +35,21 @@ export default function AddLeadScreen() {
   const { data: statusesData } = useLeadStatuses();
   const { data: sourcesData } = useLeadSources();
   const { data: usersData } = useUsers();
+  const { data: apiTagsData } = useLeadTags();
 
   // Show All Fields Toggle
-  const [showAllFields, setShowAllFields] = useState(true);
+  const [showAllFields, setShowAllFields] = useState(false);
+
+  // Tag Input states
+  const [tagInput, setTagInput] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Form States
   const [status, setStatus] = useState('New');
   const [source, setSource] = useState('');
   const [priority, setPriority] = useState('Hot');
-  const [owner, setOwner] = useState(''); // Assigned To
-  const [tags, setTags] = useState('');
+  const [owner, setOwner] = useState(''); // Assigned To Name
+  const [ownerId, setOwnerId] = useState(''); // Assigned To ID
   const [fullname, setFullname] = useState(''); // Name
   const [email, setEmail] = useState(''); // Email Address
   const [phone, setPhone] = useState(''); // Phone
@@ -72,49 +78,121 @@ export default function AddLeadScreen() {
       const defaultStatus = statusesData.find((s: any) => s.is_default) || statusesData[0];
       setStatus(defaultStatus.name);
     }
-  }, [statusesData, routeParams]);
+  }, [statusesData, routeParams?.status]);
 
   React.useEffect(() => {
     if (sourcesData && sourcesData.length > 0 && !source && !routeParams?.source) {
       setSource(sourcesData[0].name);
     }
-  }, [sourcesData, routeParams]);
+  }, [sourcesData, routeParams?.source]);
 
   // Fetch Country, State, City options from API
   const { data: countriesData } = useCountries();
   const { data: statesData } = useStates(country);
   const { data: citiesData } = useCities(stateName);
 
+  // Ref to track last parsed routeParams string to prevent reset loops on typing
+  const lastParamsStringRef = React.useRef('');
+  const currentParamsString = JSON.stringify(routeParams || {});
+
   React.useEffect(() => {
-    if (routeParams) {
-      if (routeParams.owner !== undefined) setOwner(routeParams.owner);
-      if (routeParams.company !== undefined) setCompany(routeParams.company);
-      if (routeParams.fullname !== undefined) setFullname(routeParams.fullname);
-      if (routeParams.email !== undefined) setEmail(routeParams.email);
-      if (routeParams.phone !== undefined) setPhone(routeParams.phone);
-      if (routeParams.status !== undefined) setStatus(routeParams.status);
-      if (routeParams.source !== undefined) setSource(routeParams.source);
-      if (routeParams.priority !== undefined) setPriority(routeParams.priority);
-      if (routeParams.tags !== undefined) setTags(routeParams.tags);
-      if (routeParams.whatsapp !== undefined) setWhatsapp(routeParams.whatsapp);
-      if (routeParams.country !== undefined) setCountry(routeParams.country);
-      if (routeParams.stateName !== undefined) setStateName(routeParams.stateName);
-      if (routeParams.cityName !== undefined) setCityName(routeParams.cityName);
-      if (routeParams.pincode !== undefined) setPincode(routeParams.pincode);
-      if (routeParams.propertyType !== undefined) setPropertyType(routeParams.propertyType);
-      if (routeParams.businessType !== undefined) setBusinessType(routeParams.businessType);
-      if (routeParams.designation !== undefined) setDesignation(routeParams.designation);
-      if (routeParams.website !== undefined) setWebsite(routeParams.website);
-      if (routeParams.gstNo !== undefined) setGstNo(routeParams.gstNo);
-      if (routeParams.interestedCategory !== undefined) setInterestedCategory(routeParams.interestedCategory);
-      if (routeParams.panNo !== undefined) setPanNo(routeParams.panNo);
-      if (routeParams.addressLine1 !== undefined) setAddressLine1(routeParams.addressLine1);
-      if (routeParams.addressLine2 !== undefined) setAddressLine2(routeParams.addressLine2);
-      if (routeParams.expectedRevenue !== undefined) setExpectedRevenue(routeParams.expectedRevenue);
-      if (routeParams.remark !== undefined) setRemark(routeParams.remark);
-      if (routeParams.emailOptOut !== undefined) setEmailOptOut(routeParams.emailOptOut === 'true' || routeParams.emailOptOut === true);
+    if (currentParamsString !== lastParamsStringRef.current) {
+      lastParamsStringRef.current = currentParamsString;
+
+      if (routeParams.owner !== undefined) {
+        setOwner(prev => routeParams.owner !== prev ? routeParams.owner : prev);
+      }
+      if (routeParams.ownerId !== undefined) {
+        setOwnerId(prev => routeParams.ownerId !== prev ? routeParams.ownerId : prev);
+      }
+      if (routeParams.company !== undefined) {
+        setCompany(prev => routeParams.company !== prev ? routeParams.company : prev);
+      }
+      if (routeParams.fullname !== undefined) {
+        setFullname(prev => routeParams.fullname !== prev ? routeParams.fullname : prev);
+      }
+      if (routeParams.email !== undefined) {
+        setEmail(prev => routeParams.email !== prev ? routeParams.email : prev);
+      }
+      if (routeParams.phone !== undefined) {
+        setPhone(prev => routeParams.phone !== prev ? routeParams.phone : prev);
+      }
+      if (routeParams.status !== undefined) {
+        setStatus(prev => routeParams.status !== prev ? routeParams.status : prev);
+      }
+      if (routeParams.source !== undefined) {
+        setSource(prev => routeParams.source !== prev ? routeParams.source : prev);
+      }
+      if (routeParams.priority !== undefined) {
+        setPriority(prev => routeParams.priority !== prev ? routeParams.priority : prev);
+      }
+      if (routeParams.tags !== undefined) {
+        const parsed = typeof routeParams.tags === 'string'
+          ? routeParams.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+          : Array.isArray(routeParams.tags) ? routeParams.tags : [];
+        setSelectedTags(prev => {
+          const isSame = parsed.length === prev.length && parsed.every((val: string, index: number) => val === prev[index]);
+          return isSame ? prev : parsed;
+        });
+      }
+      if (routeParams.whatsapp !== undefined) {
+        setWhatsapp(prev => routeParams.whatsapp !== prev ? routeParams.whatsapp : prev);
+      }
+      if (routeParams.country !== undefined) {
+        setCountry(prev => routeParams.country !== prev ? routeParams.country : prev);
+      }
+      if (routeParams.stateName !== undefined) {
+        setStateName(prev => routeParams.stateName !== prev ? routeParams.stateName : prev);
+      }
+      if (routeParams.cityName !== undefined) {
+        setCityName(prev => routeParams.cityName !== prev ? routeParams.cityName : prev);
+      }
+      if (routeParams.pincode !== undefined) {
+        setPincode(prev => routeParams.pincode !== prev ? routeParams.pincode : prev);
+      }
+      if (routeParams.propertyType !== undefined) {
+        setPropertyType(prev => routeParams.propertyType !== prev ? routeParams.propertyType : prev);
+      }
+      if (routeParams.businessType !== undefined) {
+        setBusinessType(prev => routeParams.businessType !== prev ? routeParams.businessType : prev);
+      }
+      if (routeParams.designation !== undefined) {
+        setDesignation(prev => routeParams.designation !== prev ? routeParams.designation : prev);
+      }
+      if (routeParams.website !== undefined) {
+        setWebsite(prev => routeParams.website !== prev ? routeParams.website : prev);
+      }
+      if (routeParams.gstNo !== undefined) {
+        setGstNo(prev => routeParams.gstNo !== prev ? routeParams.gstNo : prev);
+      }
+      if (routeParams.interestedCategory !== undefined) {
+        setInterestedCategory(prev => routeParams.interestedCategory !== prev ? routeParams.interestedCategory : prev);
+      }
+      if (routeParams.panNo !== undefined) {
+        setPanNo(prev => routeParams.panNo !== prev ? routeParams.panNo : prev);
+      }
+      if (routeParams.addressLine1 !== undefined) {
+        setAddressLine1(prev => routeParams.addressLine1 !== prev ? routeParams.addressLine1 : prev);
+      }
+      if (routeParams.addressLine2 !== undefined) {
+        setAddressLine2(prev => routeParams.addressLine2 !== prev ? routeParams.addressLine2 : prev);
+      }
+      if (routeParams.expectedRevenue !== undefined) {
+        setExpectedRevenue(prev => routeParams.expectedRevenue !== prev ? routeParams.expectedRevenue : prev);
+      }
+      if (routeParams.remark !== undefined) {
+        setRemark(prev => routeParams.remark !== prev ? routeParams.remark : prev);
+      }
+      if (routeParams.emailOptOut !== undefined) {
+        const val = routeParams.emailOptOut === 'true' || routeParams.emailOptOut === true;
+        setEmailOptOut(prev => val !== prev ? val : prev);
+      }
+      if (routeParams.showAllFields !== undefined) {
+        const val = routeParams.showAllFields === 'true' || routeParams.showAllFields === true;
+        setShowAllFields(prev => val !== prev ? val : prev);
+      }
     }
-  }, [routeParams]);
+  }, [currentParamsString]);
 
   // Photo State
   const [photoName, setPhotoName] = useState<string | null>(null);
@@ -206,6 +284,11 @@ export default function AddLeadScreen() {
   const [activePicker, setActivePicker] = useState<
     'status' | 'source' | 'country' | 'state' | 'city' | null
   >(null);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+
+  React.useEffect(() => {
+    setModalSearchQuery('');
+  }, [activePicker]);
 
   const getPickerOptions = () => {
     let rawOptions: any[] = [];
@@ -232,8 +315,12 @@ export default function AddLeadScreen() {
       default:
         rawOptions = [];
     }
-    // Normalize to string array safely
-    return rawOptions.map(opt => typeof opt === 'string' ? opt : opt?.name || opt?.title || String(opt));
+    const mapped = rawOptions.map(opt => typeof opt === 'string' ? opt : opt?.name || opt?.title || String(opt));
+    if (modalSearchQuery.trim()) {
+      const q = modalSearchQuery.toLowerCase().trim();
+      return mapped.filter((opt: string) => opt.toLowerCase().includes(q));
+    }
+    return mapped;
   };
 
   const handleSelectOption = (val: string) => {
@@ -255,6 +342,7 @@ export default function AddLeadScreen() {
   const getNavigationParams = (extra: any = {}) => {
     return {
       owner,
+      ownerId,
       company,
       fullname,
       email,
@@ -262,7 +350,7 @@ export default function AddLeadScreen() {
       status,
       source,
       priority,
-      tags,
+      tags: selectedTags.join(', '),
       whatsapp,
       country,
       stateName,
@@ -280,44 +368,81 @@ export default function AddLeadScreen() {
       expectedRevenue,
       remark,
       emailOptOut,
+      showAllFields: showAllFields ? 'true' : 'false',
       ...extra
     };
   };
 
+  const handleAddTag = () => {
+    const trimmed = tagInput.trim();
+    if (trimmed) {
+      const newTags = trimmed.split(',').map(t => t.trim()).filter(Boolean);
+      const updated = [...selectedTags];
+      newTags.forEach(t => {
+        if (!updated.includes(t)) {
+          updated.push(t);
+        }
+      });
+      setSelectedTags(updated);
+      setTagInput('');
+    }
+  };
+
+  const suggestedTags = React.useMemo(() => {
+    const fromApi = (apiTagsData || []).map((t: any) => t.name).filter(Boolean);
+    return Array.from(new Set([...fromApi, ...COMMON_TAGS]));
+  }, [apiTagsData]);
+
   const handleSave = async () => {
-    if (!fullname || !phone || !owner || !status || !source) {
-      Alert.alert('Required Fields', 'Please fill in Name, Phone, Assigned To, Status and Source.');
+    if (!fullname.trim() || !phone.trim() || !owner) {
+      Alert.alert('Required Fields', 'Please fill in Name, Phone, and Lead Owner.');
       return;
     }
 
-    const selectedStatusObj = (statusesData || []).find((s: any) => s.name === status);
-    const selectedSourceObj = (sourcesData || []).find((s: any) => s.name === source);
+    if (gstNo.trim()) {
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i;
+      if (!gstRegex.test(gstNo.trim())) {
+        Alert.alert('Validation Error', 'Invalid GST number format. Example: 22ABCDE1234F1Z5');
+        return;
+      }
+    }
+
+    if (panNo.trim()) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+      if (!panRegex.test(panNo.trim())) {
+        Alert.alert('Validation Error', 'Invalid PAN number format. Example: ABCDE1234F');
+        return;
+      }
+    }
+
+    const selectedStatusObj = (statusesData || []).find((s: any) => s.name === status) || statusesData?.[0];
+    const selectedSourceObj = (sourcesData || []).find((s: any) => s.name === source) || sourcesData?.[0];
     const selectedUserObj = (usersData || []).find((u: any) => u.name === owner);
 
     const payload = {
-      name: fullname,
-      phone: phone,
-      status_id: selectedStatusObj?.id || statusesData?.[0]?.id,
-      source_id: selectedSourceObj?.id || sourcesData?.[0]?.id,
-      email: email || null,
-      alternate_phone: whatsapp || null,
-      address_line1: addressLine1 || null,
-      address_line2: addressLine2 || null,
+      name: fullname.trim(),
+      phone: phone.trim(),
+      status_id: selectedStatusObj?.id || null,
+      source_id: selectedSourceObj?.id || null,
+      email: email.trim() || null,
+      alternate_phone: whatsapp.trim() || null,
+      address_line1: addressLine1.trim() || null,
+      address_line2: addressLine2.trim() || null,
       city_id: null,
       state_id: null,
       country_id: null,
-      assigned_to: selectedUserObj?.id || null,
+      assigned_to: ownerId ? ownerId : (selectedUserObj?.id || null),
       priority: priority.toUpperCase() === 'HIGH' ? 'HOT' : priority.toUpperCase() === 'NORMAL' ? 'WARM' : 'COLD',
-      company_name: company || null,
-      designation: designation || null,
-      website: website || null,
-      gst_number: gstNo || null,
-      pan_number: panNo || null,
-      tags: tags ? [tags] : [],
+      company_name: company.trim() || null,
+      designation: designation.trim() || null,
+      website: website.trim() || null,
+      gst_number: gstNo.trim() || null,
+      pan_number: panNo.trim() || null,
+      tags: selectedTags,
       expected_revenue: expectedRevenue ? parseFloat(expectedRevenue) : null,
-      property_type: propertyType || null,
-      business_type: businessType || null,
-      remarks: remark || null,
+      property_type: propertyType.trim() || null,
+      business_type: businessType.trim() || null,
+      remarks: remark.trim() || null,
     };
 
     try {
@@ -360,6 +485,7 @@ export default function AddLeadScreen() {
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 48, paddingTop: 5 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Switch Card Toggle */}
         <View style={styles.toggleCard}>
@@ -372,7 +498,7 @@ export default function AddLeadScreen() {
           />
         </View>
 
-        {/* SECTION HEADER */}
+        {/* SECTION HEADER: LEAD INFORMATION */}
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionHeaderIndicator} />
           <Text style={styles.sectionHeaderTitle}>LEAD INFORMATION</Text>
@@ -380,109 +506,121 @@ export default function AddLeadScreen() {
         </View>
 
         <View style={styles.formContainer}>
-          {/* Status */}
+          {/* Lead Owner */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Status *</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('status')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.pickerValueText}>{status || 'New'}</Text>
-              <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Source */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Source *</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('source')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !source && styles.placeholderText]}>
-                {source || 'Select Source'}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Priority */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Priority</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {['Hot', 'Warm', 'Cold'].map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  style={[
-                    styles.priorityBtn,
-                    priority === p && {
-                      backgroundColor: p === 'Hot' ? '#FEE2E2' : p === 'Warm' ? '#FEF3C7' : '#E0F2FE',
-                      borderColor: p === 'Hot' ? '#EF4444' : p === 'Warm' ? '#F59E0B' : '#0EA5E9',
-                    }
-                  ]}
-                  onPress={() => setPriority(p)}
-                >
-                  <Text style={[
-                    styles.priorityBtnText,
-                    priority === p && {
-                      color: p === 'Hot' ? '#B91C1C' : p === 'Warm' ? '#B45309' : '#0369A1'
-                    }
-                  ]}>{p}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Assigned To */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Assigned To *</Text>
+            <Text style={styles.inputLabel}>Lead Owner</Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => router.push({
                 pathname: '/(tabs)/leads/select-owner',
-                params: getNavigationParams({ currentOwner: owner })
+                params: getNavigationParams({ currentOwner: owner, currentOwnerId: ownerId })
               })}
               activeOpacity={0.85}
             >
               <Text style={[styles.pickerValueText, !owner && styles.placeholderText]}>
-                {owner || 'Select Assignee'}
+                {owner || 'Enter Lead Owner Name'}
               </Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
 
-          {/* Tags */}
+          {/* Status */}
+          {showAllFields && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Status</Text>
+              <TouchableOpacity
+                style={styles.pickerTrigger}
+                onPress={() => setActivePicker('status')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.pickerValueText}>{status || 'New'}</Text>
+                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Source */}
+          {showAllFields && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Source</Text>
+              <TouchableOpacity
+                style={styles.pickerTrigger}
+                onPress={() => setActivePicker('source')}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.pickerValueText, !source && styles.placeholderText]}>
+                  {source || 'Select Source'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Priority */}
+          {showAllFields && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Priority</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {['Hot', 'Warm', 'Cold'].map((p) => (
+                  <TouchableOpacity
+                    key={p}
+                    style={[
+                      styles.priorityBtn,
+                      priority === p && {
+                        backgroundColor: p === 'Hot' ? '#FEE2E2' : p === 'Warm' ? '#FEF3C7' : '#E0F2FE',
+                        borderColor: p === 'Hot' ? '#EF4444' : p === 'Warm' ? '#F59E0B' : '#0EA5E9',
+                      }
+                    ]}
+                    onPress={() => setPriority(p)}
+                  >
+                    <Text style={[
+                      styles.priorityBtnText,
+                      priority === p && {
+                        color: p === 'Hot' ? '#B91C1C' : p === 'Warm' ? '#B45309' : '#0369A1'
+                      }
+                    ]}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Company */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Tags</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Select or enter tags..."
-              placeholderTextColor="#9CA3AF"
-              value={tags}
-              onChangeText={setTags}
-            />
+            <Text style={styles.inputLabel}>Company</Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => router.push({
+                pathname: '/(tabs)/leads/select-company',
+                params: getNavigationParams({ currentCompany: company })
+              })}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
+                {company || 'Select Company'}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
 
-          {/* Name */}
+          {/* Fullname */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Name *</Text>
+            <Text style={styles.inputLabel}>Fullname</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter Name"
+              placeholder="Enter Full Name"
               placeholderTextColor="#9CA3AF"
               value={fullname}
               onChangeText={setFullname}
             />
           </View>
 
-          {/* Email Address */}
+          {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>Email</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter Email Address"
+              placeholder="Enter Email"
               placeholderTextColor="#9CA3AF"
               keyboardType="email-address"
               value={email}
@@ -492,7 +630,7 @@ export default function AddLeadScreen() {
 
           {/* Phone */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone *</Text>
+            <Text style={styles.inputLabel}>Phone</Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Phone Number"
@@ -503,19 +641,211 @@ export default function AddLeadScreen() {
             />
           </View>
 
-          {/* Conditional Fields below */}
+          {/* Whatsapp Number */}
           {showAllFields && (
-            <>
-              {/* Whatsapp Number */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Whatsapp Number</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter Whatsapp Number"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+                value={whatsapp}
+                onChangeText={setWhatsapp}
+              />
+            </View>
+          )}
+
+          {/* Tags */}
+          {showAllFields && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Tags</Text>
+              <View style={styles.inputWithIconContainer}>
+                <TextInput
+                  style={styles.textInputWithIcon}
+                  placeholder="Select or enter tags..."
+                  placeholderTextColor="#9CA3AF"
+                  value={tagInput}
+                  onChangeText={(val) => {
+                    if (val.endsWith(',')) {
+                      const tagText = val.slice(0, -1).trim();
+                      if (tagText && !selectedTags.includes(tagText)) {
+                        setSelectedTags([...selectedTags, tagText]);
+                      }
+                      setTagInput('');
+                    } else {
+                      setTagInput(val);
+                    }
+                  }}
+                  onSubmitEditing={handleAddTag}
+                  blurOnSubmit={false}
+                />
+                <TouchableOpacity
+                  style={styles.inputRightIconContainer}
+                  onPress={handleAddTag}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add" size={22} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Selected Tags Chips */}
+              {selectedTags.length > 0 && (
+                <View style={styles.chipsContainer}>
+                  {selectedTags.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.chip, styles.chipActive]}
+                      onPress={() => setSelectedTags(selectedTags.filter(item => item !== t))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, styles.chipTextActive]}>{t} ✕</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Suggested Tags */}
+              <Text style={[styles.inputLabel, { marginTop: 6, fontSize: 11, color: COLORS.textMuted }]}>
+                Suggested Tags
+              </Text>
+              <View style={styles.chipsContainer}>
+                {suggestedTags.map((t) => {
+                  const isSelected = selectedTags.includes(t);
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.chip,
+                        isSelected && styles.chipActive
+                      ]}
+                      onPress={() => {
+                        if (isSelected) {
+                          setSelectedTags(selectedTags.filter(s => s !== t));
+                        } else {
+                          setSelectedTags([...selectedTags, t]);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{t}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION HEADER: COMPANY & LOCATION */}
+        {showAllFields && (
+          <>
+            <View style={[styles.sectionHeaderRow, { marginTop: 20 }]}>
+              <View style={styles.sectionHeaderIndicator} />
+              <Text style={styles.sectionHeaderTitle}>COMPANY & LOCATION</Text>
+              <View style={styles.sectionHeaderLine} />
+            </View>
+            <View style={styles.formContainer}>
+              {/* Property Type */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Whatsapp Number</Text>
+                <Text style={styles.inputLabel}>Property Type</Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Enter Whatsapp Number"
+                  placeholder="Enter property type (e.g. Hotel, Resort)"
                   placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  value={whatsapp}
-                  onChangeText={setWhatsapp}
+                  value={propertyType}
+                  onChangeText={setPropertyType}
+                />
+              </View>
+
+              {/* Business Type */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Business Type</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter business type (e.g. Retailer, Wholesaler)"
+                  placeholderTextColor="#9CA3AF"
+                  value={businessType}
+                  onChangeText={setBusinessType}
+                />
+              </View>
+
+              {/* Designation */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Designation</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Designation"
+                  placeholderTextColor="#9CA3AF"
+                  value={designation}
+                  onChangeText={setDesignation}
+                />
+              </View>
+
+              {/* Website */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Website</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Website URL"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="url"
+                  value={website}
+                  onChangeText={setWebsite}
+                />
+              </View>
+
+              {/* GST Number */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>GST Number</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter GST Number"
+                  placeholderTextColor="#9CA3AF"
+                  value={gstNo}
+                  onChangeText={(text) => setGstNo(text.toUpperCase())}
+                  autoCapitalize="characters"
+                  keyboardType="default"
+                  maxLength={15}
+                />
+              </View>
+
+              {/* PAN Card Number */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PAN Card Number</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter PAN Number"
+                  placeholderTextColor="#9CA3AF"
+                  value={panNo}
+                  onChangeText={(text) => setPanNo(text.toUpperCase())}
+                  autoCapitalize="characters"
+                  keyboardType="default"
+                  maxLength={10}
+                />
+              </View>
+
+              {/* Address Line 1 */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Address Line 1</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Address Line 1"
+                  placeholderTextColor="#9CA3AF"
+                  value={addressLine1}
+                  onChangeText={setAddressLine1}
+                />
+              </View>
+
+              {/* Address Line 2 */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Address Line 2</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Address Line 2"
+                  placeholderTextColor="#9CA3AF"
+                  value={addressLine2}
+                  onChangeText={setAddressLine2}
                 />
               </View>
 
@@ -588,134 +918,19 @@ export default function AddLeadScreen() {
                   onChangeText={setPincode}
                 />
               </View>
+            </View>
+          </>
+        )}
 
-              {/* Company Name */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Company Name</Text>
-                <TouchableOpacity
-                  style={styles.pickerTrigger}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/leads/select-company',
-                    params: getNavigationParams({ currentCompany: company })
-                  })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
-                    {company || 'Enter Company Name'}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Property Type */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Property Type</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter property type (e.g. Hotel, Resort)"
-                  placeholderTextColor="#9CA3AF"
-                  value={propertyType}
-                  onChangeText={setPropertyType}
-                />
-              </View>
-
-              {/* Business Type */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Business Type</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter business type (e.g. Retailer, Wholesaler)"
-                  placeholderTextColor="#9CA3AF"
-                  value={businessType}
-                  onChangeText={setBusinessType}
-                />
-              </View>
-
-              {/* Designation */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Designation</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter Designation"
-                  placeholderTextColor="#9CA3AF"
-                  value={designation}
-                  onChangeText={setDesignation}
-                />
-              </View>
-
-              {/* Website */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Website</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter Website URL"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="url"
-                  value={website}
-                  onChangeText={setWebsite}
-                />
-              </View>
-
-              {/* GST Number */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>GST Number</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter GST Number"
-                  placeholderTextColor="#9CA3AF"
-                  value={gstNo}
-                  onChangeText={setGstNo}
-                />
-              </View>
-
-              {/* Interested Category */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Interested Category</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Select or enter tags..."
-                  placeholderTextColor="#9CA3AF"
-                  value={interestedCategory}
-                  onChangeText={setInterestedCategory}
-                />
-              </View>
-
-              {/* PAN Card Number */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PAN Card Number</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter PAN Number"
-                  placeholderTextColor="#9CA3AF"
-                  value={panNo}
-                  onChangeText={setPanNo}
-                />
-              </View>
-
-              {/* Address Line 1 */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Address Line 1</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter Address Line 1"
-                  placeholderTextColor="#9CA3AF"
-                  value={addressLine1}
-                  onChangeText={setAddressLine1}
-                />
-              </View>
-
-              {/* Address Line 2 */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Address Line 2</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter Address Line 2"
-                  placeholderTextColor="#9CA3AF"
-                  value={addressLine2}
-                  onChangeText={setAddressLine2}
-                />
-              </View>
-
+        {/* SECTION HEADER: REVENUE & EXTRA DETAILS */}
+        {showAllFields && (
+          <>
+            <View style={[styles.sectionHeaderRow, { marginTop: 20 }]}>
+              <View style={styles.sectionHeaderIndicator} />
+              <Text style={styles.sectionHeaderTitle}>REVENUE & EXTRA DETAILS</Text>
+              <View style={styles.sectionHeaderLine} />
+            </View>
+            <View style={styles.formContainer}>
               {/* Expected Revenue */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Expected Revenue</Text>
@@ -726,6 +941,18 @@ export default function AddLeadScreen() {
                   keyboardType="numeric"
                   value={expectedRevenue}
                   onChangeText={setExpectedRevenue}
+                />
+              </View>
+
+              {/* Interested Category */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Interested Category</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Select or enter category..."
+                  placeholderTextColor="#9CA3AF"
+                  value={interestedCategory}
+                  onChangeText={setInterestedCategory}
                 />
               </View>
 
@@ -742,46 +969,59 @@ export default function AddLeadScreen() {
                   onChangeText={setRemark}
                 />
               </View>
+            </View>
+          </>
+        )}
 
-              {/* Email Opt Out */}
-              <View style={styles.optOutRow}>
-                <Text style={styles.optOutLabel}>Email Opt Out</Text>
-                <Switch
-                  value={emailOptOut}
-                  onValueChange={setEmailOptOut}
-                  trackColor={{ false: '#E2E8F0', true: COLORS.primary }}
-                  thumbColor="#FFFFFF"
-                />
+        {/* SECTION HEADER: OTHER DETAILS */}
+        <View style={[styles.sectionHeaderRow, { marginTop: 20 }]}>
+          <View style={styles.sectionHeaderIndicator} />
+          <Text style={styles.sectionHeaderTitle}>OTHER DETAILS</Text>
+          <View style={styles.sectionHeaderLine} />
+        </View>
+
+        <View style={styles.formContainer}>
+          {/* Email Opt Out */}
+          <View style={styles.optOutRow}>
+            <Text style={styles.optOutLabel}>Email Opt Out</Text>
+            <Switch
+              value={emailOptOut}
+              onValueChange={setEmailOptOut}
+              trackColor={{ false: '#E2E8F0', true: COLORS.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {/* Photo Attachment */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Photo</Text>
+            <TouchableOpacity
+              style={styles.uploadDropzone}
+              onPress={handleUploadPress}
+              activeOpacity={0.8}
+            >
+              <View style={styles.uploadIconContainer}>
+                <Ionicons name="arrow-up-circle-outline" size={20} color={COLORS.primary} />
               </View>
-
-              {/* Photo Attachment */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Photo</Text>
-                <TouchableOpacity
-                  style={styles.uploadDropzone}
-                  onPress={handleUploadPress}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.uploadIconContainer}>
-                    <Ionicons name="arrow-up-circle-outline" size={20} color={COLORS.primary} />
-                  </View>
-                  <View style={styles.uploadTextContainer}>
-                    <Text style={styles.uploadTitleText} numberOfLines={1}>
-                      {photoName || 'Select a file or drag and drop here'}
-                    </Text>
-                    <Text style={styles.uploadSubText}>JPG, PNG or PDF – max 10MB</Text>
-                  </View>
-                  <TouchableOpacity style={styles.browseBtn} activeOpacity={0.8} onPress={handleUploadPress}>
-                    <Text style={styles.browseBtnText}>Browse</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
+              <View style={styles.uploadTextContainer}>
+                <Text style={styles.uploadTitleText} numberOfLines={1}>
+                  {photoName || 'Select a file or drag and drop here'}
+                </Text>
+                <Text style={styles.uploadSubText}>JPG, PNG or PDF – max 10MB</Text>
               </View>
-            </>
-          )}
+              <TouchableOpacity style={styles.browseBtn} activeOpacity={0.8} onPress={handleUploadPress}>
+                <Text style={styles.browseBtnText}>Browse</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
 
-          {/* Save Lead button */}
+          {/* Save Lead Button */}
           <TouchableOpacity
-            style={[styles.saveBtn, { marginTop: 32 }, isCreating && { opacity: 0.6 }]}
+            style={[
+              styles.saveBtn,
+              { marginTop: 32, backgroundColor: '#000000', borderRadius: 25, height: 50 },
+              isCreating && { opacity: 0.6 }
+            ]}
             onPress={handleSave}
             activeOpacity={0.85}
             disabled={isCreating}
@@ -803,16 +1043,40 @@ export default function AddLeadScreen() {
               <Text style={styles.modalTitle}>
                 Select {
                   activePicker === 'status' ? 'Status' :
-                  activePicker === 'source' ? 'Source' :
-                  activePicker === 'country' ? 'Country' :
-                  activePicker === 'state' ? 'State' :
-                  activePicker === 'city' ? 'City' : 'Value'
+                    activePicker === 'source' ? 'Source' :
+                      activePicker === 'country' ? 'Country' :
+                        activePicker === 'state' ? 'State' :
+                          activePicker === 'city' ? 'City' : 'Value'
                 }
               </Text>
               <TouchableOpacity onPress={() => setActivePicker(null)}>
                 <Ionicons name="close" size={20} color={COLORS.textDark} />
               </TouchableOpacity>
             </View>
+
+            {/* Search Input for Location Picker Modals */}
+            {(activePicker === 'country' || activePicker === 'state' || activePicker === 'city') && (
+              <View style={styles.modalSearchContainer}>
+                <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder={`Search ${activePicker === 'country' ? 'Country' :
+                    activePicker === 'state' ? 'State' : 'City'
+                    }...`}
+                  placeholderTextColor="#9CA3AF"
+                  value={modalSearchQuery}
+                  onChangeText={setModalSearchQuery}
+                  autoCorrect={false}
+                  autoComplete="off"
+                />
+                {modalSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setModalSearchQuery('')} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             <ScrollView style={{ paddingHorizontal: 20 }}>
               {getPickerOptions().map((opt) => (
                 <TouchableOpacity
@@ -825,6 +1089,13 @@ export default function AddLeadScreen() {
                   <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
                 </TouchableOpacity>
               ))}
+              {getPickerOptions().length === 0 && (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13.5, fontWeight: '600' }}>
+                    No matches found
+                  </Text>
+                </View>
+              )}
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -898,8 +1169,8 @@ const styles = StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
-    marginBottom: 5,
+    marginTop: 18,
+    marginBottom: 10,
   },
   sectionHeaderIndicator: {
     width: 3,
@@ -922,10 +1193,10 @@ const styles = StyleSheet.create({
   },
 
   formContainer: {
-    gap: 5,
+    gap: 12,
   },
   inputGroup: {
-    gap: 5,
+    gap: 6,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -1071,8 +1342,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '45%',
+    maxHeight: '65%',
     paddingBottom: 24,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    height: 40,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1101,5 +1391,55 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+
+  // Premium Tags styles
+  inputWithIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    height: 48,
+    paddingRight: 12,
+  },
+  textInputWithIcon: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 16,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  inputRightIconContainer: {
+    padding: 4,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#FFFFFF',
+  },
+  chipActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EEF2FF',
+  },
+  chipText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  chipTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });

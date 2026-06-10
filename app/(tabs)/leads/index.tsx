@@ -3,10 +3,8 @@ import { COLORS } from '@/constants/theme';
 import { useLeads } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Animated,
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -26,46 +24,11 @@ export default function LeadsScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const { leads, isLoading, isFetching, refetch } = useLeads();
-  const [isFabOpen, setIsFabOpen] = useState(false);
-
   useEffect(() => {
     if (leads) {
       console.log('[LeadsScreen] Rendered leads data:', leads);
     }
   }, [leads]);
-
-  // Speed Dial FAB Animation
-  const speedDialAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(speedDialAnim, {
-      toValue: isFabOpen ? 1 : 0,
-      useNativeDriver: true,
-      tension: 60,
-      friction: 8,
-    }).start();
-  }, [isFabOpen]);
-
-  // + rotates to × when open
-  const mainBtnRotation = speedDialAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
-
-  const speedDialScale = speedDialAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
-  const speedDialOpacity = speedDialAnim.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [0, 0.4, 1],
-  });
-
-  const speedDialTranslation = speedDialAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [40, 0],
-  });
 
   // Filtering Logic
   const filteredLeads = leads.filter((lead) => {
@@ -100,10 +63,7 @@ export default function LeadsScreen() {
 
   const hasActiveFilters = !!(params.priority || params.tag || params.owner);
 
-  const handleFabAction = (route: string) => {
-    setIsFabOpen(false);
-    router.push(route as any);
-  };
+
 
   return (
     <View style={styles.root}>
@@ -273,99 +233,14 @@ export default function LeadsScreen() {
         </ScrollView>
       )}
 
-      {/* FAB OVERLAY BACKDROP */}
-      {isFabOpen && (
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={() => setIsFabOpen(false)}
-        >
-          <Animated.View style={[styles.fabBackdrop, { opacity: speedDialOpacity }]} />
-        </Pressable>
-      )}
-
-      {/* EXPANDABLE FAB OPTION MENU */}
-      {isFabOpen && (
-        <Animated.View style={[
-          styles.fabMenuContainer,
-          {
-            bottom: Math.max(insets.bottom + 160, 170),
-            opacity: speedDialOpacity,
-            transform: [
-              { translateY: speedDialTranslation },
-              { scale: speedDialScale },
-            ],
-          }
-        ]}>
-          {/* Add Lead */}
-          <View style={styles.fabMenuItem}>
-            <Text style={styles.fabMenuLabel}>Add Lead</Text>
-            <TouchableOpacity
-              style={styles.fabMiniBtn}
-              onPress={() => handleFabAction('/(tabs)/leads/add-lead')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="person-add" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Add Call */}
-          <View style={styles.fabMenuItem}>
-            <Text style={styles.fabMenuLabel}>Add Call</Text>
-            <TouchableOpacity
-              style={styles.fabMiniBtn}
-              onPress={() => handleFabAction('/(tabs)/call/add-call')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="call" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Add Meeting */}
-          <View style={styles.fabMenuItem}>
-            <Text style={styles.fabMenuLabel}>Add Meeting</Text>
-            <TouchableOpacity
-              style={styles.fabMiniBtn}
-              onPress={() => handleFabAction('/(tabs)/meeting/add-meeting')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="people" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Add Visit */}
-          <View style={styles.fabMenuItem}>
-            <Text style={styles.fabMenuLabel}>Add Visit</Text>
-            <TouchableOpacity
-              style={styles.fabMiniBtn}
-              onPress={() => handleFabAction('/(tabs)/visit/add-visit')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="home" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Add Task */}
-          <View style={styles.fabMenuItem}>
-            <Text style={styles.fabMenuLabel}>Add Task</Text>
-            <TouchableOpacity
-              style={styles.fabMiniBtn}
-              onPress={() => handleFabAction('/(tabs)/task/add-task')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="checkbox" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* PRIMARY GREEN ROUND FAB – always shows + */}
+      {/* PRIMARY GREEN ROUND FAB – opens add lead */}
       <View style={[
         styles.primaryFabWrapper,
         { bottom: Math.max(insets.bottom + 90, 100) }
       ]}>
         <TouchableOpacity
           style={styles.primaryFab}
-          onPress={() => setIsFabOpen(!isFabOpen)}
+          onPress={() => router.push('/(tabs)/leads/add-lead')}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={30} color="#FFFFFF" />
@@ -584,12 +459,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // FAB Expandable Overlay
-  fabBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    zIndex: 90,
-  },
   primaryFabWrapper: {
     position: 'absolute',
     right: 20,
@@ -607,46 +476,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 10,
-  },
-  fabMenuContainer: {
-    position: 'absolute',
-    right: 20,
-    alignItems: 'flex-end',
-    gap: 12,
-    zIndex: 95,
-  },
-  fabMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  fabMenuLabel: {
-    backgroundColor: '#000000',
-    color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '800',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  fabMiniBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#0D0F0E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
   },
 });
 

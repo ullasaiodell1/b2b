@@ -149,7 +149,7 @@ export default function OrderScreen() {
       {/* ── 4. LIST OF ORDERS ───────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
       >
         {filteredOrders.length > 0 ? (
           filteredOrders.map((order, idx) => {
@@ -250,7 +250,6 @@ export default function OrderScreen() {
             <Text style={s.emptyStateSubtext}>Try adjusting your search query or filter tags.</Text>
           </View>
         )}
-        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Floating Action Button */}

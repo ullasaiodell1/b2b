@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 import { useLogin } from '@/hooks/useAuth';
 
@@ -113,8 +114,20 @@ export default function SignInScreen() {
           }
         },
         onError: (err: any) => {
-          showError(err.message || 'Failed to sign in. Please try again.');
-          shake();
+          if (err?.details?.process_code === 'user_already_logged_in') {
+            router.push({
+              pathname: '/device-limit',
+              params: {
+                sessions: JSON.stringify(err.details.sessions || []),
+                token: err.details.token || '',
+                phoneNumber: phoneNumber.trim(),
+                password: password,
+              }
+            });
+          } else {
+            showError(err.message || 'Failed to sign in. Please try again.');
+            shake();
+          }
         }
       }
     );

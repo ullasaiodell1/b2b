@@ -182,7 +182,7 @@ export default function CalendarScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[styles.scrollContainer, { paddingBottom: insets.bottom + 100 }]}
       >
         {/* Search input field */}
         <View style={styles.searchSection}>
@@ -357,8 +357,6 @@ export default function CalendarScreen() {
             </View>
           </TouchableOpacity>
         ))}
-
-        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Speed Dial Backdrop */}

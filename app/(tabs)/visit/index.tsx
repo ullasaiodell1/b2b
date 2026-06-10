@@ -4,92 +4,51 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Image,
-  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface Visit {
-  id: string;
-  name: string;
-  company: string;
-  location: string;
-  status: 'Pending' | 'Complete' | 'Draft' | 'Bounce';
-  lat: string;
-  lng: string;
-  avatar: any;
-}
-
-const VISIT_DATA: Visit[] = [
-  {
-    id: '1',
-    name: 'Luis Downing',
-    company: 'Luis Pvt. Ltd.',
-    location: 'Western India.',
-    status: 'Pending',
-    lat: '18.4729° N',
-    lng: '73.8567° E',
-    avatar: require('@/assets/images/avatar_luis.png'),
-  },
-  {
-    id: '2',
-    name: 'Sherry Davis',
-    company: 'Sherry Pvt. Ltd.',
-    location: 'South Korea',
-    status: 'Complete',
-    lat: '37.5056° N',
-    lng: '127.0498° E',
-    avatar: require('@/assets/images/avatar_sherry.png'),
-  },
-  {
-    id: '3',
-    name: 'Luis Downing',
-    company: 'Luis Pvt. Ltd.',
-    location: 'Western India.',
-    status: 'Pending',
-    lat: '18.4729° N',
-    lng: '73.8567° E',
-    avatar: require('@/assets/images/avatar_luis.png'),
-  },
-  {
-    id: '4',
-    name: 'Sherry Davis',
-    company: 'Sherry Pvt. Ltd.',
-    location: 'South Korea',
-    status: 'Complete',
-    lat: '37.5056° N',
-    lng: '127.0498° E',
-    avatar: require('@/assets/images/avatar_sherry.png'),
-  },
-];
+import CustomHeader from '@/components/custom/CustomHeader';
+import { useVisits } from '@/hooks/useVisits';
 
 export default function VisitScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string; dateRange?: string }>();
+  const params = useLocalSearchParams<{
+    status?: string;
+    company?: string;
+    dateRange?: string;
+    leadId?: string;
+    leadName?: string;
+    phone?: string;
+    email?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
+  const { visits } = useVisits();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'All' | 'Complete' | 'Pending' | 'Bounce'>('All');
 
   // Filter calculations for top counts
-  const totalCount = VISIT_DATA.length + 26; // Match "30" from mockup
-  const completeCount = VISIT_DATA.filter(v => v.status === 'Complete').length + 10; // Match "12"
-  const pendingCount = VISIT_DATA.filter(v => v.status === 'Pending').length; // Match "2"
-  const bounceCount = 6; // Dummy match for list
+  const totalCount = visits.length;
+  const completeCount = visits.filter(v => v.status === 'Complete').length;
+  const pendingCount = visits.filter(v => v.status === 'Pending').length;
+  const bounceCount = visits.filter(v => v.status === 'Bounce').length;
 
   // Filtering Logic
-  const filteredVisits = VISIT_DATA.filter((v) => {
+  const filteredVisits = visits.filter((v) => {
     // Search Query
     const matchesSearch =
       v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.location.toLowerCase().includes(searchQuery.toLowerCase());
+      (v.company && v.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.visitType && v.visitType.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.location && v.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.locationAddress && v.locationAddress.toLowerCase().includes(searchQuery.toLowerCase()));
 
     // Top Pill filter
     let matchesPill = true;
@@ -117,7 +76,27 @@ export default function VisitScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      <CustomHeader title="Visit" showSearch={false} />
+      <CustomHeader
+        title="Visit"
+        showSearch={false}
+        showBack={!!params.leadId}
+        onBackPress={() => {
+          if (params.leadId) {
+            router.push({
+              pathname: '/(tabs)/leads/lead-details',
+              params: {
+                id: params.leadId,
+                name: params.leadName,
+                company: params.company,
+                phone: params.phone,
+                email: params.email,
+              }
+            } as any);
+          } else {
+            router.back();
+          }
+        }}
+      />
 
       {/* SEARCH AND FILTERS */}
       <View style={styles.searchSection}>
@@ -249,19 +228,24 @@ export default function VisitScreen() {
 
           return (
             <View key={visit.id} style={styles.card}>
-              <Image source={visit.avatar} style={styles.cardAvatar} />
+              {visit.imageUri && visit.imageUri.startsWith('http') && (
+                <Image
+                  source={{ uri: visit.imageUri }}
+                  style={styles.cardAvatar}
+                />
+              )}
 
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{visit.name}</Text>
 
                 <View style={styles.cardRow}>
                   <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>{visit.company}</Text>
+                  <Text style={styles.cardText} numberOfLines={1}>{visit.company || visit.visitType || 'Site Visit'}</Text>
                 </View>
 
                 <View style={styles.cardRow}>
                   <Ionicons name="location-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>{visit.location}</Text>
+                  <Text style={styles.cardText} numberOfLines={1}>{visit.location || visit.locationAddress || 'Address Not Provided'}</Text>
                 </View>
 
                 {/* Status Row with outline circle */}
@@ -300,7 +284,10 @@ export default function VisitScreen() {
       {/* FLOATING ACTION BUTTON */}
       <TouchableOpacity
         style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => router.push('/(tabs)/visit/add-visit')}
+        onPress={() => router.push({
+          pathname: '/(tabs)/visit/add-visit',
+          params: { leadId: params.leadId || '' }
+        })}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
@@ -340,9 +327,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 10,
-    paddingTop: 12,
+    paddingTop: 5,
     paddingBottom: 10,
-    gap: 12,
+    gap: 2,
   },
   searchBar: {
     flex: 1,
@@ -397,13 +384,13 @@ const styles = StyleSheet.create({
   // Pills styling
   pillsContainer: {
     backgroundColor: COLORS.bgWhite,
-    paddingVertical: 8,
+    paddingVertical: 1,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   pillsScroll: {
-    paddingHorizontal: 10,
-    gap: 8,
+    paddingHorizontal: 5,
+    gap: 2,
   },
   pill: {
     flexDirection: 'row',
@@ -588,4 +575,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-import CustomHeader from '@/components/custom/CustomHeader';
+

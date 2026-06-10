@@ -1,5 +1,5 @@
 import { useProfile } from '@/hooks/useProfile';
-import { COLORS } from '@/constants/theme';
+import { COLORS, getColorName } from '@/constants/theme';
 import { useLogout } from '@/hooks/useAuth';
 import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,7 +55,7 @@ export default function SettingsScreen() {
 
       <CustomHeader title="Settings" showSearch={false} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
         {/* Profile Navigation Card */}
         <TouchableOpacity
           style={styles.profileCard}
@@ -119,16 +119,16 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(tabs)/settings/theme-settings' as any)}
             activeOpacity={0.8}
           >
-            <View style={[styles.iconBox, { backgroundColor: '#FCE7F3' }]}>
-              <Ionicons name="contrast" size={18} color="#EC4899" />
+            <View style={[styles.iconBox, { backgroundColor: COLORS.primaryLight }]}>
+              <Ionicons name="contrast" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.optionTitle}>Theme Colour</Text>
-              <Text style={styles.optionSubtitle}>Green Â· Default</Text>
+              <Text style={styles.optionSubtitle}>{getColorName(COLORS.primary)}</Text>
             </View>
             <View style={styles.radioWrapper}>
-              <View style={styles.radioCircle}>
-                <View style={styles.radioInner} />
+              <View style={[styles.radioCircle, { borderColor: COLORS.primary }]}>
+                <View style={[styles.radioInner, { backgroundColor: COLORS.primary }]} />
               </View>
               <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
             </View>

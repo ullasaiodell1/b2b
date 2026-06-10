@@ -1,40 +1,54 @@
-import { TaskFilterState, TaskRecord } from '@/types/task';
 import axios from './httpRequest';
 
-export const getTasks = (params?: Partial<TaskFilterState>) => {
-  return axios({
+export const getTasks = async (params?: any) => {
+  console.log('[API getTasks] Request params:', params);
+  const res = await axios({
     method: 'GET',
     url: `/tasks`,
-    params
-  }) as Promise<TaskRecord[]>;
+    params,
+  });
+  console.log('[API getTasks] Response:', res);
+  return res;
 };
 
-export const getTaskDetails = (id: string) => {
-  return axios({
+export const getTaskById = async (id: string) => {
+  console.log('[API getTaskById] Request ID:', id);
+  const res = await axios({
     method: 'GET',
-    url: `/tasks/${id}`
-  }) as Promise<TaskRecord>;
+    url: `/tasks/${id}`,
+  });
+  console.log('[API getTaskById] Response:', res);
+  return res;
 };
 
-export const createTask = (data: Partial<TaskRecord>) => {
-  return axios({
+export const createTask = async (data: any) => {
+  console.log('[API createTask] Request data:', data);
+  const res = await axios({
     method: 'POST',
     url: `/tasks`,
-    data
-  }) as Promise<TaskRecord>;
-};
-
-export const updateTask = (id: string, data: Partial<TaskRecord>) => {
-  return axios({
-    method: 'PUT',
-    url: `/tasks/${id}`,
-    data
-  }) as Promise<TaskRecord>;
-};
-
-export const deleteTask = (id: string) => {
-  return axios({
-    method: 'DELETE',
-    url: `/tasks/${id}`
+    data,
   });
+  console.log('[API createTask] Response:', res);
+  return res;
+};
+
+export const updateTask = async (id: string, data: any) => {
+  console.log(`[API updateTask] Request ID: ${id}, data:`, data);
+  const res = await axios({
+    method: 'PATCH',
+    url: `/tasks/${id}`,
+    data,
+  });
+  console.log('[API updateTask] Response:', res);
+  return res;
+};
+
+export const deleteTask = async (id: string) => {
+  console.log('[API deleteTask] Request ID:', id);
+  const res = await axios({
+    method: 'DELETE',
+    url: `/tasks/${id}`,
+  });
+  console.log('[API deleteTask] Response:', res);
+  return res;
 };

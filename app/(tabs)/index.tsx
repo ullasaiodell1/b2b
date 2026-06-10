@@ -1,20 +1,21 @@
+import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useAnalysis } from '@/hooks/useAnalysis';
+import { useAppPermissions } from '@/hooks/useAppPermissions';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
-  Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
+  View
 } from 'react-native';
 import {
   BarChart,
@@ -22,8 +23,6 @@ import {
   PieChart,
 } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppPermissions } from '@/hooks/useAppPermissions';
-import { useAnalysis } from '@/hooks/useAnalysis';
 
 const { width } = Dimensions.get('window');
 const CHART_WIDTH = width - 36; // card padding 18*2 + scroll padding 0*2
@@ -98,7 +97,7 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
         <CustomHeader title="Home" showSearch={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -113,7 +112,7 @@ export default function HomeScreen() {
 
   // ── Parsed API Data / Fallbacks ────────────────────────
   const totalVisits = apiData?.total_visits ?? 0;
-  
+
   const revenueGenerated = apiData?.revenue_generated ?? '₹0';
   const assignedTarget = apiData?.assigned_target ?? '₹0';
 
@@ -202,7 +201,7 @@ export default function HomeScreen() {
 
       {/* Scrollable Content */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -343,8 +342,6 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
-
-        <View style={{ height: 20 }} />
       </ScrollView>
     </View>
   );
@@ -584,4 +581,4 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 });
-import CustomHeader from '@/components/custom/CustomHeader';
+

@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useCalls } from '@/hooks/useCalls';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Platform,
@@ -22,6 +22,13 @@ type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
 export default function CallHistoryScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    leadId?: string;
+    leadName?: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   const { calls, filter: filters, updateFilter, isLoading, isFetching, refetch } = useCalls();
@@ -63,7 +70,27 @@ export default function CallHistoryScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      <CustomHeader title="Call" showSearch={false} />
+      <CustomHeader
+        title="Call"
+        showSearch={false}
+        showBack={!!params.leadId}
+        onBackPress={() => {
+          if (params.leadId) {
+            router.push({
+              pathname: '/(tabs)/leads/lead-details',
+              params: {
+                id: params.leadId,
+                name: params.leadName,
+                company: params.company,
+                phone: params.phone,
+                email: params.email,
+              }
+            } as any);
+          } else {
+            router.back();
+          }
+        }}
+      />
 
       {/* TOP SEARCH & FILTER BAR */}
       <View style={styles.topBar}>

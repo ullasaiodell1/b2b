@@ -7,9 +7,8 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,13 +54,13 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const hiddenTabBarScreens = [
     'add-meeting', 'meeting-details',
     'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner',
-    'add-email', 'email-filter',
     'add-order', 'order-details', 'order-filter',
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
     'add-visit', 'visit-filter',
     'add-call', 'call-filter', 'call-history',
-    'edit-profile', 'change-password'
+    'edit-profile', 'change-password',
+    'theme-settings', 'notification-settings', 'help-support'
   ];
 
   if (hiddenTabBarScreens.includes(activeLeafRouteName)) {
@@ -151,7 +150,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
         activeOpacity={0.75}
       >
         <Ionicons name="reorder-three-outline" size={24} color={COLORS.moreIcon} />
-        <Text style={styles.moreLabel}>More</Text>
       </TouchableOpacity>
 
     </Animated.View>

@@ -1,14 +1,16 @@
-import { MeetingRecord } from '@/components/MeetingState';
 import { COLORS } from '@/constants/theme';
 import { useMeetings } from '@/hooks/useMeetings';
+import { MeetingRecord } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,16 +27,23 @@ const WEEKDAYS_SINGLE = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function MeetingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    leadId?: string;
+    leadName?: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+  }>();
   const insets = useSafeAreaInsets();
-
-  // 1. Dynamic Meeting State
-  const { meetings } = useMeetings();
 
   // 2. Date States
   // Initialize to actual today's date
   const initialDate = useRef(new Date()).current;
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(initialDate);
+
+  // 1. Dynamic Meeting State — filtered by selectedDate via the hook
+  const { meetings, isLoading, isFetching, refetch } = useMeetings(selectedDate);
 
   // 3. Tab Filter State
   const [activeTab, setActiveTab] = useState<'All' | 'Upcoming' | 'In Process' | 'Complete' | 'Pending'>('All');
@@ -191,6 +200,26 @@ export default function MeetingScreen() {
 
       {/* ── 1. HEADER TITLE ────────────────────────── */}
       <View style={[s.headerContainer, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
+        {params.leadId && (
+          <TouchableOpacity
+            onPress={() => {
+              router.push({
+                pathname: '/(tabs)/leads/lead-details',
+                params: {
+                  id: params.leadId,
+                  name: params.leadName,
+                  company: params.company,
+                  phone: params.phone,
+                  email: params.email,
+                }
+              } as any);
+            }}
+            style={[s.backBtn, { top: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) + 2 }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
+          </TouchableOpacity>
+        )}
         <View style={s.centerLogoSection}>
           <Image source={require('@/assets/images/icon.png')} style={{ width: 20, height: 20, marginRight: 6 }} resizeMode="contain" />
           <Text style={s.logoText}>BASALT</Text>
@@ -335,9 +364,19 @@ export default function MeetingScreen() {
       {/* ── 6. MEETING CARDS LIST ────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+        }
       >
-        {filteredMeetings.length > 0 ? (
+        {isLoading && meetings.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>
+              Loading meetings...
+            </Text>
+          </View>
+        ) : filteredMeetings.length > 0 ? (
           filteredMeetings.map((meeting) => {
             const cfg = getStatusConfig(meeting.status);
             return (
@@ -347,31 +386,42 @@ export default function MeetingScreen() {
                 activeOpacity={0.88}
                 onPress={() => handleMeetingPress(meeting.id)}
               >
-                {/* Header Row: Title & Status */}
+                {/* ── Row 1: Title + Status ─────────────────── */}
                 <View style={s.cardHead}>
-                  <Text style={s.cardTitle} numberOfLines={1}>{meeting.title}</Text>
-                  <View style={s.statusPill}>
+                  <Text style={s.cardTitle} numberOfLines={1}>
+                    {meeting.title || 'Follow-up'}
+                  </Text>
+                  <View style={[s.statusPill, { backgroundColor: cfg.color + '18' }]}>
                     <View style={[s.statusDot, { backgroundColor: cfg.color }]} />
                     <Text style={[s.statusText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                 </View>
 
-                {/* Team / Host Row */}
+                {/* ── Row 2: Purpose ───────────────────────── */}
+                {!!meeting.purpose && (
+                  <View style={s.cardMetaRow}>
+                    <Ionicons name="document-text-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={s.cardMetaLabel}>Purpose: </Text>
+                    <Text style={s.cardMetaValue} numberOfLines={1}>{meeting.purpose}</Text>
+                  </View>
+                )}
+
+                {/* ── Row 3: Method ───────────────────────── */}
                 <View style={s.cardMetaRow}>
-                  <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
-                  <Text style={s.cardMetaText}>{meeting.host || 'Development Team'}</Text>
+                  <Ionicons name="videocam-outline" size={13} color={COLORS.textMuted} />
+                  <Text style={s.cardMetaLabel}>Method: </Text>
+                  <Text style={s.cardMetaValue}>
+                    {meeting.method || meeting.location || '—'}
+                  </Text>
                 </View>
 
-                {/* Footer Row: Type (Left) & Time (Right) */}
-                <View style={s.cardMetaRowSpace}>
-                  <View style={s.cardMetaRow}>
-                    <Ionicons name="videocam-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={s.cardMetaText}>{getMeetingType(meeting)}</Text>
-                  </View>
-                  <View style={s.cardMetaRow}>
-                    <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={s.cardMetaText}>Today , {meeting.fromTime || '11:06 am'}</Text>
-                  </View>
+                {/* ── Row 4: Scheduled Date & Time ─────────── */}
+                <View style={s.cardMetaRow}>
+                  <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
+                  <Text style={s.cardMetaLabel}>Scheduled: </Text>
+                  <Text style={s.cardMetaValue}>
+                    {meeting.scheduledAt || `${meeting.fromTime}`}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
@@ -383,7 +433,6 @@ export default function MeetingScreen() {
             <Text style={s.emptyStateSubtext}>{"Tap the \"+\" button below to schedule a new one."}</Text>
           </View>
         )}
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* ── 7. FLOATING ACTION BUTTON (FAB) ─────── */}
@@ -475,9 +524,9 @@ const s = StyleSheet.create({
     fontWeight: '800',
   },
   weeklyNumBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -486,7 +535,7 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   weeklyNumText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.textDark,
   },
@@ -638,17 +687,17 @@ const s = StyleSheet.create({
   // Scroll listings
   scrollContent: {
     paddingVertical: 0,
-    paddingHorizontal: 8,
-    gap: 0,
+    paddingHorizontal: 5,
+
   },
   card: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 16,
-    padding: 16,
+    padding: 10,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 8,
+    gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.02,
@@ -697,7 +746,26 @@ const s = StyleSheet.create({
     color: COLORS.textMuted,
     fontWeight: '600',
   },
+  cardMetaLabel: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+  },
+  cardMetaValue: {
+    fontSize: 12.5,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    flex: 1,
+  },
 
+  backBtn: {
+    position: 'absolute',
+    left: 12,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // FAB
   fab: {
     position: 'absolute',

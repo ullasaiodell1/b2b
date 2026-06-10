@@ -9,9 +9,10 @@ import {
   StatusBar,
   Platform,
   Modal,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
@@ -19,8 +20,31 @@ const STATUSES = ['Opened', 'Sent', 'Draft', 'Bounce'];
 
 export default function EmailFilterScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string }>();
+  const params = useLocalSearchParams<{ status?: string; company?: string; referrer?: string }>();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (params.referrer === 'lead-details') {
+      router.navigate('/(tabs)/leads/lead-details');
+    } else {
+      router.back();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (params.referrer === 'lead-details') {
+          router.navigate('/(tabs)/leads/lead-details');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [params.referrer])
+  );
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(params.status || null);
   const [selectedCompany, setSelectedCompany] = useState<string>(params.company || 'Select Company');
@@ -33,13 +57,23 @@ export default function EmailFilterScreen() {
   };
 
   const handleApplyFilter = () => {
-    router.push({
-      pathname: '/(tabs)/email',
-      params: {
-        status: selectedStatus || '',
-        company: selectedCompany !== 'Select Company' ? selectedCompany : '',
-      },
-    });
+    if (params.referrer === 'lead-details') {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          emailStatus: selectedStatus || '',
+          emailCompany: selectedCompany !== 'Select Company' ? selectedCompany : '',
+        }
+      });
+    } else {
+      router.push({
+        pathname: '/(tabs)/email',
+        params: {
+          status: selectedStatus || '',
+          company: selectedCompany !== 'Select Company' ? selectedCompany : '',
+        },
+      });
+    }
   };
 
   return (
@@ -50,7 +84,7 @@ export default function EmailFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity 
           style={styles.backBtn} 
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -133,7 +167,7 @@ export default function EmailFilterScreen() {
       <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
         <TouchableOpacity 
           style={styles.cancelButton}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelButtonText}>Cancel</Text>

@@ -1,17 +1,17 @@
 import { COLORS } from '@/constants/theme';
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Linking,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import {
+  Linking,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function HelpSupportScreen() {
   const navigation = useNavigation<any>();
@@ -100,7 +100,7 @@ const styles: any = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingTop: Platform.OS === 'ios' ? 56 : 36,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -123,8 +123,8 @@ const styles: any = StyleSheet.create({
   },
 
   scrollContent: {
-    padding: 16,
-    gap: 16,
+    padding: 5,
+    gap: 5,
     paddingBottom: 40,
   },
 
@@ -132,9 +132,9 @@ const styles: any = StyleSheet.create({
   bannerCard: {
     backgroundColor: COLORS.primary,
     borderRadius: 16,
-    padding: 24,
+    padding: 15,
     alignItems: 'center',
-    gap: 6,
+    gap: 2,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
@@ -179,7 +179,7 @@ const styles: any = StyleSheet.create({
   rowText: {
     marginLeft: 12,
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   rowLabel: {
     fontSize: 11.5,

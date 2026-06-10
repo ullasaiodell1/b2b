@@ -19,4 +19,9 @@ export interface MeetingRecord {
   attachments: MeetingAttachment[];
   createdTime: string;
   modifiedTime: string;
+  // Extra backend fields
+  purpose: string;
+  method: string;
+  scheduledAt: string;     // human-readable: "10 Jun 2026 · 02:30 PM"
+  scheduledDate: string;   // YYYY-MM-DD for date comparison
 }

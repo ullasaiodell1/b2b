@@ -73,3 +73,14 @@ export const getLeadSources = async () => {
   console.log('[API getLeadSources] Response:', res?.data || res);
   return res;
 };
+
+export const getLeadTags = async () => {
+  const res = await axios({
+    method: 'GET',
+    url: `/leads/tags`,
+    params: { limit: 100 }
+  });
+  console.log('[API getLeadTags] Response:', res?.data || res);
+  return res;
+};
+

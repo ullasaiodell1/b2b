@@ -24,7 +24,7 @@ export const ALL_TAB_MODULES: TabModule[] = [
   { id: 'email', title: 'Emails', icon: 'mail', iconOutline: 'mail-outline' },
 ];
 
-export let configuredTabs = ['index', 'leads', 'meeting', 'email'];
+export let configuredTabs = ['index', 'leads', 'meeting'];
 export let dynamicTabId: string | null = null;
 
 const tabListeners = new Set<() => void>();

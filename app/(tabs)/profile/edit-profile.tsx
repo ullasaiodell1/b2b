@@ -1,5 +1,7 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { COLORS } from '@/constants/theme';
+import { useProfile } from '@/hooks/useProfile';
+import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
@@ -7,21 +9,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfile } from '@/hooks/useProfile';
-import { uploadFile } from '@/services/api/file';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
@@ -58,20 +58,27 @@ export default function EditProfileScreen() {
 
       if (profile.dob) {
         try {
-          const parts = profile.dob.split(' ');
-          if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const monthStr = parts[1].toLowerCase();
-            const year = parseInt(parts[2], 10);
-            const months: { [key: string]: number } = {
-              january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-              july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
-            };
-            const monthIndex = months[monthStr] !== undefined ? months[monthStr] : 3;
-            setDob(new Date(year, monthIndex, day));
+          // Handle ISO format: "YYYY-MM-DD"
+          if (/^\d{4}-\d{2}-\d{2}$/.test(profile.dob)) {
+            const [y, m, d] = profile.dob.split('-').map(Number);
+            setDob(new Date(y, m - 1, d));
           } else {
-            const parsed = new Date(profile.dob);
-            if (!isNaN(parsed.getTime())) setDob(parsed);
+            // Handle legacy "D Month YYYY" or "Month D, YYYY" formats
+            const parts = profile.dob.split(' ');
+            if (parts.length === 3) {
+              const day = parseInt(parts[0], 10);
+              const monthStr = parts[1].replace(',', '').toLowerCase();
+              const year = parseInt(parts[2], 10);
+              const months: { [key: string]: number } = {
+                january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+                july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+              };
+              const monthIndex = months[monthStr] !== undefined ? months[monthStr] : 3;
+              setDob(new Date(year, monthIndex, day));
+            } else {
+              const parsed = new Date(profile.dob);
+              if (!isNaN(parsed.getTime())) setDob(parsed);
+            }
           }
         } catch {
           // ignore
@@ -142,15 +149,47 @@ export default function EditProfileScreen() {
           photoUri.startsWith('content://') ||
           photoUri.startsWith('ph://'))
       ) {
-        const uploadResult = await uploadFile(photoUri);
-        finalPhotoUri = uploadResult.url;
+        let uploadResult: any;
+        try {
+          uploadResult = await uploadFile(photoUri);
+        } catch (uploadErr: any) {
+          console.error('[EditProfile] uploadFile threw:', JSON.stringify(uploadErr));
+          setUpdating(false);
+          Alert.alert(
+            'Upload Failed',
+            uploadErr?.message || 'Could not upload profile photo. Please try again.'
+          );
+          return;
+        }
+
+        console.log('[EditProfile] uploadFile result:', JSON.stringify(uploadResult));
+
+        // The axios interceptor returns response.data directly.
+        // Try every possible shape the server might return the URL in.
+        finalPhotoUri =
+          (typeof uploadResult === 'string' ? uploadResult : null) ||
+          uploadResult?.url ||
+          uploadResult?.file_url ||
+          uploadResult?.location ||
+          uploadResult?.path ||
+          uploadResult?.key ||
+          uploadResult?.data?.url ||
+          uploadResult?.data?.file_url ||
+          uploadResult?.data?.location ||
+          uploadResult?.data?.path ||
+          uploadResult?.data?.key ||
+          null;
+
+        console.log('[EditProfile] resolved finalPhotoUri:', finalPhotoUri);
+
+        if (!finalPhotoUri) {
+          console.warn('[EditProfile] Upload response had no recognisable URL:', JSON.stringify(uploadResult));
+          // Don't block the profile save — just keep the old photo URI
+          finalPhotoUri = photoUri;
+        }
       }
 
-      const formattedDob = dob.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
+      const formattedDob = `${dob.getFullYear()}-${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
 
       const cleanedGst = gstNo.trim().toUpperCase() || null;
       const cleanedPan = panNo.trim().toUpperCase() || null;
@@ -185,7 +224,7 @@ export default function EditProfileScreen() {
       );
     } catch (uploadErr: any) {
       setUpdating(false);
-      Alert.alert('Upload Failed', 'Failed to upload new profile avatar picture.');
+      Alert.alert('Update Failed', uploadErr?.message || 'Something went wrong. Please try again.');
     }
   };
 

@@ -28,11 +28,15 @@ export function useProfile() {
       // So user = response.data
       const user = response?.data || response || {};
 
+      console.log('[useProfile] User object:', JSON.stringify(user));
+      console.log('[useProfile] image_url field:', user.image_url);
+
       const mapped: ProfileData = {
         fullName: user.name || '',
         mobile: user.phone_number || '',
+        // Normalize dob: backend may return "YYYY-MM-DD" or "Month D, YYYY"
         dob: user.date_of_birth || '',
-        email: user.email || user.personal_email || '',
+        email: user.personal_email || user.email || '',
         gender: user.gender
           ? (user.gender.charAt(0).toUpperCase() + user.gender.slice(1)) as 'Male' | 'Female'
           : 'Male',
@@ -65,22 +69,35 @@ export function useProfile() {
   // Backend PATCH /users/profile returns: { data: { id, name, email } } — only partial fields
   // So after a successful update we invalidate and let the GET query refetch full profile data
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<ProfileData>): Promise<void> => {
+    mutationFn: async (data: Partial<ProfileData>): Promise<Partial<ProfileData>> => {
       const backendData: any = {};
       if (data.fullName !== undefined) backendData.name = data.fullName;
       if (data.mobile !== undefined) backendData.phone_number = data.mobile;
       if (data.dob !== undefined) backendData.date_of_birth = data.dob;
       if (data.email !== undefined) backendData.personal_email = data.email;
+      if (data.email !== undefined) backendData.email = data.email;
       if (data.gender !== undefined) backendData.gender = data.gender.toLowerCase();
       if (data.gstNo !== undefined) backendData.gst_number = data.gstNo;
       if (data.panNo !== undefined) backendData.pan_number = data.panNo;
       if (data.address !== undefined) backendData.address = data.address;
       if (data.photoUri !== undefined) backendData.image_url = data.photoUri;
 
+      console.log('[useProfile] updateMutation payload:', backendData);
       await updateProfile(backendData);
+
+      // Return the original data so onSuccess can use it for optimistic update
+      return data;
     },
-    onSuccess: () => {
-      // Invalidate so the GET /users/profile re-fetches full updated data
+    onSuccess: (updatedData) => {
+      // Optimistically merge the new values into the cached profile immediately
+      queryClient.setQueryData<ProfileData>(['profile'], (old) => {
+        if (!old) return old;
+        return { ...old, ...updatedData };
+      });
+      // Also update the global ProfileState so all subscribers see the new image
+      const current = queryClient.getQueryData<ProfileData>(['profile']);
+      if (current) updateProfileData(current);
+      // Then invalidate so we eventually get the authoritative server data
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });

@@ -14,6 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getCompanies } from '@/services/api/company';
+import { useQuery } from '@tanstack/react-query';
+import { ActivityIndicator } from 'react-native';
 
 interface CompanyRecord {
   id: string;
@@ -22,14 +25,7 @@ interface CompanyRecord {
   initials: string;
 }
 
-const COMPANIES: CompanyRecord[] = [
-  { id: '1', name: 'Parth Pvt. Ltd.', category: 'Manufacturing', initials: 'PL' },
-  { id: '2', name: 'Acme Corporation', category: 'Manufacturing', initials: 'AC' },
-  { id: '3', name: 'Globex Inc.', category: 'Technology', initials: 'GI' },
-  { id: '4', name: 'Zenith Systems', category: 'Technology', initials: 'ZS' },
-  { id: '5', name: 'NovaTech Solutions', category: 'Services', initials: 'NT' },
-  { id: '6', name: 'Jigar Pvt. Ltd.', category: 'Manufacturing', initials: 'JL' },
-];
+const COMPANIES: CompanyRecord[] = [];
 
 export default function SelectCompanyScreen() {
   const router = useRouter();
@@ -41,11 +37,40 @@ export default function SelectCompanyScreen() {
     phone?: string;
   }>();
   const insets = useSafeAreaInsets();
-
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState(params.currentCompany || '');
 
-  const filteredCompanies = COMPANIES.filter((company) =>
+  const { data: companiesData, isLoading } = useQuery({
+    queryKey: ['companies', searchQuery],
+    queryFn: async () => {
+      const res = await getCompanies({ search: searchQuery });
+      return res;
+    },
+  });
+
+  // Extract companies list
+  let companiesList: any[] = [];
+  if (Array.isArray(companiesData)) {
+    companiesList = companiesData;
+  } else if (Array.isArray(companiesData?.data)) {
+    companiesList = companiesData.data;
+  } else if (Array.isArray(companiesData?.data?.data)) {
+    companiesList = companiesData.data.data;
+  }
+
+  // Format companies list to format of CompanyRecord
+  const formattedCompanies = companiesList.map((item: any) => {
+    const name = item.display_name || item.name || 'N/A';
+    const initials = name.slice(0, 2).toUpperCase();
+    return {
+      id: String(item.id),
+      name,
+      category: item.industry || item.gstin || 'Company',
+      initials,
+    };
+  });
+
+  const companiesToDisplay = formattedCompanies.length > 0 ? formattedCompanies : COMPANIES.filter((company) =>
     company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     company.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -56,7 +81,7 @@ export default function SelectCompanyScreen() {
       return;
     }
     // Navigate back and pass parameters
-    router.replace({
+    router.navigate({
       pathname: '/(tabs)/leads/add-lead',
       params: { 
         ...params,
@@ -114,11 +139,15 @@ export default function SelectCompanyScreen() {
           contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         >
-          {filteredCompanies.map((company) => {
+          {isLoading && companiesList.length === 0 ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
+          ) : null}
+
+          {companiesToDisplay.map((company, idx) => {
             const isSelected = selectedCompany === company.name;
             return (
               <TouchableOpacity
-                key={company.id}
+                key={company.id + '_' + idx}
                 style={[styles.companyCard, isSelected && styles.companyCardSelected]}
                 onPress={() => setSelectedCompany(company.name)}
                 activeOpacity={0.9}
@@ -141,7 +170,7 @@ export default function SelectCompanyScreen() {
             );
           })}
 
-          {filteredCompanies.length === 0 && (
+          {companiesToDisplay.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="business-outline" size={48} color="#C2D3CC" />
               <Text style={styles.emptyTitle}>No companies found</Text>
