@@ -1,10 +1,12 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -14,7 +16,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +28,9 @@ interface Attachment {
 }
 
 export default function TaskDetailsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -86,7 +91,7 @@ export default function TaskDetailsScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -99,7 +104,7 @@ export default function TaskDetailsScreen() {
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>TA</Text>
+          <Text style={{ color: theme.primaryColor }}>TA</Text>
           <Text style={{ color: COLORS.textDark }}>SK</Text>
         </Text>
         <View style={{ width: 36 }} />
@@ -116,7 +121,7 @@ export default function TaskDetailsScreen() {
             <Ionicons
               name="git-network-outline"
               size={16}
-              color={activeTab === 'RELATED' ? COLORS.primary : COLORS.textMuted}
+              color={activeTab === 'RELATED' ? theme.primaryColor : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'RELATED' && styles.tabButtonTextActive]}>
               RELATED
@@ -131,7 +136,7 @@ export default function TaskDetailsScreen() {
             <Ionicons
               name="list-outline"
               size={16}
-              color={activeTab === 'DETAILS' ? COLORS.primary : COLORS.textMuted}
+              color={activeTab === 'DETAILS' ? theme.primaryColor : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'DETAILS' && styles.tabButtonTextActive]}>
               DETAILS
@@ -182,7 +187,7 @@ export default function TaskDetailsScreen() {
                 <Text style={styles.sectionTitle}>NOTES</Text>
               </View>
               <TouchableOpacity style={styles.plusBtn} onPress={() => setNoteModalVisible(true)} activeOpacity={0.7}>
-                <Ionicons name="add" size={16} color={COLORS.primary} />
+                <Ionicons name="add" size={16} color={theme.primaryColor} />
               </TouchableOpacity>
             </View>
 
@@ -200,7 +205,7 @@ export default function TaskDetailsScreen() {
             {/* Add More Notes Empty State Card */}
             <View style={styles.emptyStateCard}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="document-text-outline" size={24} color={COLORS.primary} />
+                <Ionicons name="document-text-outline" size={24} color={theme.primaryColor} />
               </View>
               <Text style={styles.emptyStateTitle}>Add more notes</Text>
               <Text style={styles.emptyStateDesc}>
@@ -218,7 +223,7 @@ export default function TaskDetailsScreen() {
                 <Text style={styles.sectionTitle}>ATTACHMENTS</Text>
               </View>
               <TouchableOpacity style={styles.plusBtn} onPress={handleAddAttachment} activeOpacity={0.7}>
-                <Ionicons name="add" size={16} color={COLORS.primary} />
+                <Ionicons name="add" size={16} color={theme.primaryColor} />
               </TouchableOpacity>
             </View>
 
@@ -242,7 +247,7 @@ export default function TaskDetailsScreen() {
             {/* No More Attachments Empty State Card */}
             <View style={styles.emptyStateCard}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="attach-outline" size={24} color={COLORS.primary} />
+                <Ionicons name="attach-outline" size={24} color={theme.primaryColor} />
               </View>
               <Text style={styles.emptyStateTitle}>No more attachments</Text>
               <Text style={styles.emptyStateDesc}>
@@ -264,7 +269,7 @@ export default function TaskDetailsScreen() {
               <Switch
                 value={showAllFields}
                 onValueChange={setShowAllFields}
-                trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+                trackColor={{ false: '#D1D5DB', true: theme.primaryColor }}
                 thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
               />
             </View>
@@ -392,11 +397,11 @@ export default function TaskDetailsScreen() {
         </TouchableOpacity>
       </Modal>
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -458,13 +463,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabButtonTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 50,
+    paddingBottom: 150,
   },
   tabContentContainer: {
     gap: 5,
@@ -528,7 +533,7 @@ const styles = StyleSheet.create({
   verticalGreenLine: {
     width: 3,
     height: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
   },
   sectionTitle: {
@@ -769,7 +774,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
   },
   modalBtnApply: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   modalBtnApplyText: {
     color: '#FFFFFF',

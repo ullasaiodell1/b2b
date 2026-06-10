@@ -1,5 +1,6 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useLogout } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { clearAuthData } from '@/utils/storage';
@@ -7,23 +8,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
 export default function ProfileScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, isLoading, isFetching, refetch } = useProfile();
@@ -39,7 +45,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={theme.primaryColor} />
       </View>
     );
   }
@@ -49,8 +55,8 @@ export default function ProfileScreen() {
     // Convert ISO "YYYY-MM-DD" to "DD MMM YYYY"
     if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
       const [y, m, d] = dob.split('-').map(Number);
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return `${String(d).padStart(2,'0')} ${months[m-1]} ${y}`;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`;
     }
     return dob;
   };
@@ -91,7 +97,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader title="Profile" showSearch={false} />
@@ -101,7 +107,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
         }
       >
 
@@ -228,11 +234,11 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -262,12 +268,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     gap: 5,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Profile Green Card
   profileCard: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',

@@ -1,5 +1,7 @@
 import CustomHeader from '@/components/custom/CustomHeader';
+import QuickBall from '@/components/custom/QuickBall';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useAppPermissions } from '@/hooks/useAppPermissions';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +18,7 @@ import {
   Text,
   TouchableOpacity,
   View
-} from 'react-native';
+, KeyboardAvoidingView, Platform} from 'react-native';
 import {
   BarChart,
   LineChart,
@@ -25,7 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const CHART_WIDTH = width - 36; // card padding 18*2 + scroll padding 0*2
+const CHART_WIDTH = width - 36;
 
 // ── FALLBACK/MOCK DATA ────────────────────────────────
 
@@ -44,32 +46,42 @@ const LEAD_DATA_MOCK = {
   },
 };
 
-// ── Shared chart config ───────────────────────────────
-
-const chartConfig = {
-  backgroundGradientFrom: '#FFFFFF',
-  backgroundGradientTo: '#FFFFFF',
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(52, 101, 86, ${opacity})`,
-  labelColor: () => COLORS.textMuted,
-  style: { borderRadius: 12 },
-  propsForDots: {
-    r: '4',
-    strokeWidth: '2',
-    stroke: COLORS.primary,
-  },
-  propsForBackgroundLines: {
-    strokeDasharray: '',
-    stroke: '#EDF2F0',
-    strokeWidth: 1,
-  },
-};
-
 // ── Main Screen ────────────────────────────────────────
 
 export default function HomeScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const insets = useSafeAreaInsets();
   const [leadFilter, setLeadFilter] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
+  const { primaryColor } = useTheme();
+
+  // Build chartConfig inside render so it reacts to primaryColor changes
+  const chartConfig = {
+    backgroundGradientFrom: '#FFFFFF',
+    backgroundGradientTo: '#FFFFFF',
+    decimalPlaces: 0,
+    color: (opacity = 1) => {
+      // Convert primaryColor hex to rgba
+      const hex = primaryColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    },
+    labelColor: () => COLORS.textMuted,
+    style: { borderRadius: 12 },
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: primaryColor,
+    },
+    propsForBackgroundLines: {
+      strokeDasharray: '',
+      stroke: '#EDF2F0',
+      strokeWidth: 1,
+    },
+  };
 
   const { requestAllPermissions } = useAppPermissions();
 
@@ -97,18 +109,18 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
         <CustomHeader title="Home" showSearch={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={primaryColor} />
           <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>
             Loading dashboard data...
           </Text>
         </View>
-      </View>
-    );
-  }
+      </KeyboardAvoidingView>
+  );
+}
 
   // ── Parsed API Data / Fallbacks ────────────────────────
   const totalVisits = apiData?.total_visits ?? 0;
@@ -162,7 +174,7 @@ export default function HomeScreen() {
     {
       name: 'Leads',
       population: displayLeads,
-      color: COLORS.primary,
+      color: primaryColor,
       legendFontColor: COLORS.textDark,
       legendFontSize: 13,
     },
@@ -207,12 +219,12 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isFetching}
             onRefresh={refetch}
-            colors={[COLORS.primary]}
+            colors={[primaryColor]}
           />
         }
       >
         {/* Total Visit Hero Card */}
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: primaryColor }]}>
           <View style={styles.heroCircle1} />
           <View style={styles.heroCircle2} />
           <Text style={styles.heroLabel}>Total Visit</Text>
@@ -234,7 +246,7 @@ export default function HomeScreen() {
                   style={[styles.tabBtn, isActive && styles.tabBtnActive]}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                  <Text style={[styles.tabBtnText, isActive && { color: primaryColor, fontWeight: '800' }]}>
                     {filter}
                   </Text>
                 </TouchableOpacity>
@@ -289,7 +301,7 @@ export default function HomeScreen() {
 
           {/* Extra ratio callout */}
           <View style={styles.ratioCallout}>
-            <Text style={styles.ratioValue}>{averageRatio}</Text>
+            <Text style={[styles.ratioValue, { color: primaryColor }]}>{averageRatio}</Text>
             <Text style={styles.ratioLabel}>Average Conversion Ratio</Text>
           </View>
         </View>
@@ -332,7 +344,7 @@ export default function HomeScreen() {
             {[
               { label: 'Pending', count: barPending, color: COLORS.peach },
               { label: 'Confirmed', count: barConfirmed, color: COLORS.darkBrown },
-              { label: 'Completed', count: barCompleted, color: COLORS.primary },
+              { label: 'Completed', count: barCompleted, color: primaryColor },
             ].map((item) => (
               <View key={item.label} style={styles.barLegendItem}>
                 <View style={[styles.legendDot, { backgroundColor: item.color }]} />
@@ -343,13 +355,16 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Quick Ball / Smart Toolbox (shows only on home screen) */}
+      <QuickBall />
     </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -407,7 +422,6 @@ const styles = StyleSheet.create({
 
   // ── Hero Card ──
   heroCard: {
-    backgroundColor: COLORS.primary,
     borderRadius: 16,
     padding: 24,
     height: 120,
@@ -491,7 +505,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabBtnTextActive: {
-    color: COLORS.primary,
     fontWeight: '800',
   },
 
@@ -533,7 +546,6 @@ const styles = StyleSheet.create({
   ratioValue: {
     fontSize: 26,
     fontWeight: '800',
-    color: COLORS.primary,
   },
   ratioLabel: {
     fontSize: 12,

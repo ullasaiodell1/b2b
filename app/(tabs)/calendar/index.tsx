@@ -16,8 +16,9 @@ import {
   TextInput,
   TouchableOpacity,
   View
-} from 'react-native';
+, KeyboardAvoidingView} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
 
 const isSameDay = (d1: Date, d2: Date) => {
   return (
@@ -82,6 +83,9 @@ const INITIAL_TASKS = [
 ];
 
 export default function CalendarScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const today = new Date();
@@ -174,7 +178,7 @@ export default function CalendarScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* Custom navigation bar header */}
@@ -207,7 +211,7 @@ export default function CalendarScreen() {
             <Text style={styles.calendarHeaderTitle}>
               {selectedDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}
             </Text>
-            <Ionicons name="calendar-outline" size={15} color={COLORS.primary} style={{ marginLeft: 6 }} />
+            <Ionicons name="calendar-outline" size={15} color={theme.primaryColor} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
           {!isSameDay(selectedDate, today) && (
             <TouchableOpacity
@@ -215,7 +219,7 @@ export default function CalendarScreen() {
               style={styles.todayResetBtn}
               activeOpacity={0.7}
             >
-              <Ionicons name="refresh-outline" size={13} color={COLORS.primary} style={{ marginRight: 3 }} />
+              <Ionicons name="refresh-outline" size={13} color={theme.primaryColor} style={{ marginRight: 3 }} />
               <Text style={styles.todayResetText}>Today</Text>
             </TouchableOpacity>
           )}
@@ -486,11 +490,11 @@ export default function CalendarScreen() {
           />
         )
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -515,7 +519,7 @@ const styles = StyleSheet.create({
   todayResetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 12,
@@ -523,7 +527,7 @@ const styles = StyleSheet.create({
   todayResetText: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   monthHeaderBtn: {
     flexDirection: 'row',
@@ -551,13 +555,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalDoneBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,
-    shadowColor: '#000000',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -792,10 +796,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

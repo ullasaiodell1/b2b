@@ -1,21 +1,23 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useUsers } from '@/hooks/useLeads';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUsers } from '@/hooks/useLeads';
 
 interface OwnerRecord {
   id: string;
@@ -27,6 +29,9 @@ interface OwnerRecord {
 const OWNERS: OwnerRecord[] = [];
 
 export default function SelectOwnerScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     currentOwner?: string;
@@ -45,11 +50,11 @@ export default function SelectOwnerScreen() {
 
   const dynamicOwners = usersData && usersData.length > 0
     ? usersData.map((u: any) => ({
-        id: String(u.id),
-        name: u.name,
-        email: u.email,
-        avatar: require('@/assets/images/lead_avatar.png'),
-      }))
+      id: String(u.id),
+      name: u.name,
+      email: u.email,
+      avatar: require('@/assets/images/lead_avatar.png'),
+    }))
     : OWNERS;
 
   const filteredOwners = dynamicOwners.filter((owner: OwnerRecord) =>
@@ -65,7 +70,7 @@ export default function SelectOwnerScreen() {
     // Navigate back and pass parameters
     router.navigate({
       pathname: '/(tabs)/leads/add-lead',
-      params: { 
+      params: {
         ...params,
         owner: selectedOwnerName,
         ownerId: selectedOwnerId,
@@ -74,13 +79,13 @@ export default function SelectOwnerScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -89,19 +94,19 @@ export default function SelectOwnerScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD LEAD </Text>
+            <Text style={{ color: theme.primaryColor }}>ADD LEAD </Text>
             <Text style={{ color: COLORS.textDark }}>OWNER</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
         </View>
 
         {/* Right Plus Action */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.plusBtn}
           onPress={() => Alert.alert('Create Owner', 'Create new owner profile details...')}
           activeOpacity={0.7}
         >
-          <Ionicons name="add" size={20} color={COLORS.primary} />
+          <Ionicons name="add" size={20} color={theme.primaryColor} />
         </TouchableOpacity>
       </View>
 
@@ -124,7 +129,7 @@ export default function SelectOwnerScreen() {
         </View>
 
         {/* Owners List */}
-        <ScrollView 
+        <ScrollView
           style={styles.scroll}
           contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
@@ -168,19 +173,19 @@ export default function SelectOwnerScreen() {
 
       {/* Select Owner Button */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
-        <TouchableOpacity 
-          style={styles.selectBtn} 
+        <TouchableOpacity
+          style={styles.selectBtn}
           onPress={handleSelect}
           activeOpacity={0.85}
         >
           <Text style={styles.selectBtnText}>Select Lead Owner</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -278,9 +283,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   ownerCardSelected: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderWidth: 1.5,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOpacity: 0.08,
     elevation: 2,
   },
@@ -315,14 +320,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderWidth: 1.5,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   bottomStickyBar: {
     position: 'absolute',

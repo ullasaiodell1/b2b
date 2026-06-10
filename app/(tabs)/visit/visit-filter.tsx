@@ -1,23 +1,28 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Platform,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
 const STATUSES = ['Complete', 'Draft', 'Pending', 'Bounce'];
 
 export default function VisitFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string; company?: string; dateRange?: string }>();
   const insets = useSafeAreaInsets();
@@ -49,13 +54,13 @@ export default function VisitFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -63,14 +68,14 @@ export default function VisitFilterScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>VISIT </Text>
+          <Text style={{ color: theme.primaryColor }}>VISIT </Text>
           <Text style={{ color: COLORS.textDark }}>FILTER</Text>
         </Text>
 
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -94,7 +99,7 @@ export default function VisitFilterScreen() {
           </View>
 
           <View style={styles.dateSelectorRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.datePickerTrigger}
               onPress={() => setDateModalVisible(true)}
               activeOpacity={0.85}
@@ -103,7 +108,7 @@ export default function VisitFilterScreen() {
               <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dateResetBtn}
               onPress={() => setSelectedDateRange('28 Dec 22 – 10 Jan 23')}
               activeOpacity={0.8}
@@ -150,7 +155,7 @@ export default function VisitFilterScreen() {
             <View style={styles.separatorLine} />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.companyDropdownTrigger}
             onPress={() => setCompanyModalVisible(true)}
             activeOpacity={0.85}
@@ -165,7 +170,7 @@ export default function VisitFilterScreen() {
 
       {/* FOOTER BUTTONS */}
       <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => router.back()}
           activeOpacity={0.8}
@@ -173,7 +178,7 @@ export default function VisitFilterScreen() {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.applyButton}
           onPress={handleApplyFilter}
           activeOpacity={0.85}
@@ -184,7 +189,7 @@ export default function VisitFilterScreen() {
 
       {/* COMPANY SELECTION MODAL */}
       <Modal transparent animationType="slide" visible={companyModalVisible}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setCompanyModalVisible(false)}
@@ -218,7 +223,7 @@ export default function VisitFilterScreen() {
 
       {/* DATE SELECTION MODAL */}
       <Modal transparent animationType="fade" visible={dateModalVisible}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setDateModalVisible(false)}
@@ -249,11 +254,11 @@ export default function VisitFilterScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -299,7 +304,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 3,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
     marginRight: 8,
   },
@@ -403,13 +408,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOutlineActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   checkboxCheckedInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
 
   // Company selection dropdown styling
@@ -463,7 +468,7 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     height: 44,
     alignItems: 'center',

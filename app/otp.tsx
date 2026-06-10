@@ -17,12 +17,16 @@ import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from 'expo-router';
 import { useOTPVerification, useResendOTP } from '@/hooks/useAuth';
 import { saveAuthToken, saveUserData } from '@/utils/storage';
+import { useTheme } from '@/hooks/use-theme';
 
 const { width, height } = Dimensions.get('window');
 
 const OTP_LENGTH = 6;
 
 export default function OtpScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const { code: mobileNumber, token: initialToken, password } = useLocalSearchParams<{ code: string; token: string; password?: string }>();
   const [verificationToken, setVerificationToken] = useState(initialToken || '');
@@ -182,7 +186,7 @@ export default function OtpScreen() {
             <Text style={styles.sheetTitle}>Verify OTP</Text>
             <Text style={styles.sheetSub}>
               Enter the {OTP_LENGTH}-digit verification code sent to your mobile number:
-              <Text style={{ fontWeight: '700', color: COLORS.primary }}> +91 {mobileNumber}</Text>
+              <Text style={{ fontWeight: '700', color: theme.primaryColor }}> +91 {mobileNumber}</Text>
             </Text>
 
             {/* OTP Boxes */}
@@ -256,7 +260,7 @@ export default function OtpScreen() {
 
 const BOX_SIZE = (width - 48 - 32) / OTP_LENGTH;
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1 },
 
   backdrop: {
@@ -312,7 +316,7 @@ const styles = StyleSheet.create({
     color: '#0D0F0E',
   },
   otpBoxFilled: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     backgroundColor: '#F0FDF4',
   },
   otpBoxError: {
@@ -328,12 +332,12 @@ const styles = StyleSheet.create({
   },
 
   verifyBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     height: 52,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -343,7 +347,7 @@ const styles = StyleSheet.create({
 
   resendBtn: { alignSelf: 'center', paddingVertical: 6 },
   resendText: { fontSize: 13, color: COLORS.textMuted },
-  resendHighlight: { color: COLORS.primary, fontWeight: '700' },
+  resendHighlight: { color: theme.primaryColor, fontWeight: '700' },
 
   // Success state
   successContainer: {
@@ -355,10 +359,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

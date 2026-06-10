@@ -1,44 +1,38 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useQuotations } from '@/hooks/useQuotations';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView, Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type TabType = 'ALL' | 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED';
 
-const STATUS_TABS: { key: TabType; label: string; color: string }[] = [
-  { key: 'ALL',      label: 'All',      color: COLORS.primary },
-  { key: 'DRAFT',    label: 'Draft',    color: '#6B7280' },
-  { key: 'SENT',     label: 'Sent',     color: '#F59E0B' },
-  { key: 'ACCEPTED', label: 'Accepted', color: '#10B981' },
-  { key: 'REJECTED', label: 'Rejected', color: '#EF4444' },
-];
-
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT:           '#6B7280',
-  SENT:            '#F59E0B',
-  VIEWED:          '#3B82F6',
-  ACCEPTED:        '#10B981',
-  REJECTED:        '#EF4444',
-  EXPIRED:         '#9CA3AF',
-  REVISED:         '#8B5CF6',
-  CANCELLED:       '#EF4444',
-  APPROVED:        '#10B981',
-  ORDER_CREATED:   '#0EA5E9',
-  PROFORMA_CREATED:'#6366F1',
+  DRAFT: '#6B7280',
+  SENT: '#F59E0B',
+  VIEWED: '#3B82F6',
+  ACCEPTED: '#10B981',
+  REJECTED: '#EF4444',
+  EXPIRED: '#9CA3AF',
+  REVISED: '#8B5CF6',
+  CANCELLED: '#EF4444',
+  APPROVED: '#10B981',
+  ORDER_CREATED: '#0EA5E9',
+  PROFORMA_CREATED: '#6366F1',
 };
 
 function formatAmount(amount?: number) {
@@ -58,6 +52,17 @@ function formatDate(dateStr?: string) {
 }
 
 export default function QuotationScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
+  const STATUS_TABS: { key: TabType; label: string; color: string }[] = [
+    { key: 'ALL', label: 'All', color: theme.primaryColor },
+    { key: 'DRAFT', label: 'Draft', color: '#6B7280' },
+    { key: 'SENT', label: 'Sent', color: '#F59E0B' },
+    { key: 'ACCEPTED', label: 'Accepted', color: '#10B981' },
+    { key: 'REJECTED', label: 'Rejected', color: '#EF4444' },
+  ];
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -90,7 +95,7 @@ export default function QuotationScreen() {
       : quotations.filter((q) => q.status === tab).length;
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
       <CustomHeader title="Quotation" showSearch={false} />
 
@@ -151,7 +156,7 @@ export default function QuotationScreen() {
       {/* LIST */}
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={theme.primaryColor} />
           <Text style={styles.loaderText}>Loading quotations...</Text>
         </View>
       ) : (
@@ -159,7 +164,7 @@ export default function QuotationScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+            <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
           }
         >
           {filtered.map((item, index) => {
@@ -260,11 +265,11 @@ export default function QuotationScreen() {
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bgPage },
 
   searchSection: {
@@ -375,10 +380,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

@@ -1,18 +1,20 @@
 import { OrderRecord, ordersState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,6 +36,9 @@ const DOCUMENTS = [
 ];
 
 export default function OrderDetailsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -63,7 +68,7 @@ export default function OrderDetailsScreen() {
   if (!order) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={theme.primaryColor} />
       </View>
     );
   }
@@ -97,7 +102,7 @@ export default function OrderDetailsScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── 1. HEADER ROW ─────────────────────────── */}
@@ -106,7 +111,7 @@ export default function OrderDetailsScreen() {
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>ORDER </Text>
+          <Text style={{ color: theme.primaryColor }}>ORDER </Text>
           <Text style={{ color: COLORS.textDark }}>DETAILS</Text>
         </Text>
         <View style={{ width: 38 }} />
@@ -215,12 +220,12 @@ export default function OrderDetailsScreen() {
           </View>
           <View style={styles.downloadIconCircle}>
             {downloading ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <ActivityIndicator size="small" color={theme.primaryColor} />
             ) : (
               <Ionicons
                 name={downloadSuccess ? "checkmark" : "download-outline"}
                 size={16}
-                color={COLORS.primary}
+                color={theme.primaryColor}
               />
             )}
           </View>
@@ -231,7 +236,7 @@ export default function OrderDetailsScreen() {
           {DOCUMENTS.map((doc, index) => (
             <View key={index} style={styles.docCard}>
               <View style={styles.docHeader}>
-                <Ionicons name={doc.icon as any} size={22} color={COLORS.primary} />
+                <Ionicons name={doc.icon as any} size={22} color={theme.primaryColor} />
                 <View style={styles.docTitles}>
                   <Text style={styles.docLabelText}>{doc.label}</Text>
                   <Text style={styles.docDescText}>{doc.desc}</Text>
@@ -242,18 +247,18 @@ export default function OrderDetailsScreen() {
                 activeOpacity={0.8}
                 onPress={handleDownload}
               >
-                <Ionicons name="download-outline" size={13} color={COLORS.primary} />
+                <Ionicons name="download-outline" size={13} color={theme.primaryColor} />
                 <Text style={styles.docBtnText}>Download</Text>
               </TouchableOpacity>
             </View>
           ))}
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -292,7 +297,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     gap: 5,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Item Card
@@ -395,7 +400,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     paddingLeft: 8,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
+    borderLeftColor: theme.primaryColor,
   },
   sectionLine: {
     flex: 1,
@@ -479,7 +484,7 @@ const styles = StyleSheet.create({
 
   // Total Box
   totalBox: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 44,
     flexDirection: 'row',
@@ -577,6 +582,6 @@ const styles = StyleSheet.create({
   docBtnText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 });

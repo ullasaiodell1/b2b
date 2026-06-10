@@ -1,10 +1,12 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   PermissionsAndroid,
   Platform,
   StatusBar,
@@ -12,7 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // Fallback to dynamic import to prevent bundling crashes on unsupported platforms
@@ -110,6 +112,9 @@ const MOCK_CALL_LOGS: CallRecord[] = [
 ];
 
 export default function CallHistoryScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const [activeTab, setActiveTab] = useState<CallType>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -219,7 +224,7 @@ export default function CallHistoryScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
       <CustomHeader title="Call History" showSearch={false} />
 
@@ -270,7 +275,7 @@ export default function CallHistoryScreen() {
 
           <TouchableOpacity onPress={handleResetDate} style={styles.resetBtn}>
             <Text style={styles.resetBtnText}>Reset</Text>
-            <Ionicons name="refresh-outline" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+            <Ionicons name="refresh-outline" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
       </View>
@@ -278,7 +283,7 @@ export default function CallHistoryScreen() {
       {/* ── LIST OR LOADING ────────────────────────── */}
       {loading ? (
         <View style={styles.loadingArea}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={theme.primaryColor} />
           <Text style={styles.loadingText}>Syncing Android Call Logs...</Text>
         </View>
       ) : (
@@ -324,11 +329,11 @@ export default function CallHistoryScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -412,7 +417,7 @@ const styles = StyleSheet.create({
   resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
@@ -420,7 +425,7 @@ const styles = StyleSheet.create({
   resetBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // List Items
@@ -517,13 +522,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 30,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,

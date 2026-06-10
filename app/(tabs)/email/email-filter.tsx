@@ -1,24 +1,29 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Platform,
-  Modal,
   BackHandler,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
 const STATUSES = ['Opened', 'Sent', 'Draft', 'Bounce'];
 
 export default function EmailFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string; company?: string; referrer?: string }>();
   const insets = useSafeAreaInsets();
@@ -77,13 +82,13 @@ export default function EmailFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={handleBack}
           activeOpacity={0.7}
         >
@@ -91,14 +96,14 @@ export default function EmailFilterScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>EMAIL </Text>
+          <Text style={{ color: theme.primaryColor }}>EMAIL </Text>
           <Text style={{ color: COLORS.textDark }}>FILTER</Text>
         </Text>
 
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -150,7 +155,7 @@ export default function EmailFilterScreen() {
             <View style={styles.separatorLine} />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.companyDropdownTrigger}
             onPress={() => setCompanyModalVisible(true)}
             activeOpacity={0.85}
@@ -165,7 +170,7 @@ export default function EmailFilterScreen() {
 
       {/* FOOTER BUTTONS */}
       <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.cancelButton}
           onPress={handleBack}
           activeOpacity={0.8}
@@ -173,7 +178,7 @@ export default function EmailFilterScreen() {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.applyButton}
           onPress={handleApplyFilter}
           activeOpacity={0.85}
@@ -184,7 +189,7 @@ export default function EmailFilterScreen() {
 
       {/* COMPANY SELECTION MODAL */}
       <Modal transparent animationType="slide" visible={companyModalVisible}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setCompanyModalVisible(false)}
@@ -215,11 +220,11 @@ export default function EmailFilterScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -265,7 +270,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 3,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
     marginRight: 8,
   },
@@ -327,13 +332,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOutlineActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   checkboxCheckedInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   companyDropdownTrigger: {
     flexDirection: 'row',
@@ -383,7 +388,7 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     height: 44,
     alignItems: 'center',

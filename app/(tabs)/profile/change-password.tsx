@@ -1,22 +1,27 @@
 import { COLORS } from '@/constants/theme';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
+import { useProfile } from '@/hooks/useProfile';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useProfile } from '@/hooks/useProfile';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function ChangePasswordScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const navigation = useNavigation<any>();
   const { updateProfile: mutateProfile, isUpdating } = useProfile();
 
@@ -64,7 +69,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -155,11 +160,11 @@ export default function ChangePasswordScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles: any = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -200,7 +205,7 @@ const styles: any = StyleSheet.create({
   scrollContent: {
     padding: 20,
     gap: 24,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Lock badge
@@ -264,12 +269,12 @@ const styles: any = StyleSheet.create({
 
   // Button
   saveBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 12,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 10,

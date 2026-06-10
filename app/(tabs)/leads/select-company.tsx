@@ -1,22 +1,24 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { getCompanies } from '@/services/api/company';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
+  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCompanies } from '@/services/api/company';
-import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator } from 'react-native';
 
 interface CompanyRecord {
   id: string;
@@ -28,6 +30,9 @@ interface CompanyRecord {
 const COMPANIES: CompanyRecord[] = [];
 
 export default function SelectCompanyScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     currentCompany?: string;
@@ -83,7 +88,7 @@ export default function SelectCompanyScreen() {
     // Navigate back and pass parameters
     router.navigate({
       pathname: '/(tabs)/leads/add-lead',
-      params: { 
+      params: {
         ...params,
         company: selectedCompany,
       },
@@ -91,13 +96,13 @@ export default function SelectCompanyScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -106,7 +111,7 @@ export default function SelectCompanyScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: theme.primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>COMPANY</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -134,13 +139,13 @@ export default function SelectCompanyScreen() {
         </View>
 
         {/* Companies List */}
-        <ScrollView 
+        <ScrollView
           style={styles.scroll}
           contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         >
           {isLoading && companiesList.length === 0 ? (
-            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
+            <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginVertical: 20 }} />
           ) : null}
 
           {companiesToDisplay.map((company, idx) => {
@@ -182,19 +187,19 @@ export default function SelectCompanyScreen() {
 
       {/* Select Company Button */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
-        <TouchableOpacity 
-          style={styles.selectBtn} 
+        <TouchableOpacity
+          style={styles.selectBtn}
           onPress={handleSelect}
           activeOpacity={0.85}
         >
           <Text style={styles.selectBtnText}>Select Company</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -282,9 +287,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   companyCardSelected: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderWidth: 1.5,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOpacity: 0.08,
     elevation: 2,
   },
@@ -326,14 +331,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderWidth: 1.5,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   bottomStickyBar: {
     position: 'absolute',

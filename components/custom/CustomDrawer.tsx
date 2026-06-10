@@ -1,4 +1,5 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useDrawer } from '@/hooks/useDrawer';
 import { useTabs } from '@/hooks/useTabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,11 +24,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function CustomDrawer() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const pathname = usePathname();
   const { isOpen: open, closeDrawer } = useDrawer();
   const { tabs: configuredTabs, updateConfiguredTabs, allModules: ALL_TAB_MODULES } = useTabs();
   const [rendered, setRendered] = useState(open);
   const [searchQuery, setSearchQuery] = useState('');
+  const { primaryColor } = useTheme();
 
   // Accordion Expand/Collapse States
   const [salesExpanded, setSalesExpanded] = useState(true);
@@ -190,7 +195,7 @@ export default function CustomDrawer() {
         {/* Header Title with X button */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary, fontWeight: '800' }}>More </Text>
+            <Text style={{ color: primaryColor, fontWeight: '800' }}>More </Text>
             <Text style={{ color: COLORS.textDark, fontWeight: '800' }}>Option</Text>
           </Text>
           <TouchableOpacity onPress={closeDrawer} style={styles.closeBtn} activeOpacity={0.7}>
@@ -227,21 +232,21 @@ export default function CustomDrawer() {
             onPress={() => handleRowPress('profile')}
             activeOpacity={0.7}
           >
-            <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="person-outline" size={20} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickActionBox}
             onPress={() => handleRowPress('settings')}
             activeOpacity={0.7}
           >
-            <Ionicons name="settings-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="settings-outline" size={20} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickActionBox}
             onPress={() => handleRowPress('company')}
             activeOpacity={0.7}
           >
-            <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="information-circle-outline" size={20} color={primaryColor} />
           </TouchableOpacity>
         </View>
 
@@ -259,7 +264,7 @@ export default function CustomDrawer() {
                   <Ionicons name="calendar-outline" size={20} color={COLORS.textDark} style={styles.rowIcon} />
                   <Text style={styles.rowLabel}>Calender</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+                <Ionicons name="chevron-forward" size={18} color={primaryColor} />
               </TouchableOpacity>
             )}
 
@@ -274,7 +279,7 @@ export default function CustomDrawer() {
                   <Ionicons name="home-outline" size={20} color={COLORS.textDark} style={styles.rowIcon} />
                   <Text style={styles.rowLabel}>Home</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+                <Ionicons name="chevron-forward" size={18} color={primaryColor} />
               </TouchableOpacity>
             )}
 
@@ -286,7 +291,7 @@ export default function CustomDrawer() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.accordionTitle}>Sales</Text>
-                <Ionicons name={salesExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.primary} />
+                <Ionicons name={salesExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={primaryColor} />
               </TouchableOpacity>
 
               {salesExpanded && (
@@ -302,7 +307,7 @@ export default function CustomDrawer() {
                         <Ionicons name="people-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Leads</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -317,7 +322,7 @@ export default function CustomDrawer() {
                         <Ionicons name="business-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Company</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -332,7 +337,7 @@ export default function CustomDrawer() {
                         <Ionicons name="cart-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Orders</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -347,7 +352,7 @@ export default function CustomDrawer() {
                         <Ionicons name="document-attach-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Quotations</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -362,7 +367,7 @@ export default function CustomDrawer() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.accordionTitle}>Activities</Text>
-                <Ionicons name={activitiesExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.primary} />
+                <Ionicons name={activitiesExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={primaryColor} />
               </TouchableOpacity>
 
               {activitiesExpanded && (
@@ -378,7 +383,7 @@ export default function CustomDrawer() {
                         <Ionicons name="call-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Calls</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -393,7 +398,7 @@ export default function CustomDrawer() {
                         <Ionicons name="videocam-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Meetings</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -408,7 +413,7 @@ export default function CustomDrawer() {
                         <Ionicons name="checkmark-done-circle-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Tasks</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -423,7 +428,7 @@ export default function CustomDrawer() {
                         <Ionicons name="location-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Visits</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -438,7 +443,7 @@ export default function CustomDrawer() {
                         <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Emails</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={theme.primaryColor} />
                     </TouchableOpacity>
                   )*/}
 
@@ -453,7 +458,7 @@ export default function CustomDrawer() {
                         <Ionicons name="finger-print-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Attendance</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -468,7 +473,7 @@ export default function CustomDrawer() {
                         <Ionicons name="person-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Profile</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
 
@@ -483,7 +488,7 @@ export default function CustomDrawer() {
                         <Ionicons name="settings-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
                         <Text style={styles.rowLabel}>Settings</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -501,7 +506,7 @@ export default function CustomDrawer() {
                   <Ionicons name="settings-outline" size={20} color={COLORS.textDark} style={styles.rowIcon} />
                   <Text style={styles.rowLabel}>Settings</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+                <Ionicons name="chevron-forward" size={18} color={primaryColor} />
               </TouchableOpacity>
             )}
 
@@ -516,7 +521,7 @@ export default function CustomDrawer() {
                   <Ionicons name="information-circle-outline" size={20} color={COLORS.textDark} style={styles.rowIcon} />
                   <Text style={styles.rowLabel}>Company Information</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+                <Ionicons name="chevron-forward" size={18} color={primaryColor} />
               </TouchableOpacity>
             )}
 
@@ -562,7 +567,7 @@ export default function CustomDrawer() {
             </TouchableOpacity>
             <Text style={styles.editHeaderTitle}>Edit Navigation</Text>
             <TouchableOpacity onPress={handleSaveNavigation} style={styles.editHeaderBtn} activeOpacity={0.7}>
-              <Ionicons name="checkmark" size={26} color="#007AFF" />
+              <Ionicons name="checkmark" size={26} color={primaryColor} />
             </TouchableOpacity>
           </View>
 
@@ -652,7 +657,7 @@ export default function CustomDrawer() {
 
                     {/* Drag lines (only for selected) */}
                     {isSelected && (
-                      <Ionicons name="reorder-two-outline" size={24} color="#007AFF" />
+                      <Ionicons name="reorder-two-outline" size={24} color={primaryColor} />
                     )}
                   </TouchableOpacity>
                 );
@@ -666,7 +671,7 @@ export default function CustomDrawer() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.backdrop,
@@ -951,7 +956,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },

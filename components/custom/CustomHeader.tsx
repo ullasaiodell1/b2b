@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
 
 const LogoImage = require('@/assets/images/icon.png');
 
@@ -34,6 +35,9 @@ export default function CustomHeader({
   showBack = false,
   onBackPress,
 }: CustomHeaderProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const slideAnim = useRef(new Animated.Value(-60)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -118,7 +122,7 @@ export default function CustomHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   headerWrapper: {
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 20,
@@ -219,16 +223,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: COLORS.avatarBg,
+    backgroundColor: theme.avatarBg,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   avatarInitials: {
     fontSize: 13,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   searchBar: {
     flexDirection: 'row',

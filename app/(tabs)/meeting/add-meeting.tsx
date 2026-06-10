@@ -1,5 +1,6 @@
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useCreateMeeting } from '@/hooks/useMeetings';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -7,18 +8,19 @@ import * as Calendar from 'expo-calendar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,10 +32,14 @@ const METHOD_OPTIONS = ['Online', 'Offline'] as const;
 type MeetingMethod = typeof METHOD_OPTIONS[number];
 
 export default function AddMeetingScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ leadId?: string; leadName?: string; company?: string }>();
   const insets = useSafeAreaInsets();
   const createMeetingMutation = useCreateMeeting();
+  const { primaryColor, primaryLight } = useTheme();
 
   // ─── Form State ────────────────────────────────────────────────
   const [syncToCalendar, setSyncToCalendar] = useState(true);
@@ -136,7 +142,7 @@ export default function AddMeetingScreen() {
   const isLoading = createMeetingMutation.isPending;
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ──────────────────────────────────── */}
@@ -148,7 +154,7 @@ export default function AddMeetingScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>MEETING</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill in the Details Below</Text>
@@ -164,13 +170,13 @@ export default function AddMeetingScreen() {
         {/* ── Sync Toggle ─────────────────────────── */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleLeft}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+            <Ionicons name="calendar-outline" size={16} color={primaryColor} />
             <Text style={styles.toggleLabel}>Sync with System Calendar</Text>
           </View>
           <Switch
             value={syncToCalendar}
             onValueChange={setSyncToCalendar}
-            trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+            trackColor={{ false: '#D1D5DB', true: primaryColor }}
             thumbColor="#FFFFFF"
           />
         </View>
@@ -185,14 +191,14 @@ export default function AddMeetingScreen() {
             </Text>
             {/* Dropdown trigger */}
             <TouchableOpacity
-              style={[styles.inputRow, statusDropdownOpen && styles.inputRowFocused]}
+              style={[styles.inputRow, statusDropdownOpen && { borderColor: primaryColor, backgroundColor: primaryLight }]}
               onPress={() => setStatusDropdownOpen(!statusDropdownOpen)}
               activeOpacity={0.8}
             >
               <Ionicons
                 name="ellipse-outline"
                 size={16}
-                color={status ? COLORS.primary : COLORS.textMuted}
+                color={status ? primaryColor : COLORS.textMuted}
                 style={styles.inputIcon}
               />
               <Text style={[styles.textInput, !status && { color: '#9CA3AF' }]}>
@@ -244,14 +250,14 @@ export default function AddMeetingScreen() {
             <Text style={styles.inputLabel}>Method</Text>
             {/* Dropdown trigger */}
             <TouchableOpacity
-              style={[styles.inputRow, methodDropdownOpen && styles.inputRowFocused]}
+              style={[styles.inputRow, methodDropdownOpen && { borderColor: primaryColor, backgroundColor: primaryLight }]}
               onPress={() => setMethodDropdownOpen(!methodDropdownOpen)}
               activeOpacity={0.8}
             >
               <Ionicons
                 name="git-merge-outline"
                 size={16}
-                color={method ? COLORS.primary : COLORS.textMuted}
+                color={method ? primaryColor : COLORS.textMuted}
                 style={styles.inputIcon}
               />
               <Text style={[styles.textInput, !method && { color: '#9CA3AF' }]}>
@@ -329,7 +335,7 @@ export default function AddMeetingScreen() {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Ionicons name="calendar-outline" size={16} color={primaryColor} style={styles.inputIcon} />
                 <Text style={[styles.textInput, { paddingTop: 2 }]} numberOfLines={1}>
                   {formatDate(scheduledDate)}
                 </Text>
@@ -342,7 +348,7 @@ export default function AddMeetingScreen() {
                 onPress={() => setShowTimePicker(true)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="time-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Ionicons name="time-outline" size={16} color={primaryColor} style={styles.inputIcon} />
                 <Text style={[styles.textInput, { paddingTop: 2 }]}>
                   {formatTime(scheduledTime)}
                 </Text>
@@ -457,11 +463,11 @@ export default function AddMeetingScreen() {
           setScheduledTime(selected);
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -504,7 +510,7 @@ const styles = StyleSheet.create({
   // ── Scroll ──────────────────────────────────────────
   scrollContent: {
     padding: 12,
-    paddingBottom: 120,
+    paddingBottom: 150,
     gap: 10,
   },
 
@@ -602,10 +608,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
   },
-  inputRowFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
-  },
+  inputRowFocused: {},
   inputError: {
     borderColor: '#EF4444',
   },
@@ -652,12 +655,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   saveBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 12,
     height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,

@@ -16,8 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/constants/theme';
 import { useDeleteSession, useLogout, useLogin } from '@/hooks/useAuth';
 import Toast from 'react-native-toast-message';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function DeviceLimitScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams();
   
@@ -256,7 +260,7 @@ export default function DeviceLimitScreen() {
       {/* Global Loader Backdrop */}
       {isPending && (
         <View style={styles.loaderBackdrop}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={theme.primaryColor} />
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
@@ -264,7 +268,7 @@ export default function DeviceLimitScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#121514',
@@ -285,7 +289,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 150,
     alignItems: 'center',
     justifyContent: 'center',
   },

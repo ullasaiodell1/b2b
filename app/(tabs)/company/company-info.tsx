@@ -1,22 +1,27 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { getCompanyDetails } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CompanyInfoScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
 
@@ -46,7 +51,7 @@ export default function CompanyInfoScreen() {
     return (
       <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={theme.primaryColor} />
         <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
           Loading company details...
         </Text>
@@ -76,9 +81,9 @@ export default function CompanyInfoScreen() {
   const initial = details.display_name ? details.display_name.charAt(0).toUpperCase() : 'C';
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-      
+
       {/* Header with back button */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -108,7 +113,7 @@ export default function CompanyInfoScreen() {
         <Text style={styles.sectionTitle}>| CONTACT INFORMATION</Text>
         <View style={styles.infoCard}>
           <View style={styles.detailInfoRow}>
-            <Ionicons name="call-outline" size={18} color={COLORS.primary} style={styles.infoIcon} />
+            <Ionicons name="call-outline" size={18} color={theme.primaryColor} style={styles.infoIcon} />
             <View>
               <Text style={styles.infoLabel}>Phone Number</Text>
               <Text style={styles.infoValue}>{details.phone || 'No phone number'}</Text>
@@ -116,7 +121,7 @@ export default function CompanyInfoScreen() {
           </View>
 
           <View style={styles.detailInfoRow}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.primary} style={styles.infoIcon} />
+            <Ionicons name="mail-outline" size={18} color={theme.primaryColor} style={styles.infoIcon} />
             <View>
               <Text style={styles.infoLabel}>Email Address</Text>
               <Text style={styles.infoValue}>{details.email || 'No email address'}</Text>
@@ -128,7 +133,7 @@ export default function CompanyInfoScreen() {
         <Text style={styles.sectionTitle}>| LOCATION DETAILS</Text>
         <View style={styles.infoCard}>
           <View style={styles.detailInfoRow}>
-            <Ionicons name="location-outline" size={18} color={COLORS.primary} style={styles.infoIcon} />
+            <Ionicons name="location-outline" size={18} color={theme.primaryColor} style={styles.infoIcon} />
             <View style={{ flex: 1 }}>
               <Text style={styles.infoLabel}>Address</Text>
               <Text style={styles.infoValue}>{details.address || 'No address provided'}</Text>
@@ -158,11 +163,11 @@ export default function CompanyInfoScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -189,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     gap: 16,
-    paddingBottom: 50,
+    paddingBottom: 150,
   },
   detailHeaderCard: {
     backgroundColor: COLORS.bgWhite,
@@ -212,7 +217,7 @@ const styles = StyleSheet.create({
   largeAvatarText: {
     fontSize: 28,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   detailDisplayName: {
     fontSize: 18,
@@ -234,7 +239,7 @@ const styles = StyleSheet.create({
   gstText: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   sectionTitle: {
     fontSize: 13,
@@ -275,7 +280,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   errorBackBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 20,

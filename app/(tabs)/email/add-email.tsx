@@ -1,26 +1,31 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
   Alert,
-  Modal,
   BackHandler,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
 const RECIPIENTS = ['Parth Solanki', 'Khushal Nadiyapara', 'Arjun Maheta'];
 
 export default function AddEmailScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -73,13 +78,13 @@ export default function AddEmailScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={handleBack}
           activeOpacity={0.7}
         >
@@ -88,7 +93,7 @@ export default function AddEmailScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: theme.primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>EMAIL</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -97,7 +102,7 @@ export default function AddEmailScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -120,7 +125,7 @@ export default function AddEmailScreen() {
           {/* Company Name */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Company Name</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('company')}
               activeOpacity={0.85}
@@ -135,7 +140,7 @@ export default function AddEmailScreen() {
           {/* Sent To */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Sent To</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('sentTo')}
               activeOpacity={0.85}
@@ -168,8 +173,8 @@ export default function AddEmailScreen() {
 
       {/* Sticky Bottom Save */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
-          style={styles.saveBtn} 
+        <TouchableOpacity
+          style={styles.saveBtn}
           onPress={handleSave}
           activeOpacity={0.85}
         >
@@ -179,7 +184,7 @@ export default function AddEmailScreen() {
 
       {/* OPTIONS MODAL */}
       <Modal transparent animationType="slide" visible={activePicker !== null}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setActivePicker(null)}
@@ -209,11 +214,11 @@ export default function AddEmailScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',

@@ -1,21 +1,26 @@
 import { COLORS } from '@/constants/theme';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Alert,
-} from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChangePasswordScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -56,7 +61,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -66,7 +71,7 @@ export default function ChangePasswordScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>CHANGE </Text>
+            <Text style={{ color: theme.primaryColor }}>CHANGE </Text>
             <Text style={{ color: COLORS.textDark }}>PASSWORD</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -105,13 +110,13 @@ export default function ChangePasswordScreen() {
           </View>
 
           {/* Recovery Link */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.recoveryLink}
             activeOpacity={0.7}
             onPress={handleForgotPassword}
           >
             <Text style={styles.recoveryLinkText}>
-              <Text style={{ color: COLORS.primary, textDecorationLine: 'underline', fontWeight: '700' }}>Click Here</Text>
+              <Text style={{ color: theme.primaryColor, textDecorationLine: 'underline', fontWeight: '700' }}>Click Here</Text>
               <Text style={{ color: COLORS.textMuted }}>{" If You Don't Have Or Remember Your Current Password"}</Text>
             </Text>
           </TouchableOpacity>
@@ -158,11 +163,11 @@ export default function ChangePasswordScreen() {
           <Text style={styles.saveBtnText}>Update Password</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     gap: 24,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Banner lock badge
@@ -274,12 +279,13 @@ const styles = StyleSheet.create({
 
   // Save
   saveBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 12,
-    height: 48,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
+    shadowColor: theme.primaryColor,
   },
   saveBtnText: {
     color: '#FFFFFF',

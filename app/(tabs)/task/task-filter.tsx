@@ -1,10 +1,12 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -12,7 +14,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,6 +22,9 @@ type PriorityType = 'High' | 'Normal' | 'Low';
 type StatusType = 'Completed' | 'Not Started' | 'In Progress' | 'Waiting For Input';
 
 export default function TaskFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -58,7 +63,7 @@ export default function TaskFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -71,7 +76,7 @@ export default function TaskFilterScreen() {
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>TASK </Text>
+          <Text style={{ color: theme.primaryColor }}>TASK </Text>
           <Text style={{ color: COLORS.textDark }}>FILTER</Text>
         </Text>
         <View style={{ width: 36 }} />
@@ -292,11 +297,11 @@ export default function TaskFilterScreen() {
         )
       )}
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -327,7 +332,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 5,
-    paddingBottom: 100,
+    paddingBottom: 150,
     gap: 5,
   },
 
@@ -345,7 +350,7 @@ const styles = StyleSheet.create({
   verticalGreenLine: {
     width: 3,
     height: 18,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
   },
   titleText: {
@@ -474,7 +479,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   statusCardActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   statusText: {
     fontSize: 12,
@@ -494,13 +499,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
 
   // Footer
@@ -536,7 +541,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 46,
     borderRadius: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -568,7 +573,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   saveBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 44,
     alignItems: 'center',

@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
 
 interface NotificationItemProps {
   title: string;
@@ -30,6 +31,9 @@ function NotificationItem({
   buttonLabel,
   onPressButton,
 }: NotificationItemProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -75,7 +79,7 @@ function NotificationItem({
           onPress={onPressButton}
         >
           <Text style={styles.confirmBtnText}>{buttonLabel || 'Confirm Order'}</Text>
-          <Ionicons name="arrow-forward" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+          <Ionicons name="arrow-forward" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       )}
 
@@ -89,6 +93,9 @@ function NotificationItem({
 }
 
 export default function NotificationScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const insets = useSafeAreaInsets();
 
   const handleDownload = () => {
@@ -114,7 +121,7 @@ export default function NotificationScreen() {
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>Notif</Text>
+          <Text style={{ color: theme.primaryColor }}>Notif</Text>
           <Text style={{ color: COLORS.textDark }}>ication</Text>
         </Text>
       </View>
@@ -206,7 +213,7 @@ export default function NotificationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -289,7 +296,7 @@ const styles = StyleSheet.create({
   // Buttons
   outlineBtn: {
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderRadius: 8,
     height: 32,
     paddingHorizontal: 16,
@@ -297,12 +304,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   outlineBtnText: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontSize: 11,
     fontWeight: '800',
   },
   paymentBadge: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     borderRadius: 8,
     height: 32,
     paddingHorizontal: 16,
@@ -310,12 +317,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   paymentBadgeText: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontSize: 11,
     fontWeight: '800',
   },
   blackBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     height: 32,
     paddingHorizontal: 24,
@@ -329,7 +336,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderRadius: 8,
     height: 32,
     paddingHorizontal: 16,
@@ -339,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmBtnText: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontSize: 11,
     fontWeight: '800',
   },

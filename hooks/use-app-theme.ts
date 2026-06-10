@@ -1,6 +1,7 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
-const lightColors = {
+const lightBase = {
   background: '#F5F7FA',
   surface: '#FFFFFF',
   surfaceMuted: '#EEF2F7',
@@ -9,8 +10,6 @@ const lightColors = {
   textPrimary: '#111827',
   textSecondary: '#374151',
   textTertiary: '#6B7280',
-  brand: '#1D4E89',
-  brandSoft: '#E5ECF7',
   success: '#0F766E',
   warning: '#B45309',
   danger: '#DC2626',
@@ -19,7 +18,7 @@ const lightColors = {
   overlay: 'rgba(11, 15, 25, 0.55)',
 };
 
-const darkColors = {
+const darkBase = {
   background: '#0B1017',
   surface: '#111827',
   surfaceMuted: '#1B2638',
@@ -28,8 +27,6 @@ const darkColors = {
   textPrimary: '#F9FAFB',
   textSecondary: '#CBD5E1',
   textTertiary: '#94A3B8',
-  brand: '#7FB3F0',
-  brandSoft: '#23344A',
   success: '#34D399',
   warning: '#F59E0B',
   danger: '#FF6B6B',
@@ -38,13 +35,27 @@ const darkColors = {
   overlay: 'rgba(4, 7, 14, 0.68)',
 };
 
-export type ThemeColors = typeof lightColors;
+export type ThemeColors = typeof lightBase & {
+  brand: string;
+  brandSoft: string;
+};
 export type AppColorPalette = ThemeColors;
 
 export const useAppTheme = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isAndroid = process.env.EXPO_OS === 'android';
+
+  // Pull reactive brand color from ThemeContext
+  const { primaryColor, primaryLight } = useTheme();
+
+  const baseColors = isDark ? darkBase : lightBase;
+
+  const colors: ThemeColors = {
+    ...baseColors,
+    brand: primaryColor,
+    brandSoft: isDark ? primaryColor + '30' : primaryLight,
+  };
 
   return {
     isDark,
@@ -64,7 +75,7 @@ export const useAppTheme = () => {
         heading: 26,
       },
     },
-    colors: isDark ? darkColors : lightColors,
+    colors,
     radii: {
       sm: 8,
       md: 12,
@@ -97,7 +108,7 @@ export const useAppTheme = () => {
         elevation: 4,
       },
       glow: {
-        shadowColor: '#1D4E89',
+        shadowColor: primaryColor,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.24,
         shadowRadius: 10,

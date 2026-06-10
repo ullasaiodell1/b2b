@@ -1,20 +1,25 @@
+import { activeOrderFilter, OrderRecord, ordersState, subscribeToOrders, updateOrderFilterState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  StatusBar,
-  Platform,
-} from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { ordersState, activeOrderFilter, subscribeToOrders, OrderRecord, updateOrderFilterState } from '@/components/OrderState';
+import React, { useEffect, useState } from 'react';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function OrderListScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const navigation = useNavigation<any>();
   const [orders, setOrders] = useState<OrderRecord[]>(ordersState);
   const [filters, setFilters] = useState(activeOrderFilter);
@@ -45,12 +50,12 @@ export default function OrderListScreen() {
 
   const renderOrderCard = ({ item }: { item: OrderRecord }) => {
     const config = {
-      'Complete':        { bg: COLORS.completeBg,   text: COLORS.complete,   icon: 'checkmark-circle-outline' },
-      'Pending':         { bg: COLORS.pendingBg,    text: COLORS.pending,    icon: 'time-outline'             },
-      'Inprogress':      { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline'             },
-      'Delivered':       { bg: COLORS.completeBg,   text: COLORS.complete,   icon: 'cube-outline'             },
-      'Booking':         { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'bookmark-outline'         },
-      'Out Of Delivery': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'car-outline'              },
+      'Complete': { bg: COLORS.completeBg, text: COLORS.complete, icon: 'checkmark-circle-outline' },
+      'Pending': { bg: COLORS.pendingBg, text: COLORS.pending, icon: 'time-outline' },
+      'Inprogress': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline' },
+      'Delivered': { bg: COLORS.completeBg, text: COLORS.complete, icon: 'cube-outline' },
+      'Booking': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'bookmark-outline' },
+      'Out Of Delivery': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'car-outline' },
     }[item.status] || { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline' };
 
     return (
@@ -62,7 +67,7 @@ export default function OrderListScreen() {
         <View style={styles.cardHeader}>
           <Text style={styles.orderNo}>{item.orderNo}</Text>
           <View style={styles.dateTag}>
-            <Ionicons name="calendar-outline" size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
+            <Ionicons name="calendar-outline" size={12} color={theme.primaryColor} style={{ marginRight: 4 }} />
             <Text style={styles.dateTagText}>{item.date}</Text>
           </View>
         </View>
@@ -99,7 +104,7 @@ export default function OrderListScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -141,13 +146,13 @@ export default function OrderListScreen() {
               <View style={styles.bubble}>
                 <Text style={styles.bubbleText}>{filters.status}</Text>
                 <TouchableOpacity onPress={handleClearStatusFilter}>
-                  <Ionicons name="close-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               </View>
             )}
             {filters.dateRange !== '' && (
               <View style={styles.bubble}>
-                <Ionicons name="calendar-outline" size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
+                <Ionicons name="calendar-outline" size={12} color={theme.primaryColor} style={{ marginRight: 4 }} />
                 <Text style={styles.bubbleText}>{filters.dateRange}</Text>
               </View>
             )}
@@ -170,11 +175,11 @@ export default function OrderListScreen() {
           </View>
         }
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -233,7 +238,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -256,7 +261,7 @@ const styles = StyleSheet.create({
   bubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 20,
@@ -266,7 +271,7 @@ const styles = StyleSheet.create({
   bubbleText: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // List Cards
@@ -297,7 +302,7 @@ const styles = StyleSheet.create({
   dateTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -305,7 +310,7 @@ const styles = StyleSheet.create({
   dateTagText: {
     fontSize: 10,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   clientBlock: {
@@ -370,7 +375,7 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 15,
     fontWeight: '900',
-    color: COLORS.primary,
+    color: theme.primaryColor,
     marginTop: 1,
   },
 

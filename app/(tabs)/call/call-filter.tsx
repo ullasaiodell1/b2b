@@ -1,9 +1,11 @@
 import { activeCallFilter, CallFilterState, updateCallFilterState } from '@/components/CallState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -11,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,6 +24,9 @@ const DATE_OPTIONS = [
 ];
 
 export default function CallFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -47,7 +52,7 @@ export default function CallFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -61,7 +66,7 @@ export default function CallFilterScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>CALL </Text>
+          <Text style={{ color: theme.primaryColor }}>CALL </Text>
           <Text style={{ color: COLORS.textDark }}>FILTER</Text>
         </Text>
 
@@ -185,11 +190,11 @@ export default function CallFilterScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -237,7 +242,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 3,
     height: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
     marginRight: 8,
   },
@@ -327,13 +332,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   circleSelectorActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   circleSelectorInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   bottomStickyBar: {
     position: 'absolute',
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
   },
   applyBtn: {
     flex: 1.2,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 46,
     alignItems: 'center',

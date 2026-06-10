@@ -15,8 +15,9 @@ import {
   TextInput,
   TouchableOpacity,
   View
-} from 'react-native';
+, KeyboardAvoidingView, Platform} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
 
 type TaskStatus = 'Completed' | 'Not Started' | 'waiting for input' | 'in progress';
 type PriorityType = 'High' | 'Normal' | 'Lowest';
@@ -25,6 +26,9 @@ type Task = TaskRecord;
 
 
 export default function TaskScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     leadId?: string;
@@ -88,7 +92,7 @@ export default function TaskScreen() {
   const notStartedCount = tasks.filter(t => t.status === 'Not Started').length;
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader
@@ -117,13 +121,13 @@ export default function TaskScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
         }
       >
 
         {isLoading && tasks.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primaryColor} />
             <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>Loading tasks...</Text>
           </View>
         ) : (
@@ -271,11 +275,11 @@ export default function TaskScreen() {
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     gap: 5,
-    paddingBottom: 80,
+    paddingBottom: 150,
   },
 
   // Search & Filter Row
@@ -341,7 +345,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderRadius: 10,
     height: 42,
     paddingHorizontal: 16,
@@ -370,8 +374,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   statChipActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   statDot: {
     width: 6,
@@ -458,10 +462,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

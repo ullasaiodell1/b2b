@@ -13,42 +13,14 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/hooks/use-theme';
 
 const { width, height } = Dimensions.get('window');
 
-const SLIDES = [
-  {
-    id: 1,
-    title: 'Manage Your Leads Easily',
-    desc: 'Capture, organize, and track all your leads in one place—never miss an opportunity.',
-    blobColor: '#E8F2EE',
-    accentColor: COLORS.primary,
-  },
-  {
-    id: 2,
-    title: 'Track Deals in Real Time',
-    desc: 'Move deals through stages and know exactly where each opportunity stands.',
-    blobColor: '#FEF6ED',
-    accentColor: '#F59E0B',
-  },
-  {
-    id: 3,
-    title: 'Never Miss a Follow-Up',
-    desc: 'Get smart reminders for calls, meetings, and important customer actions.',
-    blobColor: '#EEF2F6',
-    accentColor: '#3B82F6',
-  },
-  {
-    id: 4,
-    title: 'All Customer Data, Anywhere',
-    desc: 'Access contacts, conversations, deals, and support history—anytime, anywhere.',
-    blobColor: '#EAF5FF',
-    accentColor: '#EF4444',
-  },
-];
 
 // Slide 1 Illustration — Leads Management
-function Slide1Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide1Illustration({ floatAnim, theme }: { floatAnim: Animated.Value; theme: any }) {
+  const styles = getStyles(theme);
   const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
   const floatOpp = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
 
@@ -59,7 +31,7 @@ function Slide1Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
       {/* Left character */}
       <Animated.View style={[styles.char, { left: 20, top: 50, transform: [{ translateY: floatOpp }] }]}>
         <View style={[styles.charHead, { backgroundColor: '#FFD2A5' }]} />
-        <View style={[styles.charBody, { backgroundColor: COLORS.primaryDark }]}>
+        <View style={[styles.charBody, { backgroundColor: theme.primaryDark }]}>
           <View style={styles.charFolderTag} />
         </View>
       </Animated.View>
@@ -69,7 +41,7 @@ function Slide1Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
         <View style={styles.phoneNotch} />
         <View style={styles.phoneScreen}>
           <View style={styles.phoneSearchBar} />
-          {[COLORS.primary, '#CBD5E1', '#CBD5E1', '#CBD5E1'].map((color, i) => (
+          {[theme.primaryColor, '#CBD5E1', '#CBD5E1', '#CBD5E1'].map((color, i) => (
             <View key={i} style={styles.leadRow}>
               <View style={[styles.leadDot, { backgroundColor: color }]} />
               <View style={{ flex: 1, gap: 3 }}>
@@ -92,17 +64,18 @@ function Slide1Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 
       {/* Floating icons */}
       <Animated.View style={[styles.floatBubble, { left: 42, bottom: 24, transform: [{ translateY: floatY }] }]}>
-        <Ionicons name="call" size={14} color={COLORS.primary} />
+        <Ionicons name="call" size={14} color={theme.primaryColor} />
       </Animated.View>
       <Animated.View style={[styles.floatBubble, { right: 42, top: 22, transform: [{ translateY: floatOpp }] }]}>
-        <Ionicons name="mail" size={14} color={COLORS.primary} />
+        <Ionicons name="mail" size={14} color={theme.primaryColor} />
       </Animated.View>
     </View>
   );
 }
 
 // Slide 2 Illustration — Deal Pipeline
-function Slide2Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide2Illustration({ floatAnim, theme }: { floatAnim: Animated.Value; theme: any }) {
+  const styles = getStyles(theme);
   const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
   const floatOpp = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
 
@@ -112,7 +85,7 @@ function Slide2Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 
       <Animated.View style={[styles.char, { left: 15, bottom: 28, transform: [{ translateY: floatY }] }]}>
         <View style={[styles.charHead, { backgroundColor: '#ECC9A8' }]} />
-        <View style={[styles.charBody, { backgroundColor: COLORS.primaryDark }]} />
+        <View style={[styles.charBody, { backgroundColor: theme.primaryDark }]} />
       </Animated.View>
 
       <Animated.View style={[styles.phoneMock, { transform: [{ translateY: floatY }] }]}>
@@ -150,7 +123,8 @@ function Slide2Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 }
 
 // Slide 3 Illustration — Follow-Up Reminders
-function Slide3Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide3Illustration({ floatAnim, theme }: { floatAnim: Animated.Value; theme: any }) {
+  const styles = getStyles(theme);
   const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
   const floatOpp = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
 
@@ -192,14 +166,15 @@ function Slide3Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 
       <Animated.View style={[styles.char, { right: 18, top: 78, transform: [{ translateY: floatOpp }] }]}>
         <View style={[styles.charHead, { backgroundColor: '#FFD2A5' }]} />
-        <View style={[styles.charBody, { backgroundColor: COLORS.primary }]} />
+        <View style={[styles.charBody, { backgroundColor: theme.primaryColor }]} />
       </Animated.View>
     </View>
   );
 }
 
 // Slide 4 Illustration — Customer Profile
-function Slide4Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
+function Slide4Illustration({ floatAnim, theme }: { floatAnim: Animated.Value; theme: any }) {
+  const styles = getStyles(theme);
   const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
   const floatOpp = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
 
@@ -230,14 +205,14 @@ function Slide4Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 
       <Animated.View style={[styles.char, { right: 22, bottom: 22, transform: [{ translateY: floatY }] }]}>
         <View style={[styles.charHead, { backgroundColor: '#F9D0C4' }]} />
-        <View style={[styles.charBody, { backgroundColor: COLORS.primary }]} />
+        <View style={[styles.charBody, { backgroundColor: theme.primaryColor }]} />
       </Animated.View>
 
       <Animated.View style={{ position: 'absolute', left: 38, top: 44, transform: [{ translateY: floatOpp }] }}>
         <Ionicons name="location" size={18} color="#EF4444" />
       </Animated.View>
       <Animated.View style={{ position: 'absolute', right: 44, top: 54, transform: [{ translateY: floatY }] }}>
-        <Ionicons name="chatbubble-ellipses" size={16} color={COLORS.primary} />
+        <Ionicons name="chatbubble-ellipses" size={16} color={theme.primaryColor} />
       </Animated.View>
     </View>
   );
@@ -246,6 +221,41 @@ function Slide4Illustration({ floatAnim }: { floatAnim: Animated.Value }) {
 const illustrations = [Slide1Illustration, Slide2Illustration, Slide3Illustration, Slide4Illustration];
 
 export default function SlidesScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
+  const SLIDES = [
+    {
+      id: 1,
+      title: 'Manage Your Leads Easily',
+      desc: 'Capture, organize, and track all your leads in one place—never miss an opportunity.',
+      blobColor: '#E8F2EE',
+      accentColor: theme.primaryColor,
+    },
+    {
+      id: 2,
+      title: 'Track Deals in Real Time',
+      desc: 'Move deals through stages and know exactly where each opportunity stands.',
+      blobColor: '#FEF6ED',
+      accentColor: '#F59E0B',
+    },
+    {
+      id: 3,
+      title: 'Never Miss a Follow-Up',
+      desc: 'Get smart reminders for calls, meetings, and important customer actions.',
+      blobColor: '#EEF2F6',
+      accentColor: '#3B82F6',
+    },
+    {
+      id: 4,
+      title: 'All Customer Data, Anywhere',
+      desc: 'Access contacts, conversations, deals, and support history—anytime, anywhere.',
+      blobColor: '#EAF5FF',
+      accentColor: '#EF4444',
+    },
+  ];
+
+
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const isAnimating = useRef(false);  // lock to prevent out-of-bounds during transition
@@ -318,10 +328,9 @@ export default function SlidesScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Illustration area */}
       <View style={styles.illustrationArea}>
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX: slideAnim }] }}>
-          <IllustrationComponent floatAnim={floatAnim} />
+          <IllustrationComponent floatAnim={floatAnim} theme={theme} />
         </Animated.View>
       </View>
 
@@ -364,7 +373,7 @@ export default function SlidesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -583,16 +592,16 @@ const styles = StyleSheet.create({
   bottomArea: { gap: 24 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E2E8F0' },
-  dotActive: { width: 22, backgroundColor: '#346556' },
+  dotActive: { width: 22, backgroundColor: theme.primaryColor },
   btnRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   btnSkip: { paddingVertical: 14, paddingHorizontal: 16 },
   btnSkipText: { fontSize: 14, fontWeight: '700', color: '#707A76', letterSpacing: 1 },
   btnNext: {
-    backgroundColor: '#346556',
+    backgroundColor: theme.primaryColor,
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 10,
-    shadowColor: '#346556',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

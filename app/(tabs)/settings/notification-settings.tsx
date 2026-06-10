@@ -1,8 +1,10 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
@@ -10,7 +12,7 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 interface SwitchRowProps {
@@ -20,13 +22,15 @@ interface SwitchRowProps {
 }
 
 function SwitchRow({ label, value, onValueChange }: SwitchRowProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
   return (
     <View style={styles.switchRow}>
       <Text style={styles.switchLabel}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+        trackColor={{ false: '#D1D5DB', true: theme.primaryColor }}
         thumbColor="#FFFFFF"
       />
     </View>
@@ -34,6 +38,9 @@ function SwitchRow({ label, value, onValueChange }: SwitchRowProps) {
 }
 
 export default function NotificationSettingsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const navigation = useNavigation<any>();
 
   // Categories Switches
@@ -57,7 +64,7 @@ export default function NotificationSettingsScreen() {
   const [securityEnabled, setSecurityEnabled] = useState(false);
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -119,11 +126,11 @@ export default function NotificationSettingsScreen() {
           <SwitchRow label="Security Alerts" value={securityEnabled} onValueChange={setSecurityEnabled} />
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles: any = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -159,7 +166,7 @@ const styles: any = StyleSheet.create({
   scrollContent: {
     padding: 1,
     gap: 1,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   categoryTitle: {

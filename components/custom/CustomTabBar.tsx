@@ -11,8 +11,12 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const slideAnim = useRef(new Animated.Value(100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
@@ -156,7 +160,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   // Outer row — positions the two elements side by side
   outerRow: {
     position: 'absolute',

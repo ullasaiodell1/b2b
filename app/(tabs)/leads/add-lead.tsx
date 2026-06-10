@@ -1,5 +1,6 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useLeads, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -19,17 +21,21 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMMON_TAGS = ['Follow-up', 'Urgent', 'Warm Lead', 'Cold Lead', 'Corporate', 'Retail'];
 
 export default function AddLeadScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const routeParams = useLocalSearchParams<any>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { primaryColor, primaryLight } = useTheme();
 
   const { createLead, isCreating } = useLeads();
   const { data: statusesData } = useLeadStatuses();
@@ -457,7 +463,7 @@ export default function AddLeadScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
@@ -472,7 +478,7 @@ export default function AddLeadScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>LEAD</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -493,7 +499,7 @@ export default function AddLeadScreen() {
           <Switch
             value={showAllFields}
             onValueChange={setShowAllFields}
-            trackColor={{ false: '#E2E8F0', true: COLORS.primary }}
+            trackColor={{ false: '#E2E8F0', true: primaryColor }}
             thumbColor="#FFFFFF"
           />
         </View>
@@ -685,7 +691,7 @@ export default function AddLeadScreen() {
                   onPress={handleAddTag}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="add" size={22} color={COLORS.primary} />
+                  <Ionicons name="add" size={22} color={primaryColor} />
                 </TouchableOpacity>
               </View>
 
@@ -695,11 +701,11 @@ export default function AddLeadScreen() {
                   {selectedTags.map((t) => (
                     <TouchableOpacity
                       key={t}
-                      style={[styles.chip, styles.chipActive]}
+                      style={[styles.chip, { borderColor: primaryColor, backgroundColor: '#EEF2FF' }]}
                       onPress={() => setSelectedTags(selectedTags.filter(item => item !== t))}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.chipText, styles.chipTextActive]}>{t} ✕</Text>
+                      <Text style={[styles.chipText, { color: primaryColor, fontWeight: '700' }]}>{t} ✕</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -717,7 +723,7 @@ export default function AddLeadScreen() {
                       key={t}
                       style={[
                         styles.chip,
-                        isSelected && styles.chipActive
+                        isSelected && { borderColor: primaryColor, backgroundColor: '#EEF2FF' }
                       ]}
                       onPress={() => {
                         if (isSelected) {
@@ -728,7 +734,7 @@ export default function AddLeadScreen() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{t}</Text>
+                      <Text style={[styles.chipText, isSelected && { color: primaryColor, fontWeight: '700' }]}>{t}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -987,7 +993,7 @@ export default function AddLeadScreen() {
             <Switch
               value={emailOptOut}
               onValueChange={setEmailOptOut}
-              trackColor={{ false: '#E2E8F0', true: COLORS.primary }}
+              trackColor={{ false: '#E2E8F0', true: theme.primaryColor }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -1001,7 +1007,7 @@ export default function AddLeadScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.uploadIconContainer}>
-                <Ionicons name="arrow-up-circle-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="arrow-up-circle-outline" size={20} color={theme.primaryColor} />
               </View>
               <View style={styles.uploadTextContainer}>
                 <Text style={styles.uploadTitleText} numberOfLines={1}>
@@ -1019,7 +1025,7 @@ export default function AddLeadScreen() {
           <TouchableOpacity
             style={[
               styles.saveBtn,
-              { marginTop: 32, backgroundColor: '#000000', borderRadius: 25, height: 50 },
+              { marginTop: 32, borderRadius: 25, height: 50 },
               isCreating && { opacity: 0.6 }
             ]}
             onPress={handleSave}
@@ -1100,11 +1106,11 @@ export default function AddLeadScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -1175,7 +1181,7 @@ const styles = StyleSheet.create({
   sectionHeaderIndicator: {
     width: 3,
     height: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
     marginRight: 8,
   },
@@ -1319,7 +1325,7 @@ const styles = StyleSheet.create({
     height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -1429,17 +1435,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: '#FFFFFF',
   },
-  chipActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#EEF2FF',
-  },
+  chipActive: {},
   chipText: {
     fontSize: 11.5,
     fontWeight: '600',
     color: COLORS.textMuted,
   },
-  chipTextActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
+  chipTextActive: {},
 });

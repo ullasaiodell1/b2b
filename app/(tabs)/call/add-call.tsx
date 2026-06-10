@@ -1,8 +1,9 @@
 import { CallRecord, callsState, updateCallsState } from '@/components/CallState';
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -17,12 +18,16 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_OPTIONS = ['Incoming', 'Outgoing', 'Missed'];
 
 export default function AddCallScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -75,7 +80,7 @@ export default function AddCallScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
@@ -90,7 +95,7 @@ export default function AddCallScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: theme.primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>CALL</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -110,7 +115,7 @@ export default function AddCallScreen() {
           <Switch
             value={showAllFields}
             onValueChange={setShowAllFields}
-            trackColor={{ false: '#CBD5E1', true: COLORS.primary }}
+            trackColor={{ false: '#CBD5E1', true: theme.primaryColor }}
             thumbColor="#FFFFFF"
           />
         </View>
@@ -257,11 +262,11 @@ export default function AddCallScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',

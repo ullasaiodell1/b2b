@@ -1,11 +1,13 @@
 import { OrderRecord, ordersState, updateOrdersState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -14,7 +16,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,9 +26,13 @@ const STATUS_OPTIONS = ['Complete', 'Pending', 'Inprogress', 'Out Of Delivery', 
 const PAYMENT_OPTIONS = ['Advance Payment', 'Cash on Delivery', 'Bank Transfer'];
 
 export default function AddOrderScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { primaryColor } = useTheme();
 
   const handleBack = () => {
     if (referrer === 'lead-details') {
@@ -109,7 +115,7 @@ export default function AddOrderScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -124,7 +130,7 @@ export default function AddOrderScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>ORDER</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -308,11 +314,11 @@ export default function AddOrderScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',

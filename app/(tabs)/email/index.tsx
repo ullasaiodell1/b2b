@@ -1,9 +1,11 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView, Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -55,6 +57,9 @@ const EMAIL_DATA: EmailItem[] = [
 ];
 
 export default function EmailScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string; company?: string; searchQuery?: string }>();
   const insets = useSafeAreaInsets();
@@ -96,7 +101,7 @@ export default function EmailScreen() {
   const hasActiveFilters = !!(params.status || params.company);
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader title="Email" showSearch={false} />
@@ -133,7 +138,7 @@ export default function EmailScreen() {
           <Ionicons
             name="funnel-outline"
             size={16}
-            color={hasActiveFilters ? COLORS.primary : COLORS.textDark}
+            color={hasActiveFilters ? theme.primaryColor : COLORS.textDark}
             style={{ marginRight: 6 }}
           />
           <Text style={[styles.filterBtnText, hasActiveFilters && styles.filterBtnTextActive]}>Filters</Text>
@@ -259,11 +264,11 @@ export default function EmailScreen() {
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -327,8 +332,8 @@ const styles = StyleSheet.create({
     height: 42,
   },
   filterBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   filterBtnText: {
     fontSize: 13.5,
@@ -336,7 +341,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   filterBtnTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   pillsContainer: {
     backgroundColor: COLORS.bgWhite,
@@ -360,8 +365,8 @@ const styles = StyleSheet.create({
     height: 34,
   },
   pillActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   dot: {
     width: 8,
@@ -374,7 +379,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   pillTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '700',
   },
   listContent: {
@@ -446,10 +451,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

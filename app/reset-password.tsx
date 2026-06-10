@@ -2,6 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTheme } from '@/hooks/use-theme';
 import {
   Animated,
   Dimensions,
@@ -18,6 +19,9 @@ import {
 const { height } = Dimensions.get('window');
 
 export default function ResetPasswordScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -135,7 +139,7 @@ export default function ResetPasswordScreen() {
                           ? '#EF4444'
                           : i === 1
                             ? '#F59E0B'
-                            : COLORS.primary
+                            : theme.primaryColor
                         : '#D0DCD7',
                   },
                 ]}
@@ -156,7 +160,7 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: 'rgba(0,0,0,0)' },
 
   backdrop: {
@@ -228,12 +232,12 @@ const styles = StyleSheet.create({
   },
 
   submitBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     height: 52,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

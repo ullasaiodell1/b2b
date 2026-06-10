@@ -1,16 +1,17 @@
-import { COLORS, setThemeColor } from '@/constants/theme';
 import CustomHeader from '@/components/custom/CustomHeader';
-import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // Standard premium theme colors to match the design grid
@@ -29,18 +30,22 @@ const GRID_COLORS = [
 ];
 
 export default function ThemeSettingsScreen() {
-  const navigation = useNavigation<any>();
+  const theme = useTheme();
+  const styles = getStyles(theme);
 
-  const [selectedColor, setSelectedColor] = useState(COLORS.primary);
+  const navigation = useNavigation<any>();
+  const { primaryColor, setPrimaryColor } = useTheme();
+
+  const [selectedColor, setSelectedColor] = useState(primaryColor);
   const [activeTab, setActiveTab] = useState<'solid' | 'gradient' | 'palette'>('solid');
 
   const handleSave = () => {
-    setThemeColor(selectedColor);
+    setPrimaryColor(selectedColor);
     navigation.goBack();
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader
@@ -102,7 +107,8 @@ export default function ThemeSettingsScreen() {
               ] as any}
               onPress={() => {
                 setSelectedColor(color);
-                setThemeColor(color);
+                // Instantly update global theme — all screens update immediately
+                setPrimaryColor(color);
               }}
               activeOpacity={0.8}
             />
@@ -120,11 +126,11 @@ export default function ThemeSettingsScreen() {
           <Text style={styles.saveBtnText}>Save Theme</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles: any = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -134,7 +140,7 @@ const styles: any = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 5,
-    paddingBottom: 100,
+    paddingBottom: 150,
   },
 
   // Preview block
@@ -173,7 +179,7 @@ const styles: any = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBtnActive: {
-    backgroundColor: '#EAF4EE',
+    backgroundColor: theme.primaryLight,
   },
   tabBtnText: {
     fontSize: 11,
@@ -181,7 +187,7 @@ const styles: any = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabBtnTextActive: {
-    color: '#346556',
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 

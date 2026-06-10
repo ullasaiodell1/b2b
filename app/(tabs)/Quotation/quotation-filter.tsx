@@ -1,10 +1,12 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   BackHandler,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -12,7 +14,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -41,6 +43,9 @@ const USERS = [
 ];
 
 export default function QuotationFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -170,7 +175,7 @@ export default function QuotationFilterScreen() {
                       {item}
                     </Text>
                     {isItemSel && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                      <Ionicons name="checkmark-circle" size={20} color={theme.primaryColor} />
                     )}
                   </TouchableOpacity>
                 );
@@ -183,7 +188,7 @@ export default function QuotationFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -428,11 +433,11 @@ export default function QuotationFilterScreen() {
         </Modal>
       )}
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -465,7 +470,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 150,
     gap: 2,
   },
   topRow: {
@@ -481,7 +486,7 @@ const styles = StyleSheet.create({
   verticalIndicator: {
     width: 3.5,
     height: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 2,
   },
   panelTitleText: {
@@ -638,13 +643,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
 
   // Footer buttons
@@ -675,7 +680,7 @@ const styles = StyleSheet.create({
     flex: 1.2,
     height: 44,
     borderRadius: 8,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -733,7 +738,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   modalItemTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 
@@ -775,7 +780,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   calendarDoneBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     height: 40,
     alignItems: 'center',

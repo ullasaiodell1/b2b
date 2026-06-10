@@ -1,4 +1,5 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useLeadDetails, useLeads } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -6,6 +7,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   RefreshControl,
   ScrollView,
@@ -26,17 +28,23 @@ interface DetailRowProps {
   required?: boolean;
 }
 
-const DetailRow: React.FC<DetailRowProps> = ({ label, value, required }) => (
-  <View style={styles.detailRow}>
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      {required && <Text style={{ color: '#EF4444', marginLeft: 2, fontWeight: 'bold' }}>*</Text>}
+const DetailRow: React.FC<DetailRowProps> = ({ label, value, required }) => {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  return (
+    <View style={styles.detailRow}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        {required && <Text style={{ color: '#EF4444', marginLeft: 2, fontWeight: 'bold' }}>*</Text>}
+      </View>
+      <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
     </View>
-    <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
-  </View>
-);
+  );
+};
 
 export default function LeadDetailsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
   const router = useRouter();
   const params = useLocalSearchParams<{
     id?: string;
@@ -161,7 +169,7 @@ export default function LeadDetailsScreen() {
     if (activeTab === 'Overview') {
       return (
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>OVER</Text>
+          <Text style={{ color: theme.primaryColor }}>OVER</Text>
           <Text style={{ color: COLORS.textDark }}>VIEW</Text>
         </Text>
       );
@@ -169,7 +177,7 @@ export default function LeadDetailsScreen() {
     if (activeTab === 'Quotation') {
       return (
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>QUOT</Text>
+          <Text style={{ color: theme.primaryColor }}>QUOT</Text>
           <Text style={{ color: COLORS.textDark }}>ATION</Text>
         </Text>
       );
@@ -177,14 +185,14 @@ export default function LeadDetailsScreen() {
     if (activeTab === 'Order') {
       return (
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>ORD</Text>
+          <Text style={{ color: theme.primaryColor }}>ORD</Text>
           <Text style={{ color: COLORS.textDark }}>ER</Text>
         </Text>
       );
     }
     return (
       <Text style={styles.headerTitle}>
-        <Text style={{ color: COLORS.primary }}>EM</Text>
+        <Text style={{ color: theme.primaryColor }}>EM</Text>
         <Text style={{ color: COLORS.textDark }}>AIL</Text>
       </Text>
     );
@@ -197,7 +205,7 @@ export default function LeadDetailsScreen() {
   const ORDERS: any[] = [];
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* HEADER */}
@@ -218,7 +226,7 @@ export default function LeadDetailsScreen() {
             onPress={handleEditLead}
             activeOpacity={0.7}
           >
-            <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="create-outline" size={20} color={theme.primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionHeaderBtn}
@@ -255,7 +263,7 @@ export default function LeadDetailsScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
         }
       >
         {/* TAB 1: OVERVIEW */}
@@ -846,11 +854,11 @@ export default function LeadDetailsScreen() {
           <Ionicons name="add" size={26} color="#FFFFFF" />
         </TouchableOpacity>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -922,7 +930,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '900',
   },
 
@@ -1017,7 +1025,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 3,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
     marginRight: 8,
   },
@@ -1315,7 +1323,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1351,8 +1359,8 @@ const styles = StyleSheet.create({
     height: 28,
   },
   tabChipStyleActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   chipDot: {
     width: 6,

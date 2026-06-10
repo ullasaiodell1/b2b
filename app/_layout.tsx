@@ -7,8 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
-import { useEffect, useState } from 'react';
-import { loadSavedTheme, subscribeToTheme } from '@/constants/theme';
+import { ThemeProvider as AppThemeProvider } from '@/context/ThemeContext';
 
 const queryClient = new QueryClient();
 
@@ -18,48 +17,42 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [themeVer, setThemeVer] = useState(0);
-
-  useEffect(() => {
-    loadSavedTheme();
-    return subscribeToTheme(() => {
-      setThemeVer((v) => v + 1);
-    });
-  }, []);
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index"          options={{ headerShown: false }} />
-          <Stack.Screen name="slides"         options={{ headerShown: false }} />
-          <Stack.Screen name="sign-in"        options={{ headerShown: false }} />
-          <Stack.Screen
-            name="reset-password"
-            options={{
-              headerShown: false,
-              presentation: 'transparentModal',
-              animation: 'fade',
-            }}
-          />
-          <Stack.Screen
-            name="otp"
-            options={{
-              headerShown: false,
-              presentation: 'transparentModal',
-              animation: 'fade',
-            }}
-          />
-          <Stack.Screen name="device-limit"    options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
-          <Stack.Screen name="camera-capture"  options={{ headerShown: false }} />
-          <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-        </ThemeProvider>
-        <Toast />
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <AppThemeProvider>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="index"          options={{ headerShown: false }} />
+              <Stack.Screen name="slides"         options={{ headerShown: false }} />
+              <Stack.Screen name="sign-in"        options={{ headerShown: false }} />
+              <Stack.Screen
+                name="reset-password"
+                options={{
+                  headerShown: false,
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="otp"
+                options={{
+                  headerShown: false,
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen name="device-limit"    options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
+              <Stack.Screen name="camera-capture"  options={{ headerShown: false }} />
+              <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+          <Toast />
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </AppThemeProvider>
   );
 }

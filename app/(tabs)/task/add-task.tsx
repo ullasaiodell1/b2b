@@ -1,9 +1,10 @@
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useUsers } from '@/hooks/useLeads';
 import { useCreateTask } from '@/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import * as Calendar from 'expo-calendar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -51,12 +52,16 @@ interface UserRecord {
 }
 
 export default function AddTaskScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ leadId?: string; lead_id?: string; leadName?: string }>();
 
   const leadId = params.leadId || params.lead_id || '';
   const leadName = params.leadName || '';
+  const { primaryColor, primaryLight } = useTheme();
 
   const createTaskMutation = useCreateTask();
   const { data: usersData, isLoading: isLoadingUsers } = useUsers();
@@ -251,7 +256,7 @@ export default function AddTaskScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>TASK</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -279,13 +284,13 @@ export default function AddTaskScreen() {
         {/* Sync with System Calendar Toggle */}
         <View style={styles.syncCalendarRow}>
           <View style={styles.syncCalendarLeft}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="calendar-outline" size={20} color={primaryColor} />
             <Text style={styles.syncCalendarLabel}>Sync with System Calendar</Text>
           </View>
           <Switch
             value={syncToCalendar}
             onValueChange={setSyncToCalendar}
-            trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+            trackColor={{ false: '#D1D5DB', true: primaryColor }}
             thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
           />
         </View>
@@ -454,7 +459,7 @@ export default function AddTaskScreen() {
               onPress={() => setShowUserModal(true)}
             >
               <View style={styles.selectBoxLeft}>
-                <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={16} color={primaryColor} style={styles.inputIcon} />
                 <Text style={assignedUser ? styles.selectText : styles.placeholderText}>
                   {assignedUser ? assignedUser.name : 'Select user'}
                 </Text>
@@ -474,7 +479,7 @@ export default function AddTaskScreen() {
               onPress={() => setShowDatePicker(true)}
             >
               <View style={styles.selectBoxLeft}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} style={styles.inputIcon} />
+                <Ionicons name="calendar-outline" size={16} color={primaryColor} style={styles.inputIcon} />
                 <Text style={styles.selectText}>{formatDateTime(dueDateObj)}</Text>
               </View>
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
@@ -610,7 +615,7 @@ export default function AddTaskScreen() {
             {/* Users List */}
             {isLoadingUsers ? (
               <View style={styles.modalLoading}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color={primaryColor} />
                 <Text style={styles.loadingText}>Loading users...</Text>
               </View>
             ) : (
@@ -669,7 +674,7 @@ export default function AddTaskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -717,7 +722,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
     borderRadius: 12,
     paddingVertical: 2,
-    paddingHorizontal: 2,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 16,
@@ -742,7 +747,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 8,
     paddingTop: 5,
-    paddingBottom: 60,
+    paddingBottom: 150,
   },
 
   scrollBackdrop: {
@@ -889,13 +894,13 @@ const styles = StyleSheet.create({
 
   // Save button
   saveBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 12,
     height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 24,
-    shadowColor: '#000000',
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -1006,8 +1011,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   userCardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   avatarContainer: {
     width: 36,
@@ -1047,13 +1052,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   radioDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   modalLoading: {
     alignItems: 'center',

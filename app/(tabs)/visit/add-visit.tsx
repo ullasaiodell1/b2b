@@ -1,18 +1,19 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useCreateVisit } from '@/hooks/useVisits';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -21,7 +22,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,11 +35,15 @@ const VISIT_TYPE_OPTIONS = [
 ];
 
 export default function AddVisitScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ leadId?: string }>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const createVisitMutation = useCreateVisit();
+  const { primaryColor, primaryLight } = useTheme();
 
   // Form States
   const [title, setTitle] = useState('');
@@ -226,7 +231,7 @@ export default function AddVisitScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -241,7 +246,7 @@ export default function AddVisitScreen() {
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>VISIT</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -256,7 +261,7 @@ export default function AddVisitScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.formContainer}>
-          
+
           {/* Title input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
@@ -428,12 +433,15 @@ export default function AddVisitScreen() {
               </View>
             ) : (
               <TouchableOpacity
-                style={styles.uploadDropzone}
+                style={[
+                  styles.uploadDropzone,
+                  { borderColor: primaryColor }
+                ]}
                 onPress={handleUploadPress}
                 activeOpacity={0.8}
               >
-                <View style={styles.uploadIconContainer}>
-                  <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+                <View style={[styles.uploadIconContainer, { backgroundColor: primaryLight }]}>
+                  <Ionicons name="image-outline" size={20} color={primaryColor} />
                 </View>
                 <View style={styles.uploadTextContainer}>
                   <Text style={styles.uploadTitleText}>Upload visit image</Text>
@@ -518,11 +526,11 @@ export default function AddVisitScreen() {
           <Text style={styles.saveBtnText}>SAVE VISIT</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -606,7 +614,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textDark,
   },
-  
+
   // Visit Type Option Pills
   pillsContainer: {
     paddingVertical: 4,
@@ -625,8 +633,8 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   pillActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   pillText: {
     fontSize: 12.5,
@@ -634,7 +642,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   pillTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 
@@ -643,7 +651,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
     borderStyle: 'dashed',
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -655,7 +662,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -674,7 +680,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   browseBtn: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     borderWidth: 1,
     borderColor: '#C9E4D4',
     borderRadius: 14,
@@ -684,7 +690,7 @@ const styles = StyleSheet.create({
   browseBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // Image Preview Style
@@ -798,7 +804,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   retryLocationBtn: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     borderWidth: 1,
     borderColor: '#C9E4D4',
     borderRadius: 8,
@@ -809,7 +815,7 @@ const styles = StyleSheet.create({
   retryLocationBtnText: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // Sticky Bottom Bar
@@ -825,12 +831,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   saveBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -866,7 +872,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalSaveBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     height: 40,
     alignItems: 'center',

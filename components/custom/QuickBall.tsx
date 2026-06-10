@@ -1,4 +1,5 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -20,312 +21,343 @@ interface MenuItem {
   color: string;
 }
 
-const MENU_ITEMS: MenuItem[] = [
-  {
-    label: 'New Lead',
-    icon: 'person-add-outline',
-    route: '/(tabs)/leads/add-lead',
-    color: COLORS.primary,
-  },
-  {
-    label: 'New Order',
-    icon: 'cart-outline',
-    route: '/(tabs)/Order/add-order',
-    color: '#39241E', // Dark brown order style
-  },
-  {
-    label: 'New Quotation',
-    icon: 'document-attach-outline',
-    route: '/(tabs)/Quotation/add-quotation',
-    color: '#E2C0B1', // Peach quotation style
-  },
-  {
-    label: 'New Task',
-    icon: 'checkmark-done-circle-outline',
-    route: '/(tabs)/task/add-task',
-    color: COLORS.blue || '#3B82F6',
-  },
-  {
-    label: 'New Meeting',
-    icon: 'videocam-outline',
-    route: '/(tabs)/meeting/add-meeting',
-    color: COLORS.success || '#10B981',
-  },
-  {
-    label: 'New Visit',
-    icon: 'location-outline',
-    route: '/(tabs)/visit/add-visit',
-    color: COLORS.danger || '#EF4444',
-  },
-];
 
 export default function QuickBall() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const [isOpen, setIsOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const { primaryColor } = useTheme();
 
-  // Animation values
+  // Built inside render so New Lead color is always reactive
+  const MENU_ITEMS: MenuItem[] = [
+    { label: 'New Lead', icon: 'person-add-outline', route: '/(tabs)/leads/add-lead', color: primaryColor },
+    { label: 'New Order', icon: 'cart-outline', route: '/(tabs)/Order/add-order', color: '#39241E' },
+    { label: 'New Quotation', icon: 'document-attach-outline', route: '/(tabs)/Quotation/add-quotation', color: '#E2C0B1' },
+    { label: 'New Task', icon: 'checkmark-done-circle-outline', route: '/(tabs)/task/add-task', color: COLORS.blue || '#3B82F6' },
+    { label: 'New Meeting', icon: 'videocam-outline', route: '/(tabs)/meeting/add-meeting', color: COLORS.success || '#10B981' },
+    { label: 'New Visit', icon: 'location-outline', route: '/(tabs)/visit/add-visit', color: COLORS.danger || '#EF4444' },
+  ];
+
+
+  // Dimensions for calculation
+  const { height } = Dimensions.get('window');
+  const sidebarHeight = 360;
+  const topPosition = (height - sidebarHeight) / 2;
+
+  const handleHeight = 68;
+  const handleTopPosition = (height - handleHeight) / 2;
+
+  // Opacity for the collapsed handle
+  const handleOpacity = useRef(new Animated.Value(1)).current;
+  // Position translation for the collapsed handle when sliding/showing
+  const handleTranslateX = useRef(new Animated.Value(0)).current;
+
+  // Backdrop overlay animation (0 to 1)
   const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  // Sidebar container slide-in animation from right (180 to 0)
+  const sidebarTranslateX = useRef(new Animated.Value(180)).current;
+
+  // Menu items list animations for staggered entrance
   const itemAnims = useRef(MENU_ITEMS.map(() => new Animated.Value(0))).current;
 
-  // Toggle open/close state
-  const toggleMenu = () => {
-    if (isOpen) {
-      closeMenu();
-    } else {
-      openMenu();
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startFadeTimer = () => {
+    if (fadeTimer.current) {
+      clearTimeout(fadeTimer.current);
     }
+    fadeTimer.current = setTimeout(() => {
+      Animated.timing(handleOpacity, {
+        toValue: 0.35,
+        duration: 350,
+        useNativeDriver: true,
+      }).start();
+    }, 3000);
   };
 
+  const resetFade = () => {
+    if (fadeTimer.current) {
+      clearTimeout(fadeTimer.current);
+    }
+    Animated.timing(handleOpacity, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      startFadeTimer();
+    });
+  };
+
+  useEffect(() => {
+    startFadeTimer();
+    return () => {
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    };
+  }, []);
+
   const openMenu = () => {
-    setIsOpen(true);
+    // Stop handle fading
+    if (fadeTimer.current) {
+      clearTimeout(fadeTimer.current);
+    }
+
+    // First make handle fully visible then slide it off screen
     Animated.parallel([
-      Animated.timing(backdropAnim, {
+      Animated.timing(handleOpacity, {
         toValue: 1,
-        duration: 300,
+        duration: 100,
         useNativeDriver: true,
       }),
-      Animated.stagger(40, [
-        ...itemAnims.map((anim) =>
-          Animated.spring(anim, {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          })
-        ),
-      ]),
-    ]).start();
+      Animated.timing(handleTranslateX, {
+        toValue: 40, // slide off-screen to the right
+        duration: 180,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setIsOpen(true);
+      // Run the opening transitions
+      Animated.parallel([
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sidebarTranslateX, {
+          toValue: 0,
+          tension: 65,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.stagger(35,
+          itemAnims.map((anim) =>
+            Animated.spring(anim, {
+              toValue: 1,
+              tension: 55,
+              friction: 7,
+              useNativeDriver: true,
+            })
+          )
+        )
+      ]).start();
+    });
   };
 
   const closeMenu = () => {
+    // Run closing transitions
     Animated.parallel([
       Animated.timing(backdropAnim, {
         toValue: 0,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
       }),
-      Animated.stagger(30, [
-        ...[...itemAnims].reverse().map((anim) =>
-          Animated.timing(anim, {
-            toValue: 0,
-            duration: 180,
-            useNativeDriver: true,
-          })
-        ),
-      ]),
+      Animated.timing(sidebarTranslateX, {
+        toValue: 180, // slide off-screen
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      ...itemAnims.map((anim) =>
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 120,
+          useNativeDriver: true,
+        })
+      )
     ]).start((finished) => {
       if (finished) {
         setIsOpen(false);
+        // Bring back the handle and start its fade timer
+        Animated.timing(handleTranslateX, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }).start(() => {
+          resetFade();
+        });
       }
     });
   };
 
-  // Main button rotation & opacity mapping for cross-fade transition
-  const appsOpacity = backdropAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0],
-  });
-
-  const appsRotate = backdropAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '90deg'],
-  });
-
-  const closeOpacity = backdropAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
-  const closeRotate = backdropAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-90deg', '0deg'],
-  });
-
-  const bottomPosition = insets.bottom + 95;
-
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Semi-transparent backdrop overlay */}
+      {isOpen && (
+        <Animated.View
+          pointerEvents={isOpen ? 'auto' : 'none'}
+          style={[
+            styles.backdrop,
+            {
+              opacity: backdropAnim,
+            },
+          ]}
+        >
+          <TouchableWithoutFeedback onPress={closeMenu}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+        </Animated.View>
+      )}
+
+      {/* Expanded Sidebar Panel */}
       <Animated.View
-        pointerEvents={isOpen ? 'auto' : 'none'}
         style={[
-          styles.backdrop,
+          styles.sidebarContainer,
           {
-            opacity: backdropAnim,
+            top: topPosition,
+            transform: [{ translateX: sidebarTranslateX }],
           },
         ]}
+        pointerEvents={isOpen ? 'auto' : 'none'}
       >
-        <TouchableWithoutFeedback onPress={closeMenu}>
-          <View style={StyleSheet.absoluteFill} />
-        </TouchableWithoutFeedback>
-      </Animated.View>
-
-      {/* Menu Stack */}
-      {isOpen && (
-        <View
-          style={[styles.menuContainer, { bottom: bottomPosition + 70 }]}
-          pointerEvents="box-none"
-        >
+        <View style={styles.menuList}>
           {MENU_ITEMS.map((item, index) => {
             const anim = itemAnims[index];
-
-            // Map animation state to individual item offsets & scales
-            const translateY = anim.interpolate({
+            const translateX = anim.interpolate({
               inputRange: [0, 1],
-              outputRange: [30, 0],
-            });
-            const scale = anim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.4, 1],
+              outputRange: [25, 0],
             });
             const opacity = anim.interpolate({
               inputRange: [0, 1],
               outputRange: [0, 1],
             });
+            const isLast = index === MENU_ITEMS.length - 1;
 
             return (
-              <Animated.View
-                key={item.label}
-                style={[
-                  styles.itemRow,
-                  {
+              <React.Fragment key={item.label}>
+                <Animated.View
+                  style={{
                     opacity,
-                    transform: [{ translateY }, { scale }],
-                  },
-                ]}
-              >
-                {/* Floating label on the left */}
-                <View style={styles.labelWrapper}>
-                  <Text style={styles.labelText}>{item.label}</Text>
-                </View>
-
-                {/* Circular action button */}
-                <TouchableOpacity
-                  style={[styles.actionButton, { borderColor: item.color }]}
-                  onPress={() => {
-                    closeMenu();
-                    router.push(item.route as any);
+                    transform: [{ translateX }],
                   }}
-                  activeOpacity={0.8}
                 >
-                  <Ionicons name={item.icon} size={22} color={item.color} />
-                </TouchableOpacity>
-              </Animated.View>
+                  <TouchableOpacity
+                    style={styles.itemRow}
+                    onPress={() => {
+                      closeMenu();
+                      router.push(item.route as any);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.iconBadge, { backgroundColor: item.color + '15' }]}>
+                      <Ionicons name={item.icon} size={15} color={item.color} />
+                    </View>
+                    <Text style={styles.itemLabel}>{item.label}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+                {!isLast && <View style={styles.separator} />}
+              </React.Fragment>
             );
           })}
         </View>
-      )}
+      </Animated.View>
 
-      {/* Primary Floating Trigger Button */}
-      <TouchableOpacity
-        style={[styles.triggerButton, { bottom: bottomPosition }]}
-        onPress={toggleMenu}
-        activeOpacity={0.9}
+      {/* Collapsed Handle */}
+      <Animated.View
+        style={[
+          styles.handle,
+          {
+            top: handleTopPosition,
+            opacity: handleOpacity,
+            transform: [{ translateX: handleTranslateX }],
+            backgroundColor: primaryColor,
+            shadowColor: primaryColor,
+          },
+        ]}
+        pointerEvents={isOpen ? 'none' : 'auto'}
       >
-        {/* Apps Icon (rotates out on open) */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            {
-              opacity: appsOpacity,
-              transform: [{ rotate: appsRotate }],
-            },
-          ]}
+        <TouchableOpacity
+          style={styles.handleTouchable}
+          onPress={openMenu}
+          activeOpacity={0.8}
         >
-          <Ionicons name="apps-outline" size={26} color={COLORS.textLight} />
-        </Animated.View>
-
-        {/* Close Icon (rotates in on open) */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            StyleSheet.absoluteFillObject,
-            {
-              opacity: closeOpacity,
-              transform: [{ rotate: closeRotate }],
-            },
-          ]}
-        >
-          <Ionicons name="close-outline" size={28} color={COLORS.textLight} />
-        </Animated.View>
-      </TouchableOpacity>
+          <Ionicons name="chevron-back" size={13} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(18, 21, 20, 0.45)', // Sleep dark-brand tinted backdrop
+    backgroundColor: 'transparent', // Fully transparent to show the home screen background clearly
   },
-  menuContainer: {
+  handle: {
     position: 'absolute',
-    right: 18,
-    alignItems: 'flex-end',
-    gap: 12,
+    right: -10, // slightly offset offscreen to create a curved sliver sticking out
+    width: 24,
+    height: 68,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+    backgroundColor: theme.primaryColor,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRightWidth: 0,
+    shadowColor: theme.primaryColor,
+    shadowOffset: { width: -2, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  handleTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 4,
+  },
+  sidebarContainer: {
+    position: 'absolute',
+    right: 0,
+    width: 170,
+    backgroundColor: 'transparent',
+    paddingVertical: 14,
+  },
+  sidebarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  sidebarTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 1.5,
+  },
+  closeBtn: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuList: {
+    marginTop: 6,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     gap: 10,
   },
-  labelWrapper: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5ECE9', // COLORS.border
-    // Premium soft drop shadow
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+  iconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  labelText: {
-    fontSize: 13,
+  itemLabel: {
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#0D0F0E', // COLORS.textDark
   },
-  actionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Premium soft drop shadow
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  triggerButton: {
-    position: 'absolute',
-    right: 18,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    // Outstanding drop shadow matching brand color
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.32,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  iconContainer: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+  separator: {
+    height: 0,
   },
 });

@@ -20,10 +20,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { useLogin } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/use-theme';
 
 const { height } = Dimensions.get('window');
 
 export default function SignInScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -254,7 +258,7 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   logoContainer: {
     flexDirection: 'row',
@@ -303,7 +307,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 72 : 52,
-    paddingBottom: 40,
+    paddingBottom: 150,
     justifyContent: 'center',
   },
 
@@ -350,7 +354,7 @@ const styles = StyleSheet.create({
   eyeIcon: { fontSize: 16 },
 
   forgotWrap: { alignSelf: 'flex-end', paddingVertical: 4 },
-  forgotText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  forgotText: { fontSize: 13, fontWeight: '700', color: theme.primaryColor },
 
   // Error box
   errorBox: {
@@ -364,13 +368,13 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, color: '#B91C1C', fontWeight: '600', lineHeight: 18 },
 
   signInBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     height: 54,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.22,
     shadowRadius: 10,
@@ -423,7 +427,7 @@ const styles = StyleSheet.create({
   sheetInputWrap: {
     backgroundColor: '#1E2422',
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     borderRadius: 10,
     height: 52,
     justifyContent: 'center',
@@ -432,12 +436,12 @@ const styles = StyleSheet.create({
   sheetInput: { fontSize: 14, color: '#FFFFFF', fontWeight: '500' },
 
   sheetSubmitBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     height: 50,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 8,

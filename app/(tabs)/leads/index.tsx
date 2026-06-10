@@ -1,29 +1,35 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useLeads } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView, Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  RefreshControl,
-  ActivityIndicator,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LeadsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ priority?: string; tag?: string; owner?: string }>();
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
   const { leads, isLoading, isFetching, refetch } = useLeads();
+  const { primaryColor, primaryLight } = useTheme();
   useEffect(() => {
     if (leads) {
       console.log('[LeadsScreen] Rendered leads data:', leads);
@@ -66,7 +72,7 @@ export default function LeadsScreen() {
 
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader title="Leads" showSearch={false} />
@@ -90,7 +96,10 @@ export default function LeadsScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
+          style={[
+            styles.filterBtn,
+            hasActiveFilters && { borderColor: primaryColor, backgroundColor: primaryLight }
+          ]}
           onPress={() => router.push({
             pathname: '/(tabs)/leads/leads-filter',
             params: {
@@ -104,10 +113,10 @@ export default function LeadsScreen() {
           <Ionicons
             name="funnel-outline"
             size={16}
-            color={hasActiveFilters ? COLORS.primary : COLORS.textDark}
+            color={hasActiveFilters ? primaryColor : COLORS.textDark}
             style={{ marginRight: 6 }}
           />
-          <Text style={[styles.filterBtnText, hasActiveFilters && styles.filterBtnTextActive]}>Filters</Text>
+          <Text style={[styles.filterBtnText, hasActiveFilters && { color: primaryColor }]}>Filters</Text>
           {hasActiveFilters && (
             <View style={styles.filterDotBadge} />
           )}
@@ -148,14 +157,14 @@ export default function LeadsScreen() {
       {/* LEADS LIST */}
       {isLoading && leads.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={primaryColor} />
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 90 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+            <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[primaryColor]} />
           }
         >
           {filteredLeads.map((lead, idx) => (
@@ -239,18 +248,18 @@ export default function LeadsScreen() {
         { bottom: Math.max(insets.bottom + 90, 100) }
       ]}>
         <TouchableOpacity
-          style={styles.primaryFab}
+          style={[styles.primaryFab, { backgroundColor: primaryColor, shadowColor: primaryColor }]}
           onPress={() => router.push('/(tabs)/leads/add-lead')}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={30} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -314,17 +323,12 @@ const styles = StyleSheet.create({
     height: 42,
     position: 'relative',
   },
-  filterBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
-  },
+  filterBtnActive: {},
+  filterBtnTextActive: {},
   filterBtnText: {
     fontSize: 13.5,
     fontWeight: '800',
     color: COLORS.textDark,
-  },
-  filterBtnTextActive: {
-    color: COLORS.primary,
   },
   filterDotBadge: {
     position: 'absolute',
@@ -468,10 +472,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,

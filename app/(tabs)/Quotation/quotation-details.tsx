@@ -1,33 +1,35 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useQuotationDetails, useUpdateQuotationStatus } from '@/hooks/useQuotations';
 import { QuotationItem } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT:            '#6B7280',
-  SENT:             '#F59E0B',
-  VIEWED:           '#3B82F6',
-  ACCEPTED:         '#10B981',
-  REJECTED:         '#EF4444',
-  EXPIRED:          '#9CA3AF',
-  REVISED:          '#8B5CF6',
-  CANCELLED:        '#EF4444',
-  APPROVED:         '#10B981',
-  ORDER_CREATED:    '#0EA5E9',
+  DRAFT: '#6B7280',
+  SENT: '#F59E0B',
+  VIEWED: '#3B82F6',
+  ACCEPTED: '#10B981',
+  REJECTED: '#EF4444',
+  EXPIRED: '#9CA3AF',
+  REVISED: '#8B5CF6',
+  CANCELLED: '#EF4444',
+  APPROVED: '#10B981',
+  ORDER_CREATED: '#0EA5E9',
   PROFORMA_CREATED: '#6366F1',
 };
 
@@ -48,6 +50,9 @@ function formatDate(dateStr?: string | null) {
 }
 
 export default function QuotationDetailsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -98,7 +103,7 @@ export default function QuotationDetailsScreen() {
     return (
       <View style={styles.centerContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={theme.primaryColor} />
         <Text style={styles.loaderText}>Loading quotation...</Text>
       </View>
     );
@@ -133,7 +138,7 @@ export default function QuotationDetailsScreen() {
   const items: QuotationItem[] = Array.isArray(quotation.items) ? quotation.items : [];
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* HEADER */}
@@ -142,7 +147,7 @@ export default function QuotationDetailsScreen() {
           <Ionicons name="arrow-back-outline" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>QUOTATION </Text>
+          <Text style={{ color: theme.primaryColor }}>QUOTATION </Text>
           <Text style={{ color: COLORS.textDark }}>DETAILS</Text>
         </Text>
         <View style={{ width: 36 }} />
@@ -338,15 +343,15 @@ export default function QuotationDetailsScreen() {
             <Text style={styles.downloadOrderSub}>Export as PDF</Text>
           </View>
           <View style={styles.downloadOrderIconBg}>
-            <Ionicons name="download" size={20} color={COLORS.primary} />
+            <Ionicons name="download" size={20} color={theme.primaryColor} />
           </View>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bgPage },
   centerContainer: {
     flex: 1,
@@ -359,7 +364,7 @@ const styles = StyleSheet.create({
   loaderText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
   errorText: { fontSize: 14, color: COLORS.textDark, fontWeight: '700', textAlign: 'center' },
   backBtnSmall: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -438,7 +443,7 @@ const styles = StyleSheet.create({
   sectionIndicatorBar: {
     width: 3.5,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 2,
     marginRight: 8,
   },
@@ -458,11 +463,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productIndexText: { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+  productIndexText: { fontSize: 12, fontWeight: '800', color: theme.primaryColor },
   productDetailsCol: { flex: 1 },
   productName: { fontSize: 13.5, fontWeight: '800', color: COLORS.textDark },
   productSpec: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, marginTop: 2 },
@@ -479,7 +484,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFDFB',
     borderRadius: 14,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
+    borderLeftColor: theme.primaryColor,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
@@ -509,7 +514,7 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   totalValue: { fontSize: 13, fontWeight: '700', color: COLORS.textDark },
   grandTotalLabel: { fontSize: 14, fontWeight: '800', color: COLORS.textDark },
-  grandTotalValue: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  grandTotalValue: { fontSize: 15, fontWeight: '900', color: theme.primaryColor },
 
   // Download banner
   downloadOrderBanner: {

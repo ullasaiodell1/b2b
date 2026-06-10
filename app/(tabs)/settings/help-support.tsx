@@ -1,8 +1,10 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
+  KeyboardAvoidingView,
   Linking,
   Platform,
   ScrollView,
@@ -10,10 +12,13 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 export default function HelpSupportScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const navigation = useNavigation<any>();
 
   const handleEmail = () => {
@@ -25,7 +30,7 @@ export default function HelpSupportScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -85,11 +90,11 @@ export default function HelpSupportScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles: any = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -125,17 +130,17 @@ const styles: any = StyleSheet.create({
   scrollContent: {
     padding: 5,
     gap: 5,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Banner
   bannerCard: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 16,
     padding: 15,
     alignItems: 'center',
     gap: 2,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 10,

@@ -1,26 +1,31 @@
+import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useCalls } from '@/hooks/useCalls';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  RefreshControl,
-  ActivityIndicator,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CustomHeader from '@/components/custom/CustomHeader';
 
 type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
 export default function CallHistoryScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     leadId?: string;
@@ -67,7 +72,7 @@ export default function CallHistoryScreen() {
   });
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader
@@ -136,7 +141,7 @@ export default function CallHistoryScreen() {
             onPress={() => router.push('/(tabs)/call/call-filter' as any)}
             activeOpacity={0.8}
           >
-            <Ionicons name="funnel-outline" size={16} color={filters.status ? COLORS.primary : COLORS.textDark} style={{ marginRight: 6 }} />
+            <Ionicons name="funnel-outline" size={16} color={filters.status ? theme.primaryColor : COLORS.textDark} style={{ marginRight: 6 }} />
             <Text style={[styles.filterBtnText, !!filters.status && styles.filterBtnTextActive]}>Filters</Text>
           </TouchableOpacity>
         </View>
@@ -148,7 +153,7 @@ export default function CallHistoryScreen() {
               <View style={styles.bubble}>
                 <Text style={styles.bubbleText}>{filters.status}</Text>
                 <TouchableOpacity onPress={handleClearStatusFilter}>
-                  <Ionicons name="close-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               </View>
             )}
@@ -157,7 +162,7 @@ export default function CallHistoryScreen() {
               <View style={styles.bubble}>
                 <Text style={styles.bubbleText}>{filters.dateRange}</Text>
                 <TouchableOpacity onPress={handleClearDateFilter}>
-                  <Ionicons name="close-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               </View>
             )}
@@ -170,12 +175,12 @@ export default function CallHistoryScreen() {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
         }
       >
         {isLoading && calls.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primaryColor} />
             <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>Loading call history...</Text>
           </View>
         ) : (
@@ -232,11 +237,11 @@ export default function CallHistoryScreen() {
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -338,8 +343,8 @@ const styles = StyleSheet.create({
     height: 40,
   },
   filterBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: theme.primaryColor,
+    backgroundColor: theme.primaryLight,
   },
   filterBtnText: {
     fontSize: 12.5,
@@ -347,7 +352,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   filterBtnTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   bubbleRow: {
     flexDirection: 'row',
@@ -358,7 +363,7 @@ const styles = StyleSheet.create({
   bubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -439,10 +444,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

@@ -1,5 +1,6 @@
 import { MeetingRecord, meetingsState, subscribeToMeetings, updateMeetingsState } from '@/components/MeetingState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -7,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -16,11 +18,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MeetingDetailsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
@@ -233,7 +238,7 @@ export default function MeetingDetailsScreen() {
   const cfg = getStatusConfig(meeting.status);
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── 1. HEADER ROW ─────────────────────────── */}
@@ -256,7 +261,7 @@ export default function MeetingDetailsScreen() {
             <Ionicons
               name="git-branch-outline"
               size={16}
-              color={activeTab === 'RELATED' ? COLORS.primary : COLORS.textMuted}
+              color={activeTab === 'RELATED' ? theme.primaryColor : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'RELATED' && styles.tabButtonTextActive]}>
               RELEATED
@@ -272,7 +277,7 @@ export default function MeetingDetailsScreen() {
             <Ionicons
               name="list-outline"
               size={16}
-              color={activeTab === 'DETAILS' ? COLORS.primary : COLORS.textMuted}
+              color={activeTab === 'DETAILS' ? theme.primaryColor : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'DETAILS' && styles.tabButtonTextActive]}>
               DETAILS
@@ -320,7 +325,7 @@ export default function MeetingDetailsScreen() {
                 <Text style={styles.locationValue}>{meeting.location || 'Rajkot'}</Text>
               </View>
               <View style={styles.locationIconWrap}>
-                <Ionicons name="location-outline" size={18} color={COLORS.primary} />
+                <Ionicons name="location-outline" size={18} color={theme.primaryColor} />
               </View>
             </View>
 
@@ -359,7 +364,7 @@ export default function MeetingDetailsScreen() {
             {/* Dashed Add notes block */}
             <View style={styles.dashedBox}>
               <View style={styles.dashedIconWrap}>
-                <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="copy-outline" size={20} color={theme.primaryColor} />
               </View>
               <Text style={styles.dashedTitle}>Add more notes</Text>
               <Text style={styles.dashedSubtitle}>Keep track of important details, ideas or reminders for this task.</Text>
@@ -405,7 +410,7 @@ export default function MeetingDetailsScreen() {
             {/* Dashed Add attachments block */}
             <View style={styles.dashedBox}>
               <View style={styles.dashedIconWrap}>
-                <Ionicons name="attach-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="attach-outline" size={20} color={theme.primaryColor} />
               </View>
               <Text style={styles.dashedTitle}>No more attachments</Text>
               <Text style={styles.dashedSubtitle}>Upload files, images or docs relevant to this task.</Text>
@@ -425,7 +430,7 @@ export default function MeetingDetailsScreen() {
               <Switch
                 value={showAllFields}
                 onValueChange={setShowAllFields}
-                trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+                trackColor={{ false: '#D1D5DB', true: theme.primaryColor }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -554,11 +559,11 @@ export default function MeetingDetailsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -637,7 +642,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabButtonTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 
@@ -731,7 +736,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -896,7 +901,7 @@ const styles = StyleSheet.create({
   verticalBar: {
     width: 3,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 1.5,
   },
   detailCardTitle: {
@@ -979,7 +984,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF3F1',
   },
   modalBtnSave: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
   modalBtnTextCancel: {
     color: COLORS.textMuted,

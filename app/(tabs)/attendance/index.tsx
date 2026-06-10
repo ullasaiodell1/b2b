@@ -1,6 +1,7 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAttendance } from '@/hooks/useAttendance';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,12 +9,14 @@ import React, { useState } from 'react';
 import {
   Dimensions,
   Image,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,6 +58,9 @@ const HISTORY_DATA = [
 ];
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const config = {
     present: { label: 'Present', bg: '#DCFCE7', text: '#15803D' },
     absent: { label: 'Absent', bg: '#FEE2E2', text: '#B91C1C' },
@@ -70,6 +76,9 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 }
 
 export default function AttendanceScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { attendance: attState } = useAttendance();
@@ -116,7 +125,7 @@ export default function AttendanceScreen() {
   });
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
       <CustomHeader title="Attendance" showSearch={false} />
 
@@ -192,7 +201,7 @@ export default function AttendanceScreen() {
             <View style={styles.locationRow}>
               {attState.inLocation && (
                 <View style={styles.locationSubCol}>
-                  <Ionicons name="location-outline" size={13} color={COLORS.primary} />
+                  <Ionicons name="location-outline" size={13} color={theme.primaryColor} />
                   <Text style={styles.locationValueText} numberOfLines={1}>
                     In: {attState.inLocation}
                   </Text>
@@ -267,9 +276,9 @@ export default function AttendanceScreen() {
           <View style={styles.historyHeader}>
             <Text style={styles.historySectionTitle}>ATTENDANCE HISTORY</Text>
             <TouchableOpacity style={styles.monthPicker} onPress={() => setPickerVisible(true)}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+              <Ionicons name="calendar-outline" size={14} color={theme.primaryColor} />
               <Text style={styles.monthPickerText}>{formattedMonth}</Text>
-              <Ionicons name="chevron-down" size={12} color={COLORS.primary} />
+              <Ionicons name="chevron-down" size={12} color={theme.primaryColor} />
             </TouchableOpacity>
           </View>
 
@@ -341,7 +350,7 @@ export default function AttendanceScreen() {
                 </View>
                 <View style={styles.historyDetailCell}>
                   <Text style={styles.historyDetailLabel}>Work-time</Text>
-                  <Text style={[styles.historyDetailValue, { color: COLORS.primary }]}>
+                  <Text style={[styles.historyDetailValue, { color: theme.primaryColor }]}>
                     {item.workTime}
                   </Text>
                 </View>
@@ -360,11 +369,11 @@ export default function AttendanceScreen() {
           setPickerVisible(false);
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bgPage },
   scrollContent: {
     paddingVertical: 8,
@@ -408,7 +417,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   presentIndicatorBtn: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 20,
@@ -416,7 +425,7 @@ const styles = StyleSheet.create({
   presentIndicatorText: {
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // Status Badge
@@ -514,8 +523,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   punchInBtn: {
-    backgroundColor: COLORS.primary,
-    shadowColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
+    shadowColor: theme.primaryColor,
   },
   punchInBtnDisabled: {
     backgroundColor: '#C9D4D0',
@@ -567,7 +576,7 @@ const styles = StyleSheet.create({
   monthPickerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
 
   // Filters

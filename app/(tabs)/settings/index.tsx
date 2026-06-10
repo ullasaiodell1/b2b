@@ -1,26 +1,32 @@
-import { useProfile } from '@/hooks/useProfile';
+import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS, getColorName } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useLogout } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
 export default function SettingsScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
@@ -50,7 +56,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader title="Settings" showSearch={false} />
@@ -119,16 +125,16 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(tabs)/settings/theme-settings' as any)}
             activeOpacity={0.8}
           >
-            <View style={[styles.iconBox, { backgroundColor: COLORS.primaryLight }]}>
-              <Ionicons name="contrast" size={18} color={COLORS.primary} />
+            <View style={[styles.iconBox, { backgroundColor: theme.primaryLight }]}>
+              <Ionicons name="contrast" size={18} color={theme.primaryColor} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.optionTitle}>Theme Colour</Text>
-              <Text style={styles.optionSubtitle}>{getColorName(COLORS.primary)}</Text>
+              <Text style={styles.optionSubtitle}>{getColorName(theme.primaryColor)}</Text>
             </View>
             <View style={styles.radioWrapper}>
-              <View style={[styles.radioCircle, { borderColor: COLORS.primary }]}>
-                <View style={[styles.radioInner, { backgroundColor: COLORS.primary }]} />
+              <View style={[styles.radioCircle, { borderColor: theme.primaryColor }]}>
+                <View style={[styles.radioInner, { backgroundColor: theme.primaryColor }]} />
               </View>
               <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
             </View>
@@ -160,11 +166,11 @@ export default function SettingsScreen() {
           <Text style={styles.logoutBtnText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -194,12 +200,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     gap: 5,
-    paddingBottom: 40,
+    paddingBottom: 150,
   },
 
   // Profile Card
   profileCard: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -297,7 +303,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -305,7 +311,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
   },
 
   // Logout
@@ -325,5 +331,3 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
-import CustomHeader from '@/components/custom/CustomHeader';
-

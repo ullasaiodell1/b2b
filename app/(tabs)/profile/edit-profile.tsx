@@ -1,5 +1,6 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useProfile } from '@/hooks/useProfile';
 import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,23 +10,27 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
 export default function EditProfileScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -239,13 +244,13 @@ export default function EditProfileScreen() {
     return (
       <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={theme.primaryColor} />
       </View>
     );
   }
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ────────────────────────────────── */}
@@ -255,7 +260,7 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>EDIT </Text>
+            <Text style={{ color: theme.primaryColor }}>EDIT </Text>
             <Text style={{ color: COLORS.textDark }}>PROFILE</Text>
           </Text>
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
@@ -415,11 +420,11 @@ export default function EditProfileScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -456,7 +461,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 150,
     gap: 20,
   },
 
@@ -551,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   genderBtnActive: {
-    borderColor: COLORS.primary,
+    borderColor: theme.primaryColor,
   },
   genderBtnText: {
     fontSize: 13,
@@ -559,18 +564,19 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   genderBtnTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 
   // Save
   saveBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: theme.primaryColor,
     borderRadius: 12,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 12,
+    shadowColor: theme.primaryColor,
   },
   saveBtnText: {
     color: '#FFFFFF',

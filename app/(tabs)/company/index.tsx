@@ -1,23 +1,28 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { getCompanies } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView, Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CompanyListScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
@@ -43,7 +48,7 @@ export default function CompanyListScreen() {
 
   const renderCompanyItem = ({ item }: { item: any }) => {
     const initial = item.display_name ? item.display_name.charAt(0).toUpperCase() : 'C';
-    
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -76,18 +81,18 @@ export default function CompanyListScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={14} color={COLORS.primary} />
+            <Ionicons name="call-outline" size={14} color={theme.primaryColor} />
             <Text style={styles.infoText}>{item.phone || 'No phone number'}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={14} color={COLORS.primary} />
+            <Ionicons name="mail-outline" size={14} color={theme.primaryColor} />
             <Text style={styles.infoText}>{item.email || 'No email address'}</Text>
           </View>
 
           {(item.city || item.state) && (
             <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={14} color={COLORS.primary} />
+              <Ionicons name="location-outline" size={14} color={theme.primaryColor} />
               <Text style={styles.infoText}>
                 {[item.address, item.city, item.state, item.pincode].filter(Boolean).join(', ')}
               </Text>
@@ -99,7 +104,7 @@ export default function CompanyListScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
       <CustomHeader title="Companies" showSearch={false} />
 
@@ -122,7 +127,7 @@ export default function CompanyListScreen() {
 
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={theme.primaryColor} />
           <Text style={styles.loaderText}>Loading companies...</Text>
         </View>
       ) : (
@@ -141,11 +146,11 @@ export default function CompanyListScreen() {
           }
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgWhite,
@@ -197,7 +202,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   headerTextContainer: {
     flex: 1,
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
   gstText: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primaryColor,
   },
   divider: {
     height: 1,

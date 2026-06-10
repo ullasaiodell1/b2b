@@ -85,7 +85,7 @@ export const COLORS = {
 
   // Other UI Colors
   cardBg: '#FFFFFF',
-  saveBtnBg: '#000000',
+  saveBtnBg: '#346556',
   blue: '#3B82F6',
   green: '#10B981',
   orange: '#F59E0B',
@@ -230,47 +230,15 @@ function getPrimaryDark(hex: string) {
   return hslToHex(h, s, Math.max(l - 15, 15));
 }
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const themeListeners = new Set<() => void>();
-
-export function subscribeToTheme(listener: () => void) {
-  themeListeners.add(listener);
-  return () => {
-    themeListeners.delete(listener);
-  };
-}
-
-export function notifyThemeChange() {
-  themeListeners.forEach((listener) => listener());
-}
-
-export async function setThemeColor(color: string, save = true) {
+// ---------------------------------------------------------------------------
+// setThemeColor — kept for backward compat with static StyleSheets.
+// ThemeContext is the source of truth for reactive updates.
+// ---------------------------------------------------------------------------
+export function setThemeColor(color: string) {
   (COLORS as any).primary = color;
   (COLORS as any).primaryLight = getPrimaryLight(color);
   (COLORS as any).primaryDark = getPrimaryDark(color);
   (COLORS as any).avatarBg = COLORS.primaryLight;
-  
-  notifyThemeChange();
-  
-  if (save) {
-    try {
-      await AsyncStorage.setItem('@theme_primary_color', color);
-    } catch (e) {
-      console.error('Failed to save theme color to AsyncStorage:', e);
-    }
-  }
-}
-
-export async function loadSavedTheme() {
-  try {
-    const savedColor = await AsyncStorage.getItem('@theme_primary_color');
-    if (savedColor) {
-      await setThemeColor(savedColor, false);
-    }
-  } catch (e) {
-    console.error('Failed to load theme color from AsyncStorage:', e);
-  }
 }
 
 export function getColorName(hex: string): string {

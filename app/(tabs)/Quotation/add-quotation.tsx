@@ -1,4 +1,5 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useCreateQuotation } from '@/hooks/useQuotations';
 import { CreateQuotationPayload, QuotationItem } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +9,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
@@ -15,7 +17,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -67,10 +69,14 @@ function formatAmount(n: number) {
 }
 
 export default function AddQuotationScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const { referrer } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const createMutation = useCreateQuotation();
+  const { primaryColor, primaryLight } = useTheme();
 
   const handleBack = () => {
     if (referrer === 'lead-details') {
@@ -203,7 +209,7 @@ export default function AddQuotationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* HEADER */}
@@ -213,7 +219,7 @@ export default function AddQuotationScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: COLORS.primary }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>ADD </Text>
             <Text style={{ color: COLORS.textDark }}>QUOTATION</Text>
           </Text>
           <Text style={styles.headerSub}>Fill In The Details Below</Text>
@@ -364,8 +370,8 @@ export default function AddQuotationScreen() {
             <View key={item.tempId} style={styles.itemCard}>
               {/* Item header */}
               <View style={styles.itemHeader}>
-                <View style={styles.itemIndexBadge}>
-                  <Text style={styles.itemIndexText}>{idx + 1}</Text>
+                <View style={[styles.itemIndexBadge, { backgroundColor: primaryLight }]}>
+                  <Text style={[styles.itemIndexText, { color: primaryColor }]}>{idx + 1}</Text>
                 </View>
                 <Text style={styles.itemHeading} numberOfLines={1}>
                   {item.item_name || `Item ${idx + 1}`}
@@ -460,16 +466,23 @@ export default function AddQuotationScreen() {
                   Taxable: <Text style={styles.itemTotalVal}>{formatAmount(amount)}</Text>
                   {'  '}GST: <Text style={styles.itemTotalVal}>{formatAmount(gst_amount)}</Text>
                 </Text>
-                <Text style={styles.itemGrandTotal}>{formatAmount(total)}</Text>
+                <Text style={[styles.itemGrandTotal, { color: primaryColor }]}>{formatAmount(total)}</Text>
               </View>
             </View>
           );
         })}
 
         {/* Add Item button */}
-        <TouchableOpacity style={styles.addItemBtn} onPress={addItem} activeOpacity={0.8}>
-          <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-          <Text style={styles.addItemBtnText}>Add Item</Text>
+        <TouchableOpacity
+          style={[
+            styles.addItemBtn,
+            { borderColor: primaryColor, backgroundColor: primaryLight }
+          ]}
+          onPress={addItem}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add-circle-outline" size={18} color={primaryColor} style={{ marginRight: 6 }} />
+          <Text style={[styles.addItemBtnText, { color: primaryColor }]}>Add Item</Text>
         </TouchableOpacity>
 
         {/* ── ORDER TOTAL SUMMARY ───────────────────── */}
@@ -484,13 +497,17 @@ export default function AddQuotationScreen() {
           </View>
           <View style={[styles.totalSummaryRow, styles.totalSummaryGrand]}>
             <Text style={styles.grandLabel}>Grand Total</Text>
-            <Text style={styles.grandVal}>{formatAmount(grandTotal)}</Text>
+            <Text style={[styles.grandVal, { color: primaryColor }]}>{formatAmount(grandTotal)}</Text>
           </View>
         </View>
 
         {/* ── SAVE BUTTON ───────────────────────────── */}
         <TouchableOpacity
-          style={[styles.saveBtn, createMutation.isPending && { opacity: 0.6 }]}
+          style={[
+            styles.saveBtn,
+            { backgroundColor: primaryColor, shadowColor: primaryColor },
+            createMutation.isPending && { opacity: 0.6 }
+          ]}
           onPress={handleSave}
           activeOpacity={0.85}
           disabled={createMutation.isPending}
@@ -501,11 +518,11 @@ export default function AddQuotationScreen() {
         </TouchableOpacity>
 
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bgPage },
   header: {
     flexDirection: 'row',
@@ -529,7 +546,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 14.5, fontWeight: '900', letterSpacing: 0.5 },
   headerSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
 
-  scrollContent: { padding: 5, paddingBottom: 48, gap: 5 },
+  scrollContent: { padding: 5, paddingBottom: 150, gap: 5 },
 
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -595,11 +612,10 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemIndexText: { fontSize: 11, fontWeight: '800', color: COLORS.primary },
+  itemIndexText: { fontSize: 11, fontWeight: '800' },
   itemHeading: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.textDark },
   deleteItemBtn: {
     width: 32,
@@ -622,7 +638,7 @@ const styles = StyleSheet.create({
   },
   itemTotalLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
   itemTotalVal: { fontWeight: '800', color: COLORS.textDark },
-  itemGrandTotal: { fontSize: 13.5, fontWeight: '900', color: COLORS.primary },
+  itemGrandTotal: { fontSize: 13.5, fontWeight: '900' },
 
   addItemBtn: {
     flexDirection: 'row',
@@ -630,12 +646,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: COLORS.primary,
     borderRadius: 10,
     height: 44,
-    backgroundColor: COLORS.primaryLight,
   },
-  addItemBtnText: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  addItemBtnText: { fontSize: 13, fontWeight: '800' },
 
   // Order total summary
   totalSummaryCard: {
@@ -657,15 +671,13 @@ const styles = StyleSheet.create({
   totalSummaryLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   totalSummaryVal: { fontSize: 13, fontWeight: '700', color: COLORS.textDark },
   grandLabel: { fontSize: 14, fontWeight: '800', color: COLORS.textDark },
-  grandVal: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  grandVal: { fontSize: 15, fontWeight: '900' },
 
   saveBtn: {
-    backgroundColor: COLORS.primary,
     borderRadius: 12,
     height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

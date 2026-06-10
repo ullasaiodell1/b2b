@@ -1,9 +1,11 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -11,81 +13,30 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 
 
 export default function AddNewScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const [sheetVisible, setSheetVisible] = useState(false);
+  const { primaryColor, primaryLight } = useTheme();
 
   const options = [
-    {
-      id: 'lead',
-      label: 'New Lead',
-      icon: 'person-add-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        // Navigate to leads screen
-        router.push('/(tabs)/leads' as any);
-      },
-    },
-    {
-      id: 'contact',
-      label: 'New Contact',
-      icon: 'call-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        alert('Create New Contact form will open here.');
-      },
-    },
-    {
-      id: 'order',
-      label: 'New Order',
-      icon: 'cart-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        router.push('/(tabs)/Order' as any);
-      },
-    },
-    {
-      id: 'visit',
-      label: 'New Visit',
-      icon: 'location-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        alert('Register New Visit form will open here.');
-      },
-    },
-    {
-      id: 'task',
-      label: 'New Task',
-      icon: 'checkbox-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        alert('Create New Task form will open here.');
-      },
-    },
-    {
-      id: 'quotation',
-      label: 'New Quotation',
-      icon: 'document-text-outline' as const,
-      color: COLORS.primary,
-      onPress: () => {
-        setSheetVisible(false);
-        alert('Create New Quotation form will open here.');
-      },
-    },
+    { id: 'lead', label: 'New Lead', icon: 'person-add-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.push('/(tabs)/leads' as any); } },
+    { id: 'contact', label: 'New Contact', icon: 'call-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Contact form will open here.'); } },
+    { id: 'order', label: 'New Order', icon: 'cart-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.push('/(tabs)/Order' as any); } },
+    { id: 'visit', label: 'New Visit', icon: 'location-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Register New Visit form will open here.'); } },
+    { id: 'task', label: 'New Task', icon: 'checkbox-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Task form will open here.'); } },
+    { id: 'quotation', label: 'New Quotation', icon: 'document-text-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Quotation form will open here.'); } },
   ];
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader title="New Entry" showSearch={false} />
@@ -98,7 +49,7 @@ export default function AddNewScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.innerCircle}>
-            <Ionicons name="add" size={56} color={COLORS.primary} />
+            <Ionicons name="add" size={56} color={primaryColor} />
           </View>
         </TouchableOpacity>
 
@@ -138,7 +89,7 @@ export default function AddNewScreen() {
                   style={styles.gridItem}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.iconCircle}>
+                  <View style={[styles.iconCircle, { backgroundColor: primaryLight }]}>
                     <Ionicons name={opt.icon} size={24} color={opt.color} />
                   </View>
                   <Text style={styles.itemLabel}>{opt.label}</Text>
@@ -157,11 +108,11 @@ export default function AddNewScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bgPage,
@@ -181,7 +132,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -277,7 +227,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,

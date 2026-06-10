@@ -1,25 +1,30 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useLeadSources, useUsers } from '@/hooks/useLeads';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StatusBar,
-  Platform,
-  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUsers, useLeadSources } from '@/hooks/useLeads';
 
 const FallbackINDUSTRIES: string[] = [];
 const FallbackOWNERS = ['Select Owner'];
 const DATE_RANGES = ['Select Date', '28 Dec 22 – 10 Jan 23', 'Last 30 Days', 'This Month', 'Last Month'];
 
 export default function LeadsFilterScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ priority?: string; tag?: string; owner?: string; dateRange?: string }>();
   const insets = useSafeAreaInsets();
@@ -79,28 +84,28 @@ export default function LeadsFilterScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>
-          <Text style={{ color: COLORS.primary }}>LEADS </Text>
+          <Text style={{ color: theme.primaryColor }}>LEADS </Text>
           <Text style={{ color: COLORS.textDark }}>FILTER</Text>
         </Text>
 
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -150,8 +155,8 @@ export default function LeadsFilterScreen() {
           </View>
 
           <View style={styles.dateRow}>
-            <TouchableOpacity 
-              style={styles.dropdownTrigger} 
+            <TouchableOpacity
+              style={styles.dropdownTrigger}
               onPress={() => setShowDateModal(true)}
               activeOpacity={0.85}
             >
@@ -200,8 +205,8 @@ export default function LeadsFilterScreen() {
             <View style={styles.sectionLine} />
           </View>
 
-          <TouchableOpacity 
-            style={styles.dropdownTrigger} 
+          <TouchableOpacity
+            style={styles.dropdownTrigger}
             onPress={() => setShowOwnerModal(true)}
             activeOpacity={0.85}
           >
@@ -214,16 +219,16 @@ export default function LeadsFilterScreen() {
 
       {/* Sticky Bottom Actions */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
-          style={styles.cancelBtn} 
+        <TouchableOpacity
+          style={styles.cancelBtn}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.applyBtn} 
+        <TouchableOpacity
+          style={styles.applyBtn}
           onPress={handleApply}
           activeOpacity={0.8}
         >
@@ -233,7 +238,7 @@ export default function LeadsFilterScreen() {
 
       {/* LEAD OWNER PICKER MODAL */}
       <Modal transparent animationType="slide" visible={showOwnerModal}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowOwnerModal(false)}
@@ -260,7 +265,7 @@ export default function LeadsFilterScreen() {
                     {o}
                   </Text>
                   {owner === o && (
-                    <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                    <Ionicons name="checkmark" size={16} color={theme.primaryColor} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -271,7 +276,7 @@ export default function LeadsFilterScreen() {
 
       {/* DATE RANGE PICKER MODAL */}
       <Modal transparent animationType="slide" visible={showDateModal}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowDateModal(false)}
@@ -298,7 +303,7 @@ export default function LeadsFilterScreen() {
                     {d}
                   </Text>
                   {dateRange === d && (
-                    <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                    <Ionicons name="checkmark" size={16} color={theme.primaryColor} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -307,11 +312,11 @@ export default function LeadsFilterScreen() {
         </TouchableOpacity>
       </Modal>
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -356,7 +361,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 3.5,
     height: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 2,
     marginRight: 8,
   },
@@ -488,8 +493,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   circleCheckboxActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
+    borderColor: theme.primaryColor,
   },
 
   // Sticky bottom footer styling
@@ -523,7 +528,7 @@ const styles = StyleSheet.create({
   },
   applyBtn: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 46,
     alignItems: 'center',
@@ -577,7 +582,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   modalRowTextActive: {
-    color: COLORS.primary,
+    color: theme.primaryColor,
     fontWeight: '800',
   },
 });
