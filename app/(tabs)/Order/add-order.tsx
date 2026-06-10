@@ -1,30 +1,21 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
-  Alert,
-  Modal,
-} from 'react-native';
+import { OrderRecord, ordersState, updateOrdersState } from '@/components/OrderState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ordersState, updateOrdersState, OrderRecord } from '@/components/OrderState';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  saveBtnBg: '#000000',
-};
 
 const CLIENT_OPTIONS = ['NovaTech Solutions Pvt. Ltd.', 'Zenith System Pvt. Ltd.', 'Ullas India IT Solutions Limited.'];
 const CONTACT_OPTIONS = ['Arjun Maheta', 'Khushal Nadiyapara', 'Parth Solanki'];
@@ -98,8 +89,8 @@ export default function AddOrderScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -117,7 +108,7 @@ export default function AddOrderScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -142,7 +133,7 @@ export default function AddOrderScreen() {
             <Text style={styles.inputLabel}>
               Client Name <Text style={{ color: COLORS.danger }}>*</Text>
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('client')}
               activeOpacity={0.85}
@@ -159,7 +150,7 @@ export default function AddOrderScreen() {
             <Text style={styles.inputLabel}>
               Contact Person <Text style={{ color: COLORS.danger }}>*</Text>
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('contact')}
               activeOpacity={0.85}
@@ -190,7 +181,7 @@ export default function AddOrderScreen() {
             <Text style={styles.inputLabel}>
               Status <Text style={{ color: COLORS.danger }}>*</Text>
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('status')}
               activeOpacity={0.85}
@@ -203,7 +194,7 @@ export default function AddOrderScreen() {
           {/* Payment Method */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Payment Method</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('payment')}
               activeOpacity={0.85}
@@ -246,8 +237,8 @@ export default function AddOrderScreen() {
 
       {/* Sticky Bottom Save */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
-          style={styles.saveBtn} 
+        <TouchableOpacity
+          style={styles.saveBtn}
           onPress={handleSave}
           activeOpacity={0.85}
         >
@@ -257,7 +248,7 @@ export default function AddOrderScreen() {
 
       {/* OPTIONS MODAL */}
       <Modal transparent animationType="slide" visible={activePicker !== null}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setActivePicker(null)}
@@ -274,9 +265,9 @@ export default function AddOrderScreen() {
             <ScrollView style={{ paddingHorizontal: 20 }}>
               {(
                 activePicker === 'client' ? CLIENT_OPTIONS :
-                activePicker === 'contact' ? CONTACT_OPTIONS :
-                activePicker === 'status' ? STATUS_OPTIONS :
-                PAYMENT_OPTIONS
+                  activePicker === 'contact' ? CONTACT_OPTIONS :
+                    activePicker === 'status' ? STATUS_OPTIONS :
+                      PAYMENT_OPTIONS
               ).map((opt) => (
                 <TouchableOpacity
                   key={opt}
@@ -339,7 +330,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginTop: 20,
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
     gap: 6,

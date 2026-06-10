@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -12,17 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  cancelBorder: '#E5E7EB',
-};
 
 const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
 const STATUSES = ['Complete', 'Draft', 'Pending', 'Bounce'];
@@ -348,7 +338,7 @@ const styles = StyleSheet.create({
   // Date range picker row styling
   dateSelectorRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 5,
   },
   datePickerTrigger: {
     flex: 1,
@@ -385,7 +375,7 @@ const styles = StyleSheet.create({
 
   // Checkbox lists styling
   checkboxList: {
-    gap: 10,
+    gap: 5,
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -455,7 +445,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     flexDirection: 'row',
-    gap: 12,
+    gap: 5,
   },
   cancelButton: {
     flex: 1,

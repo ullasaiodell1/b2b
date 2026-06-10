@@ -1,35 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Animated,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import { MeetingRecord } from '@/components/MeetingState';
+import { COLORS } from '@/constants/theme';
+import { useMeetings } from '@/hooks/useMeetings';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Image,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { meetingsState, subscribeToMeetings, MeetingRecord } from '@/components/MeetingState';
 
 const { width } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  success: '#10B981',
-  info: '#3B82F6',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-};
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SINGLE = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -39,16 +28,11 @@ export default function MeetingScreen() {
   const insets = useSafeAreaInsets();
 
   // 1. Dynamic Meeting State
-  const [meetings, setMeetings] = useState<MeetingRecord[]>(meetingsState);
-  useEffect(() => {
-    return subscribeToMeetings(() => {
-      setMeetings([...meetingsState]);
-    });
-  }, []);
+  const { meetings } = useMeetings();
 
   // 2. Date States
-  // Initialize to March 16, 2026 to match the screenshots exactly
-  const initialDate = new Date(2026, 2, 16);
+  // Initialize to actual today's date
+  const initialDate = useRef(new Date()).current;
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(initialDate);
 
@@ -93,6 +77,13 @@ export default function MeetingScreen() {
     );
   };
 
+  const isDateChanged = !isSameDay(selectedDate, initialDate) || !isSameDay(currentMonthDate, initialDate);
+
+  const handleResetDate = () => {
+    setSelectedDate(initialDate);
+    setCurrentMonthDate(initialDate);
+  };
+
   const getWeekDays = (baseDate: Date) => {
     const sunday = new Date(baseDate);
     // Find Sunday of this week
@@ -109,7 +100,7 @@ export default function MeetingScreen() {
     const month = baseDate.getMonth();
     const firstDayOfMonth = new Date(year, month, 1);
     const startDayOffset = firstDayOfMonth.getDay(); // 0 (Sunday) to 6 (Saturday)
-    
+
     // First cell in the 6x7 grid (can be in previous month)
     const startDate = new Date(year, month, 1 - startDayOffset);
     return Array.from({ length: 42 }).map((_, i) => {
@@ -127,18 +118,6 @@ export default function MeetingScreen() {
     return `${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
-  const formatWeekRangeText = (date: Date) => {
-    const sunday = new Date(date);
-    sunday.setDate(date.getDate() - date.getDay());
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 6);
-    
-    const fmt = (d: Date) => {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
-    };
-    return `${fmt(sunday)} – ${fmt(saturday)}`;
-  };
 
   // Navigators
   const handlePrevMonth = () => {
@@ -153,10 +132,6 @@ export default function MeetingScreen() {
     setCurrentMonthDate(next);
   };
 
-  const handleResetDate = () => {
-    setSelectedDate(initialDate);
-    setCurrentMonthDate(initialDate);
-  };
 
   // Card Press
   const handleMeetingPress = (id: string) => {
@@ -213,18 +188,28 @@ export default function MeetingScreen() {
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgPage} />
-      
+
       {/* ── 1. HEADER TITLE ────────────────────────── */}
       <View style={[s.headerContainer, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
         <View style={s.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
+          <Image source={require('@/assets/images/icon.png')} style={{ width: 20, height: 20, marginRight: 6 }} resizeMode="contain" />
           <Text style={s.logoText}>BASALT</Text>
         </View>
+        {isDateChanged && (
+          <TouchableOpacity
+            onPress={handleResetDate}
+            style={[s.headerResetBtn, { top: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) + 4 }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh-outline" size={13} color={COLORS.primary} style={{ marginRight: 3 }} />
+            <Text style={s.headerResetText}>Today</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── 2. DYNAMIC CALENDAR ACCORDION ────────── */}
       <Animated.View style={[s.calendarWrapper, { height: calendarHeight }]}>
-        
+
         {/* COLLAPSED WEEKLY STRIP */}
         <Animated.View style={[s.weeklyContainer, { opacity: weeklyOpacity, pointerEvents: isCalendarExpanded ? 'none' : 'auto' }]}>
           <View style={s.weeklyRow}>
@@ -322,24 +307,6 @@ export default function MeetingScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── 4. DATE RANGE SELECTOR & RESET (Collapsed Only) ── */}
-      {!isCalendarExpanded && (
-        <View style={s.filterRow}>
-          <TouchableOpacity 
-            style={s.dropdownBox} 
-            activeOpacity={0.8}
-            onPress={() => setIsCalendarExpanded(true)}
-          >
-            <Text style={s.dropdownText}>{formatWeekRangeText(selectedDate)}</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.resetBtn} onPress={handleResetDate} activeOpacity={0.8}>
-            <Text style={s.resetText}>Reset</Text>
-            <Ionicons name="reload-outline" size={14} color={COLORS.textDark} style={s.resetIcon} />
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* ── 5. STATUS TAB FILTER BAR ────────────────── */}
       <View style={s.tabBarContainer}>
@@ -440,7 +407,7 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.bgPage,
   },
   headerContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -458,6 +425,21 @@ const s = StyleSheet.create({
     color: COLORS.textDark,
     letterSpacing: 2,
   },
+  headerResetBtn: {
+    position: 'absolute',
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  headerResetText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
   calendarWrapper: {
     backgroundColor: COLORS.bgPage,
     overflow: 'hidden',
@@ -469,8 +451,8 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 74,
-    paddingHorizontal: 12,
+    height: 60,
+    paddingHorizontal: 6,
     justifyContent: 'center',
   },
   weeklyRow: {
@@ -528,7 +510,7 @@ const s = StyleSheet.create({
     right: 0,
     top: 0,
     height: 280,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   monthNavRow: {
     flexDirection: 'row',
@@ -612,55 +594,10 @@ const s = StyleSheet.create({
     backgroundColor: '#C5D0CB',
   },
 
-  // Dropdown Row
-  filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginVertical: 10,
-    gap: 12,
-  },
-  dropdownBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.bgWhite,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 38,
-  },
-  dropdownText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: COLORS.textDark,
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.bgWhite,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 38,
-    gap: 6,
-  },
-  resetText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  resetIcon: {
-    transform: [{ translateY: 0.5 }],
-  },
 
   // Tab filter styling
   tabBarContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     marginVertical: 10,
     backgroundColor: COLORS.bgPage,
   },
@@ -700,8 +637,9 @@ const s = StyleSheet.create({
 
   // Scroll listings
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingVertical: 0,
+    paddingHorizontal: 8,
+    gap: 0,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
@@ -710,7 +648,7 @@ const s = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 10,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.02,
@@ -752,7 +690,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 1,
   },
   cardMetaText: {
     fontSize: 12.5,
@@ -796,3 +734,4 @@ const s = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

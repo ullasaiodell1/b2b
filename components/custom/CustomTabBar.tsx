@@ -1,0 +1,242 @@
+import { COLORS } from '@/constants/theme';
+import { useDrawer } from '@/hooks/useDrawer';
+import { useTabs } from '@/hooks/useTabs';
+import { Ionicons } from '@expo/vector-icons';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import React, { useEffect, useRef } from 'react';
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+
+  const { openDrawer } = useDrawer();
+  const { tabs: currentConfiguredTabs, activeDynamicTab: currentDynamicTabId, setDynamicTab, allModules: ALL_TAB_MODULES } = useTabs();
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, { toValue: 0, tension: 55, friction: 10, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const getActiveRouteName = (route: any): string => {
+    if (!route.state) {
+      return route.name;
+    }
+    const index = route.state.index;
+    const activeRoute = route.state.routes[index];
+    return getActiveRouteName(activeRoute);
+  };
+
+  const currentRoute = state.routes ? state.routes[state.index] : null;
+  const activeLeafRouteName = currentRoute ? getActiveRouteName(currentRoute) : '';
+
+  const activeRouteName = state.routes[state.index]?.name;
+
+  useEffect(() => {
+    if (activeRouteName && activeRouteName !== 'add') {
+      const isValidModule = ALL_TAB_MODULES.some(m => m.id === activeRouteName);
+      if (isValidModule) {
+        setDynamicTab(activeRouteName);
+      }
+    }
+  }, [activeRouteName]);
+
+  // Hide the tab bar on specific sub-screens/nested stack screens
+  const hiddenTabBarScreens = [
+    'add-meeting', 'meeting-details',
+    'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner',
+    'add-email', 'email-filter',
+    'add-order', 'order-details', 'order-filter',
+    'add-quotation', 'quotation-details', 'quotation-filter',
+    'add-task', 'task-details', 'task-filter',
+    'add-visit', 'visit-filter',
+    'add-call', 'call-filter', 'call-history',
+    'edit-profile', 'change-password'
+  ];
+
+  if (hiddenTabBarScreens.includes(activeLeafRouteName)) {
+    return null;
+  }
+
+  // Max 4 regular tabs
+  let displayTabs = [...currentConfiguredTabs];
+  if (currentDynamicTabId && !currentConfiguredTabs.includes(currentDynamicTabId)) {
+    if (displayTabs.length >= 4) {
+      displayTabs[3] = currentDynamicTabId;
+    } else {
+      displayTabs.push(currentDynamicTabId);
+    }
+  }
+  const visibleTabs = displayTabs.slice(0, 4);
+
+  return (
+    <Animated.View
+      style={[
+        styles.outerRow,
+        {
+          transform: [{ translateY: slideAnim }],
+          opacity: opacityAnim,
+          bottom: Math.max(insets.bottom + 12, 22),
+        },
+      ]}
+    >
+      {/* ── LEFT DARK PILL (4 tabs) ── */}
+      <View style={styles.pill}>
+        {visibleTabs.map((tabId) => {
+          const mod = ALL_TAB_MODULES.find((m) => m.id === tabId);
+          if (!mod) return null;
+
+          const route = state.routes.find((r) => r.name === tabId);
+          if (!route) return null;
+
+          const isFocused = activeRouteName === tabId;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              activeOpacity={0.7}
+            >
+              {isFocused ? (
+                /* ── RAISED WHITE CIRCLE (active) ── */
+                <View style={styles.raisedCircle}>
+                  <Ionicons
+                    name={mod.icon}
+                    size={22}
+                    color={COLORS.activeIcon}
+                  />
+                </View>
+              ) : (
+                /* ── Regular inactive icon ── */
+                <Ionicons
+                  name={mod.iconOutline}
+                  size={22}
+                  color={COLORS.inactiveIcon}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* ── GAP ── */}
+      <View style={styles.gap} />
+
+      {/* ── RIGHT MORE BUTTON (separate pill) ── */}
+      <TouchableOpacity
+        onPress={openDrawer}
+        style={styles.moreBtn}
+        activeOpacity={0.75}
+      >
+        <Ionicons name="reorder-three-outline" size={24} color={COLORS.moreIcon} />
+        <Text style={styles.moreLabel}>More</Text>
+      </TouchableOpacity>
+
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  // Outer row — positions the two elements side by side
+  outerRow: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-end',   // align to bottom so pill + more sit level
+  },
+
+  // ── LEFT PILL ───────────────────────────────────────
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.barBg,
+    borderRadius: 40,
+    height: 62,
+    paddingHorizontal: 6,
+    // overflow visible so raised circle can pop above
+    overflow: 'visible',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.30,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+
+  // Each tab slot inside the pill
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 62,
+    // allow raised circle to overflow upward
+    overflow: 'visible',
+  },
+
+  // White circle that pops UP above the pill for the active tab
+  raisedCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.activeCircleBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Raise above pill top edge
+    marginTop: -28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+
+  // ── GAP between pill and More ────────────────────────
+  gap: {
+    width: 10,
+  },
+
+  // ── MORE BUTTON (separate small pill) ───────────────
+  moreBtn: {
+    width: 68,
+    height: 62,
+    borderRadius: 32,
+    backgroundColor: COLORS.barBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.30,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  moreLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.moreLabel,
+    letterSpacing: 0.2,
+  },
+});

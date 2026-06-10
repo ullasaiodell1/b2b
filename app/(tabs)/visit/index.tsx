@@ -1,32 +1,19 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
   Image,
-  StatusBar,
   Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#DCE5E1',
-  blue: '#3B82F6',
-  green: '#10B981',
-  orange: '#F59E0B',
-  red: '#EF4444',
-};
 
 interface Visit {
   id: string;
@@ -130,13 +117,7 @@ export default function VisitScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Visit" showSearch={false} />
 
       {/* SEARCH AND FILTERS */}
       <View style={styles.searchSection}>
@@ -156,7 +137,7 @@ export default function VisitScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => router.push({
             pathname: '/(tabs)/visit/visit-filter',
@@ -168,11 +149,11 @@ export default function VisitScreen() {
           })}
           activeOpacity={0.8}
         >
-          <Ionicons 
-            name="funnel-outline" 
-            size={16} 
-            color={hasActiveFilters ? COLORS.primary : COLORS.textDark} 
-            style={{ marginRight: 6 }} 
+          <Ionicons
+            name="funnel-outline"
+            size={16}
+            color={hasActiveFilters ? COLORS.primary : COLORS.textDark}
+            style={{ marginRight: 6 }}
           />
           <Text style={[styles.filterBtnText, hasActiveFilters && styles.filterBtnTextActive]}>Filters</Text>
           {hasActiveFilters && (
@@ -184,7 +165,7 @@ export default function VisitScreen() {
       {/* HORIZONTAL STATUS FILTER PILLS */}
       <View style={styles.pillsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScroll}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'All' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('All')}
             activeOpacity={0.8}
@@ -195,7 +176,7 @@ export default function VisitScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Complete' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Complete')}
             activeOpacity={0.8}
@@ -206,7 +187,7 @@ export default function VisitScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Pending' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Pending')}
             activeOpacity={0.8}
@@ -217,7 +198,7 @@ export default function VisitScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Bounce' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Bounce')}
             activeOpacity={0.8}
@@ -245,8 +226,8 @@ export default function VisitScreen() {
               </View>
             )}
           </ScrollView>
-          <TouchableOpacity 
-            style={styles.clearBtn} 
+          <TouchableOpacity
+            style={styles.clearBtn}
             onPress={() => router.push('/(tabs)/visit')}
             activeOpacity={0.7}
           >
@@ -257,7 +238,7 @@ export default function VisitScreen() {
       )}
 
       {/* VISITS LIST */}
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -269,10 +250,10 @@ export default function VisitScreen() {
           return (
             <View key={visit.id} style={styles.card}>
               <Image source={visit.avatar} style={styles.cardAvatar} />
-              
+
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{visit.name}</Text>
-                
+
                 <View style={styles.cardRow}>
                   <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                   <Text style={styles.cardText} numberOfLines={1}>{visit.company}</Text>
@@ -337,7 +318,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 14,
     borderBottomWidth: 1,
@@ -358,7 +339,7 @@ const styles = StyleSheet.create({
   searchSection: {
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 12,
     paddingBottom: 10,
     gap: 12,
@@ -421,7 +402,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   pillsScroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     gap: 8,
   },
   pill: {
@@ -460,7 +441,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -496,9 +477,9 @@ const styles = StyleSheet.create({
 
   // List card styling
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 14,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    gap: 5,
   },
   card: {
     flexDirection: 'row',
@@ -607,3 +588,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+import CustomHeader from '@/components/custom/CustomHeader';

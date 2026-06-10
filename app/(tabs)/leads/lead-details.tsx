@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -10,23 +11,13 @@ import {
   Platform,
   Alert,
   TextInput,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#DCE5E1',
-  blue: '#2563EB',
-  green: '#10B981',
-  orange: '#F59E0B',
-};
+import { useLeadDetails } from '@/hooks/useLeads';
 
 type TabType = 'Overview' | 'Quotation' | 'Order' | 'Emails';
 
@@ -60,13 +51,15 @@ export default function LeadDetailsScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const leadName = params.name || 'Parth Solanki';
-  const leadCompany = params.company || 'Parth Pvt. Ltd.';
-  const leadEmail = params.email || 'parth123@gmail.com';
-  const leadPhone = params.phone || '+91 45637 12345';
-  const leadTag = params.tag || 'Hardware';
-  const leadPriority = params.priority || 'Normal';
-  const leadOwner = params.owner || 'Arjun Maheta';
+  const { data: dbLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
+
+  const leadName = dbLead?.name || params.name || 'Parth Solanki';
+  const leadCompany = dbLead?.company || params.company || 'Parth Pvt. Ltd.';
+  const leadEmail = dbLead?.email || params.email || 'parth123@gmail.com';
+  const leadPhone = dbLead?.phone || params.phone || '+91 45637 12345';
+  const leadTag = dbLead?.tag || params.tag || 'Hardware';
+  const leadPriority = dbLead?.priority || params.priority || 'Normal';
+  const leadOwner = dbLead?.owner || params.owner || 'Arjun Maheta';
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>('Overview');
@@ -74,15 +67,25 @@ export default function LeadDetailsScreen() {
   const [addressExpanded, setAddressExpanded] = useState(true);
   const [descExpanded, setDescExpanded] = useState(true);
   const [emailSearchQuery, setEmailSearchQuery] = useState('');
-  const [emailSelectedStatus, setEmailSelectedStatus] = useState<'All' | 'Opend' | 'Sent' | 'Draft' | 'Bounce'>('All');
+  const [emailSelectedStatus, setEmailSelectedStatus] = useState<'All' | 'Opened' | 'Sent' | 'Draft' | 'Bounce'>('All');
 
   const handleAction = (type: string) => {
+    const routeParams = {
+      leadId: params.id,
+      leadName,
+      company: leadCompany,
+      phone: leadPhone,
+      email: leadEmail,
+    };
+
     if (type === 'Call') {
-      router.push('/(tabs)/call/index' as any);
+      router.push({ pathname: '/(tabs)/call', params: routeParams } as any);
     } else if (type === 'Task') {
-      router.push('/(tabs)/task/index' as any);
+      router.push({ pathname: '/(tabs)/task', params: routeParams } as any);
     } else if (type === 'Meeting') {
-      router.push('/(tabs)/visit/index' as any);
+      router.push({ pathname: '/(tabs)/meeting', params: routeParams } as any);
+    } else if (type === 'Visit') {
+      router.push({ pathname: '/(tabs)/visit', params: routeParams } as any);
     } else {
       Alert.alert('Action triggered', `Performing ${type} action...`);
     }
@@ -245,6 +248,9 @@ export default function LeadDetailsScreen() {
       <ScrollView 
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+        }
       >
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'Overview' && (
@@ -322,19 +328,19 @@ export default function LeadDetailsScreen() {
                   <DetailRow label="lead owner" value={leadOwner} />
                   <DetailRow label="Company" value={leadCompany} required />
                   <DetailRow label="Lead Name" value={leadName} />
-                  <DetailRow label="Title" value="----" />
+                  <DetailRow label="Title" value={dbLead?.designation || "----"} />
                   <DetailRow label="Email" value={leadEmail} />
                   <DetailRow label="Phone" value={leadPhone} />
                   <DetailRow label="Fax" value="----" />
-                  <DetailRow label="Mobile" value="----" />
-                  <DetailRow label="Website" value="----" />
-                  <DetailRow label="Lead Source" value="----" />
-                  <DetailRow label="Lead Status" value="----" />
+                  <DetailRow label="Mobile" value={dbLead?.alternate_phone || "----"} />
+                  <DetailRow label="Website" value={dbLead?.website || "----"} />
+                  <DetailRow label="Lead Source" value={leadTag} />
+                  <DetailRow label="Lead Status" value={dbLead?.status || "----"} />
                   <DetailRow label="Industry" value="----" />
                   <DetailRow label="No. Of Employee" value="----" />
-                  <DetailRow label="Annual Revenue" value="----" />
+                  <DetailRow label="Annual Revenue" value={dbLead?.expected_revenue ? `₹ ${dbLead.expected_revenue}` : "----"} />
                   <DetailRow label="Raitng" value="----" />
-                  <DetailRow label="Created By" value={leadOwner} />
+                  <DetailRow label="Created By" value={dbLead?.created_by_name || leadOwner} />
                   <DetailRow label="Email Opt Out" value="----" />
                   <DetailRow label="Skype ID" value="----" />
                   <DetailRow label="Modified By" value={leadOwner} />
@@ -371,7 +377,21 @@ export default function LeadDetailsScreen() {
 
               {addressExpanded && (
                 <View style={styles.accordionContent}>
-                  <DetailRow label="Address" value="-----" />
+                  <DetailRow 
+                    label="Address" 
+                    value={
+                      dbLead 
+                        ? [
+                            dbLead.address_line1,
+                            dbLead.address_line2,
+                            dbLead.city_name || dbLead.city,
+                            dbLead.state_name || dbLead.state,
+                            dbLead.country_name || dbLead.country,
+                            dbLead.pincode
+                          ].filter(Boolean).join(', ') || '-----'
+                        : '-----'
+                    } 
+                  />
                 </View>
               )}
             </View>
@@ -398,7 +418,7 @@ export default function LeadDetailsScreen() {
 
               {descExpanded && (
                 <View style={styles.accordionContent}>
-                  <DetailRow label="Description" value="-----" />
+                  <DetailRow label="Description" value={dbLead?.remarks || '-----'} />
                 </View>
               )}
             </View>
@@ -406,7 +426,7 @@ export default function LeadDetailsScreen() {
             {/* NAVIGATION BADGES CARD ROWS */}
             <TouchableOpacity 
               style={styles.badgeRowCard}
-              onPress={() => router.push('/(tabs)/visit')}
+              onPress={() => handleAction('Visit')}
               activeOpacity={0.85}
             >
               <View style={styles.badgeRowTitleLeft}>
@@ -673,13 +693,13 @@ export default function LeadDetailsScreen() {
               <TouchableOpacity 
                 style={[
                   styles.tabChipStyle, 
-                  emailSelectedStatus === 'Opend' && styles.tabChipStyleActive
+                  emailSelectedStatus === 'Opened' && styles.tabChipStyleActive
                 ]}
-                onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Opend' ? 'All' : 'Opend')}
+                onPress={() => setEmailSelectedStatus(emailSelectedStatus === 'Opened' ? 'All' : 'Opened')}
                 activeOpacity={0.8}
               >
                 <View style={[styles.chipDot, { backgroundColor: COLORS.green }]} />
-                <Text style={styles.chipText}>Opend <Text style={{ fontWeight: '800' }}>12</Text></Text>
+                <Text style={styles.chipText}>Opened <Text style={{ fontWeight: '800' }}>12</Text></Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -726,7 +746,7 @@ export default function LeadDetailsScreen() {
                 subject: 'Order Confirmation - Website Redesi...',
                 company: 'Ullas India IT Solutions Limited.',
                 sentTo: 'Parth Solanki',
-                status: 'Opend',
+                status: 'Opened',
                 statusColor: COLORS.green,
                 date: '22 March 2026',
                 deliveryStatus: 'Delivered',

@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -14,16 +15,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  saveBtnBg: '#000000',
-};
 
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
 const RECIPIENTS = ['Parth Solanki', 'Khushal Nadiyapara', 'Arjun Maheta'];
@@ -240,10 +231,10 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginTop: 20,
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 5,
   },
   inputLabel: {
     fontSize: 12.5,

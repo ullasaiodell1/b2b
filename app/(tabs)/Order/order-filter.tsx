@@ -1,32 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { activeOrderFilter, updateOrderFilterState } from '@/components/OrderState';
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
+  Modal,
   Platform,
   ScrollView,
-  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { activeOrderFilter, updateOrderFilterState } from '@/components/OrderState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  success: '#10B981',
-  danger: '#EF4444',
-  blueSoft: '#4F83F6',
-};
 
 const STATUS_MAP_UI = {
   'Complete': 'Complete',
@@ -51,7 +39,7 @@ export default function OrderFilterScreen() {
   const insets = useSafeAreaInsets();
 
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  
+
   // Start/End Dates
   const [startDate, setStartDate] = useState<Date>(new Date(2022, 11, 28));
   const [endDate, setEndDate] = useState<Date>(new Date(2023, 0, 10));
@@ -128,8 +116,8 @@ export default function OrderFilterScreen() {
           </View>
 
           <View style={s.dateFilterRow}>
-            <TouchableOpacity 
-              style={s.dropdownBox} 
+            <TouchableOpacity
+              style={s.dropdownBox}
               onPress={() => setShowStartPicker(true)}
               activeOpacity={0.8}
             >
@@ -140,8 +128,8 @@ export default function OrderFilterScreen() {
               <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={s.dropdownBox} 
+            <TouchableOpacity
+              style={s.dropdownBox}
               onPress={() => setShowEndPicker(true)}
               activeOpacity={0.8}
             >
@@ -179,7 +167,7 @@ export default function OrderFilterScreen() {
                   <Text style={[s.statusCardText, isActive && s.statusCardTextActive]}>
                     {status}
                   </Text>
-                  
+
                   <View style={[s.checkboxCircle, isActive && s.checkboxCircleActive]}>
                     {isActive && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
                   </View>
@@ -212,8 +200,8 @@ export default function OrderFilterScreen() {
       {showStartPicker && (
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="fade" visible={showStartPicker}>
-            <TouchableOpacity 
-              style={s.calendarOverlay} 
+            <TouchableOpacity
+              style={s.calendarOverlay}
               activeOpacity={1}
               onPress={() => setShowStartPicker(false)}
             >
@@ -226,8 +214,8 @@ export default function OrderFilterScreen() {
                     if (selectedDate) setStartDate(selectedDate);
                   }}
                 />
-                <TouchableOpacity 
-                  style={[s.saveBtn, { marginTop: 10 }]} 
+                <TouchableOpacity
+                  style={[s.saveBtn, { marginTop: 10 }]}
                   onPress={() => setShowStartPicker(false)}
                   activeOpacity={0.8}
                 >
@@ -252,8 +240,8 @@ export default function OrderFilterScreen() {
       {showEndPicker && (
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="fade" visible={showEndPicker}>
-            <TouchableOpacity 
-              style={s.calendarOverlay} 
+            <TouchableOpacity
+              style={s.calendarOverlay}
               activeOpacity={1}
               onPress={() => setShowEndPicker(false)}
             >
@@ -266,8 +254,8 @@ export default function OrderFilterScreen() {
                     if (selectedDate) setEndDate(selectedDate);
                   }}
                 />
-                <TouchableOpacity 
-                  style={[s.saveBtn, { marginTop: 10 }]} 
+                <TouchableOpacity
+                  style={[s.saveBtn, { marginTop: 10 }]}
                   onPress={() => setShowEndPicker(false)}
                   activeOpacity={0.8}
                 >
@@ -328,7 +316,7 @@ const s = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    gap: 20,
+    gap: 1,
   },
   panelHeader: {
     flexDirection: 'row',
@@ -350,7 +338,7 @@ const s = StyleSheet.create({
   },
 
   section: {
-    gap: 12,
+    gap: 5,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -370,7 +358,7 @@ const s = StyleSheet.create({
 
   dateFilterRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   dropdownBox: {
     flex: 1,
@@ -403,7 +391,7 @@ const s = StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 12,
     height: 40,
-    gap: 6,
+    gap: 10,
     backgroundColor: '#FFFFFF',
   },
   resetText: {
@@ -416,7 +404,7 @@ const s = StyleSheet.create({
   },
 
   statusList: {
-    gap: 10,
+    gap: 5,
   },
   statusCard: {
     flexDirection: 'row',

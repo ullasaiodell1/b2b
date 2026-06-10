@@ -1,32 +1,19 @@
-import { activeOrderFilter, ordersState, subscribeToOrders, updateOrderFilterState } from '@/components/OrderState';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
+import { useOrders } from '@/hooks/useOrders';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  success: '#10B981',
-  info: '#3B82F6',
-  danger: '#EF4444',
-  blueSoft: '#4F83F6',
-};
 
 const STATUS_MAP_UI = {
   'Complete': 'Complete',
@@ -41,18 +28,7 @@ export default function OrderScreen() {
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [orders, setOrders] = useState(ordersState);
-  const [filterState, setFilterState] = useState(activeOrderFilter);
-
-  // Subscribe to changes in OrderState (e.g. from the Filter screen)
-  useEffect(() => {
-    const handleUpdate = () => {
-      setOrders([...ordersState]);
-      setFilterState({ ...activeOrderFilter });
-    };
-    handleUpdate();
-    return subscribeToOrders(handleUpdate);
-  }, []);
+  const { orders, filter: filterState, updateFilter } = useOrders();
 
   // Search & Filter Logic
   const filteredOrders = orders.filter((order) => {
@@ -97,12 +73,7 @@ export default function OrderScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgPage} />
 
       {/* ── 1. HEADER TITLE ────────────────────────── */}
-      <View style={[s.headerContainer, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={s.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={s.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Orders" showSearch={false} />
 
       {/* ── 2. SEARCH BAR & FILTERS BUTTON ──────────── */}
       <View style={s.searchRow}>
@@ -143,7 +114,7 @@ export default function OrderScreen() {
             <TouchableOpacity
               style={s.activeChip}
               onPress={() => {
-                updateOrderFilterState({
+                updateFilter({
                   ...filterState,
                   status: '',
                 });
@@ -161,7 +132,7 @@ export default function OrderScreen() {
             <TouchableOpacity
               style={s.activeChip}
               onPress={() => {
-                updateOrderFilterState({
+                updateFilter({
                   ...filterState,
                   dateRange: '28 Dec 22 – 10 Jan 23', // Reset to default
                 });
@@ -300,7 +271,7 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.bgPage,
   },
   headerContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -320,10 +291,10 @@ const s = StyleSheet.create({
   },
   searchRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
+    paddingHorizontal: 5,
+    gap: 2,
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 5,
   },
   searchFieldWrap: {
     flex: 1,
@@ -358,7 +329,7 @@ const s = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     paddingHorizontal: 14,
-    gap: 6,
+    gap: 10,
   },
   filterBtnActive: {
     borderColor: COLORS.primary,
@@ -373,8 +344,9 @@ const s = StyleSheet.create({
     color: COLORS.primary,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
@@ -383,7 +355,7 @@ const s = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 16,
     marginBottom: 14,
-    gap: 12,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.01,
@@ -403,7 +375,7 @@ const s = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   dateText: {
     fontSize: 11.5,
@@ -411,7 +383,7 @@ const s = StyleSheet.create({
     color: COLORS.blueSoft,
   },
   cardBody: {
-    gap: 8,
+    gap: 5,
   },
   metaRow: {
     flexDirection: 'row',
@@ -519,7 +491,7 @@ const s = StyleSheet.create({
   },
   chipsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     gap: 8,
     marginBottom: 10,
     flexWrap: 'wrap',
@@ -557,3 +529,4 @@ const s = StyleSheet.create({
     zIndex: 100,
   },
 });
+

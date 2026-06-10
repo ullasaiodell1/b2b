@@ -1,31 +1,22 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
   Alert,
-  Switch,
   Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as DocumentPicker from 'expo-document-picker';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 interface Attachment {
   id: string;
@@ -69,8 +60,8 @@ export default function TaskDetailsScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const pickedAsset = result.assets[0];
-        const fileSize = pickedAsset.size 
-          ? `${(pickedAsset.size / (1024 * 1024)).toFixed(1)} MB` 
+        const fileSize = pickedAsset.size
+          ? `${(pickedAsset.size / (1024 * 1024)).toFixed(1)} MB`
           : '1.4 MB';
 
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -100,8 +91,8 @@ export default function TaskDetailsScreen() {
 
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -122,10 +113,10 @@ export default function TaskDetailsScreen() {
             onPress={() => setActiveTab('RELATED')}
             activeOpacity={0.8}
           >
-            <Ionicons 
-              name="git-network-outline" 
-              size={16} 
-              color={activeTab === 'RELATED' ? COLORS.primary : COLORS.textMuted} 
+            <Ionicons
+              name="git-network-outline"
+              size={16}
+              color={activeTab === 'RELATED' ? COLORS.primary : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'RELATED' && styles.tabButtonTextActive]}>
               RELATED
@@ -137,10 +128,10 @@ export default function TaskDetailsScreen() {
             onPress={() => setActiveTab('DETAILS')}
             activeOpacity={0.8}
           >
-            <Ionicons 
-              name="list-outline" 
-              size={16} 
-              color={activeTab === 'DETAILS' ? COLORS.primary : COLORS.textMuted} 
+            <Ionicons
+              name="list-outline"
+              size={16}
+              color={activeTab === 'DETAILS' ? COLORS.primary : COLORS.textMuted}
             />
             <Text style={[styles.tabButtonText, activeTab === 'DETAILS' && styles.tabButtonTextActive]}>
               DETAILS
@@ -150,11 +141,11 @@ export default function TaskDetailsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {activeTab === 'RELATED' ? (
           /* ── RELATED TAB CONTENT ───────────────── */
           <View style={styles.tabContentContainer}>
-            
+
             {/* Task Main Details Card */}
             <View style={styles.mainTaskCard}>
               <View style={styles.mainCardHeader}>
@@ -238,7 +229,7 @@ export default function TaskDetailsScreen() {
                   <Text style={styles.attachmentName}>{file.name}</Text>
                   <Text style={styles.attachmentMeta}>{file.size} • Added {file.added}</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.downloadBtn}
                   onPress={() => Alert.alert('Download', `Downloading attachment file ${file.name}...`)}
                   activeOpacity={0.7}
@@ -266,7 +257,7 @@ export default function TaskDetailsScreen() {
         ) : (
           /* ── DETAILS TAB CONTENT ───────────────── */
           <View style={styles.tabContentContainer}>
-            
+
             {/* Show All Fields Toggle Switch */}
             <View style={styles.toggleRow}>
               <Text style={styles.toggleLabel}>Show All Fields</Text>
@@ -359,9 +350,9 @@ export default function TaskDetailsScreen() {
         animationType="fade"
         onRequestClose={() => setNoteModalVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setNoteModalVisible(false)}
         >
           <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
@@ -451,7 +442,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    gap: 8,
+    gap: 5,
   },
   tabButtonActive: {
     backgroundColor: '#FFFFFF',
@@ -476,7 +467,7 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
   },
   tabContentContainer: {
-    gap: 16,
+    gap: 5,
   },
 
   // Main task card (RELATED tab)
@@ -490,7 +481,7 @@ const styles = StyleSheet.create({
   mainCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   mainCardTitle: {
     flex: 1,
@@ -505,7 +496,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   metaText: {
     fontSize: 11.5,
@@ -515,7 +506,7 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   badgeText: {
     fontSize: 11,
@@ -532,7 +523,7 @@ const styles = StyleSheet.create({
   sectionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   verticalGreenLine: {
     width: 3,
@@ -561,7 +552,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
-    gap: 12,
+    gap: 5,
   },
   noteText: {
     fontSize: 11.5,
@@ -595,7 +586,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 16,
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
     borderStyle: 'dashed',
   },
   emptyIconCircle: {
@@ -648,7 +639,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   attachmentInfo: {
-    gap: 2,
+    gap: 5,
   },
   attachmentName: {
     fontSize: 12.5,
@@ -693,15 +684,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
-    gap: 16,
+    gap: 5,
   },
   detailsBlockHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   infoList: {
-    gap: 14,
+    gap: 5,
   },
   infoRow: {
     flexDirection: 'row',
@@ -736,7 +727,7 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '100%',
     maxWidth: 320,
-    gap: 16,
+    gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -760,7 +751,7 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 5,
   },
   modalBtn: {
     flex: 1,

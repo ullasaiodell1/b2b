@@ -1,6 +1,8 @@
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import * as Linking from 'expo-linking';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
   Platform,
@@ -10,6 +12,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {
   BarChart,
@@ -17,65 +22,27 @@ import {
   PieChart,
 } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppPermissions } from '@/hooks/useAppPermissions';
+import { useAnalysis } from '@/hooks/useAnalysis';
 
 const { width } = Dimensions.get('window');
-const CHART_WIDTH = width - 64; // card padding 18*2 + scroll padding 16*2
+const CHART_WIDTH = width - 36; // card padding 18*2 + scroll padding 0*2
 
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5ECE9',
-  peach: '#E2C0B1',
-  darkBrown: '#39241E',
-};
+// ── FALLBACK/MOCK DATA ────────────────────────────────
 
-// ── DATA ─────────────────────────────────────────────
-
-const LEAD_DATA = {
+const LEAD_DATA_MOCK = {
   Daily: {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    datasets: [{ data: [3, 7, 5, 9, 6, 8] }],
+    datasets: [{ data: [0, 0, 0, 0, 0, 0] }],
   },
   Weekly: {
     labels: ['W1', 'W2', 'W3', 'W4'],
-    datasets: [{ data: [18, 24, 20, 30] }],
+    datasets: [{ data: [0, 0, 0, 0] }],
   },
   Monthly: {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [{ data: [45, 60, 55, 70, 65, 80] }],
+    datasets: [{ data: [0, 0, 0, 0, 0, 0] }],
   },
-};
-
-const PIE_DATA = [
-  {
-    name: 'Leads',
-    population: 30,
-    color: COLORS.primary,
-    legendFontColor: COLORS.textDark,
-    legendFontSize: 13,
-  },
-  {
-    name: 'Quotation',
-    population: 10,
-    color: COLORS.peach,
-    legendFontColor: COLORS.textDark,
-    legendFontSize: 13,
-  },
-  {
-    name: 'Orders',
-    population: 340,
-    color: COLORS.darkBrown,
-    legendFontColor: COLORS.textDark,
-    legendFontSize: 13,
-  },
-];
-
-const BAR_DATA = {
-  labels: ['Pending', 'Confirmed', 'Completed'],
-  datasets: [{ data: [20, 40, 100] }],
 };
 
 // ── Shared chart config ───────────────────────────────
@@ -105,55 +72,152 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [leadFilter, setLeadFilter] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
 
-  const lineData = LEAD_DATA[leadFilter];
+  const { requestAllPermissions } = useAppPermissions();
+
+  useEffect(() => {
+    (async () => {
+      const results = await requestAllPermissions();
+      if (results) {
+        const allGranted = Object.values(results).every((granted) => granted);
+        if (!allGranted) {
+          Alert.alert(
+            'Permissions Required',
+            'Some permissions were denied. Please allow all permissions in settings for the best experience.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+        }
+      }
+    })();
+  }, []);
+
+  // Fetch analysis data from API using hook
+  const { data: apiData, isLoading, isFetching, refetch } = useAnalysis();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        <CustomHeader title="Home" showSearch={false} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>
+            Loading dashboard data...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Parsed API Data / Fallbacks ────────────────────────
+  const totalVisits = apiData?.total_visits ?? 0;
+  
+  const revenueGenerated = apiData?.revenue_generated ?? '₹0';
+  const assignedTarget = apiData?.assigned_target ?? '₹0';
+
+  // Lead created data parsing
+  const apiLeadData = apiData?.lead_data as any;
+  const leadDataDaily: any = apiLeadData?.Daily ?? LEAD_DATA_MOCK.Daily;
+  const leadDataWeekly: any = apiLeadData?.Weekly ?? LEAD_DATA_MOCK.Weekly;
+  const leadDataMonthly: any = apiLeadData?.Monthly ?? LEAD_DATA_MOCK.Monthly;
+
+  const leadData = {
+    Daily: {
+      labels: leadDataDaily.labels ?? LEAD_DATA_MOCK.Daily.labels,
+      datasets: [{
+        data: leadDataDaily.datasets?.[0]?.data ?? leadDataDaily.data ?? LEAD_DATA_MOCK.Daily.datasets[0].data
+      }]
+    },
+    Weekly: {
+      labels: leadDataWeekly.labels ?? LEAD_DATA_MOCK.Weekly.labels,
+      datasets: [{
+        data: leadDataWeekly.datasets?.[0]?.data ?? leadDataWeekly.data ?? LEAD_DATA_MOCK.Weekly.datasets[0].data
+      }]
+    },
+    Monthly: {
+      labels: leadDataMonthly.labels ?? LEAD_DATA_MOCK.Monthly.labels,
+      datasets: [{
+        data: leadDataMonthly.datasets?.[0]?.data ?? leadDataMonthly.data ?? LEAD_DATA_MOCK.Monthly.datasets[0].data
+      }]
+    }
+  };
+
+  const lineData = leadData[leadFilter as keyof typeof leadData];
+  const totalLeadCreated = apiLeadData?.[leadFilter]?.total ?? apiLeadData?.[leadFilter.toLowerCase()]?.total ?? 0;
+
+  // Pie chart data parsing
+  const apiPieData = apiData?.lead_conversion_ratio;
+  const pieLeads = apiPieData?.leads ?? 0;
+  const pieQuotations = apiPieData?.quotations ?? 0;
+  const pieOrders = apiPieData?.orders ?? 0;
+  const averageRatio = apiPieData?.average_ratio ?? '0%';
+
+  const hasPieData = pieLeads > 0 || pieQuotations > 0 || pieOrders > 0;
+  const displayLeads = hasPieData ? pieLeads : 0;
+  const displayQuotations = hasPieData ? pieQuotations : 0;
+  const displayOrders = hasPieData ? pieOrders : 0;
+
+  const pieData = [
+    {
+      name: 'Leads',
+      population: displayLeads,
+      color: COLORS.primary,
+      legendFontColor: COLORS.textDark,
+      legendFontSize: 13,
+    },
+    {
+      name: 'Quotation',
+      population: displayQuotations,
+      color: COLORS.peach,
+      legendFontColor: COLORS.textDark,
+      legendFontSize: 13,
+    },
+    {
+      name: 'Orders',
+      population: displayOrders,
+      color: COLORS.darkBrown,
+      legendFontColor: COLORS.textDark,
+      legendFontSize: 13,
+    },
+  ];
+
+  // Bar chart data parsing
+  const apiBarData = apiData?.order_status_summary;
+  const barPending = apiBarData?.pending ?? 0;
+  const barConfirmed = apiBarData?.confirmed ?? 0;
+  const barCompleted = apiBarData?.completed ?? 0;
+
+  const barData = {
+    labels: ['Pending', 'Confirmed', 'Completed'],
+    datasets: [{ data: [barPending, barConfirmed, barCompleted] }],
+  };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* Header */}
-      <View
-        style={[
-          styles.headerContainer,
-          {
-            paddingTop: Math.max(
-              insets.top + 8,
-              Platform.OS === 'ios' ? 44 : 16
-            ),
-          },
-        ]}
-      >
-        <View style={styles.headerTopRow}>
-          <View style={{ width: 36 }} />
-
-          <View style={styles.centerLogoSection}>
-            <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-            <Text style={styles.logoText}>BASALT</Text>
-          </View>
-
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(tabs)/notification' as any)}
-            >
-              <Ionicons name="notifications-outline" size={24} color={COLORS.textDark} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      <CustomHeader title="Home" showSearch={false} />
 
       {/* Scrollable Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={refetch}
+            colors={[COLORS.primary]}
+          />
+        }
       >
         {/* Total Visit Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroCircle1} />
           <View style={styles.heroCircle2} />
           <Text style={styles.heroLabel}>Total Visit</Text>
-          <Text style={styles.heroValue}>100</Text>
+          <Text style={styles.heroValue}>{totalVisits}</Text>
         </View>
 
         {/* ── Total Lead Created – Line Chart ── */}
@@ -193,7 +257,7 @@ export default function HomeScreen() {
           />
 
           <View style={styles.leadStatsBox}>
-            <Text style={styles.leadStatsValue}>20</Text>
+            <Text style={styles.leadStatsValue}>{totalLeadCreated}</Text>
             <Text style={styles.leadStatsLabel}>Total Lead Created</Text>
           </View>
         </View>
@@ -202,22 +266,31 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>LEAD CONVERSION RATIO</Text>
 
-          <PieChart
-            data={PIE_DATA}
-            width={CHART_WIDTH}
-            height={200}
-            chartConfig={chartConfig}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="10"
-            center={[0, 0]}
-            absolute={false}
-            style={styles.chartStyle}
-          />
+          {hasPieData ? (
+            <PieChart
+              data={pieData}
+              width={CHART_WIDTH}
+              height={200}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="10"
+              center={[0, 0]}
+              absolute={false}
+              style={styles.chartStyle}
+            />
+          ) : (
+            <View style={{ height: 180, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAF9', borderRadius: 12, marginVertical: 8, gap: 8 }}>
+              <Ionicons name="pie-chart-outline" size={44} color={COLORS.textMuted} />
+              <Text style={{ fontSize: 13, color: COLORS.textMuted, fontWeight: '600' }}>
+                No lead conversion data recorded
+              </Text>
+            </View>
+          )}
 
           {/* Extra ratio callout */}
           <View style={styles.ratioCallout}>
-            <Text style={styles.ratioValue}>1.05</Text>
+            <Text style={styles.ratioValue}>{averageRatio}</Text>
             <Text style={styles.ratioLabel}>Average Conversion Ratio</Text>
           </View>
         </View>
@@ -225,13 +298,13 @@ export default function HomeScreen() {
         {/* ── Revenue Generated ── */}
         <View style={styles.card}>
           <Text style={styles.metricLabel}>Revenue Generated</Text>
-          <Text style={styles.metricValue}>₹10 Lkh</Text>
+          <Text style={styles.metricValue}>{revenueGenerated}</Text>
         </View>
 
         {/* ── Assigned Target ── */}
         <View style={styles.card}>
           <Text style={styles.metricLabel}>Assigned Target</Text>
-          <Text style={styles.metricValue}>₹5 Lkh</Text>
+          <Text style={styles.metricValue}>{assignedTarget}</Text>
         </View>
 
         {/* ── Order Status Summary – Bar Chart ── */}
@@ -239,7 +312,7 @@ export default function HomeScreen() {
           <Text style={styles.cardTitle}>ORDER STATUS SUMMARY</Text>
 
           <BarChart
-            data={BAR_DATA}
+            data={barData}
             width={CHART_WIDTH}
             height={200}
             chartConfig={{
@@ -258,9 +331,9 @@ export default function HomeScreen() {
           {/* Legend */}
           <View style={styles.barLegendRow}>
             {[
-              { label: 'Pending', count: 20, color: COLORS.peach },
-              { label: 'Confirmed', count: 40, color: COLORS.darkBrown },
-              { label: 'Completed', count: 100, color: COLORS.primary },
+              { label: 'Pending', count: barPending, color: COLORS.peach },
+              { label: 'Confirmed', count: barConfirmed, color: COLORS.darkBrown },
+              { label: 'Completed', count: barCompleted, color: COLORS.primary },
             ].map((item) => (
               <View key={item.label} style={styles.barLegendItem}>
                 <View style={[styles.legendDot, { backgroundColor: item.color }]} />
@@ -288,7 +361,7 @@ const styles = StyleSheet.create({
   // ── Header ──
   headerContainer: {
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingBottom: 1,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -330,8 +403,9 @@ const styles = StyleSheet.create({
 
   // ── Scroll ──
   scrollContent: {
-    padding: 16,
-    gap: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
   },
 
   // ── Hero Card ──
@@ -510,3 +584,4 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 });
+import CustomHeader from '@/components/custom/CustomHeader';

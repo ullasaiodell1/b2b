@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -13,23 +14,25 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { useLocalSearchParams } from 'expo-router';
+import { useOTPVerification, useResendOTP } from '@/hooks/useAuth';
+import { saveAuthToken, saveUserData } from '@/utils/storage';
+
 const { width, height } = Dimensions.get('window');
 
-const COLORS = {
-  primary: '#346556',
-  bgDark: '#121514',
-  textMutedDark: '#8F9995',
-  textLight: '#FFFFFF',
-};
-
-const OTP_LENGTH = 5;
+const OTP_LENGTH = 6;
 
 export default function OtpScreen() {
   const router = useRouter();
+  const { code: mobileNumber, token: initialToken, password } = useLocalSearchParams<{ code: string; token: string; password?: string }>();
+  const [verificationToken, setVerificationToken] = useState(initialToken || '');
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [errorMessage, setErrorMessage] = useState('');
   const [verified, setVerified] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>(Array(OTP_LENGTH).fill(null));
+
+  const otpVerificationMutation = useOTPVerification();
+  const resendOTPMutation = useResendOTP();
 
   // Slide-up entrance
   const slideAnim = useRef(new Animated.Value(height)).current;
@@ -83,31 +86,70 @@ export default function OtpScreen() {
   const handleVerify = () => {
     const code = otp.join('');
     if (code.length < OTP_LENGTH) {
-      setErrorMessage('Please enter the complete 5-digit code.');
+      setErrorMessage(`Please enter the complete ${OTP_LENGTH}-digit code.`);
       shakeError();
       return;
     }
 
-    // Success animation
-    setVerified(true);
-    Animated.spring(successScale, {
-      toValue: 1,
-      tension: 60,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
+    if (!verificationToken) {
+      setErrorMessage('Verification token is missing. Please try logging in again.');
+      shakeError();
+      return;
+    }
 
-    setTimeout(() => {
-      router.replace('/(tabs)');
-    }, 1200);
+    otpVerificationMutation.mutate(
+      { token: verificationToken, code },
+      {
+        onSuccess: async (data: any) => {
+          // Save user data and token
+          await saveAuthToken(data.token);
+          await saveUserData(data.user);
+
+          // Success animation
+          setVerified(true);
+          Animated.spring(successScale, {
+            toValue: 1,
+            tension: 60,
+            friction: 7,
+            useNativeDriver: true,
+          }).start();
+
+          setTimeout(() => {
+            router.replace('/(tabs)');
+          }, 1200);
+        },
+        onError: (err: any) => {
+          setErrorMessage(err.message || 'Failed to verify OTP. Please try again.');
+          shakeError();
+        }
+      }
+    );
   };
 
   const handleResend = () => {
-    setOtp(Array(OTP_LENGTH).fill(''));
-    setErrorMessage('');
-    setVerified(false);
-    inputRefs.current[0]?.focus();
-    alert('A new verification code has been sent to your email.');
+    if (!mobileNumber) {
+      setErrorMessage('Phone number is missing.');
+      shakeError();
+      return;
+    }
+
+    resendOTPMutation.mutate(
+      { identifier: mobileNumber, password },
+      {
+        onSuccess: (data: any) => {
+          setVerificationToken(data.token);
+          setOtp(Array(OTP_LENGTH).fill(''));
+          setErrorMessage('');
+          setVerified(false);
+          inputRefs.current[0]?.focus();
+          alert('A new verification code has been sent to your mobile number.');
+        },
+        onError: (err: any) => {
+          setErrorMessage(err.message || 'Failed to resend OTP. Please try again.');
+          shakeError();
+        }
+      }
+    );
   };
 
   const handleClose = () => {
@@ -139,7 +181,8 @@ export default function OtpScreen() {
           <>
             <Text style={styles.sheetTitle}>Verify OTP</Text>
             <Text style={styles.sheetSub}>
-              Enter the 5-digit verification code sent to your email address.
+              Enter the {OTP_LENGTH}-digit verification code sent to your mobile number:
+              <Text style={{ fontWeight: '700', color: COLORS.primary }}> +91 {mobileNumber}</Text>
             </Text>
 
             {/* OTP Boxes */}
@@ -161,6 +204,7 @@ export default function OtpScreen() {
                   textAlign="center"
                   selectTextOnFocus
                   caretHidden
+                  editable={!otpVerificationMutation.isPending && !resendOTPMutation.isPending}
                 />
               ))}
             </Animated.View>
@@ -171,15 +215,27 @@ export default function OtpScreen() {
             ) : null}
 
             {/* Verify button */}
-            <TouchableOpacity onPress={handleVerify} style={styles.verifyBtn}>
-              <Text style={styles.verifyBtnText}>Verify OTP & Sign In</Text>
+            <TouchableOpacity
+              onPress={handleVerify}
+              style={[styles.verifyBtn, otpVerificationMutation.isPending && { opacity: 0.7 }]}
+              disabled={otpVerificationMutation.isPending || resendOTPMutation.isPending}
+            >
+              <Text style={styles.verifyBtnText}>
+                {otpVerificationMutation.isPending ? 'VERIFYING...' : 'Verify OTP & Sign In'}
+              </Text>
             </TouchableOpacity>
 
             {/* Resend */}
-            <TouchableOpacity onPress={handleResend} style={styles.resendBtn}>
+            <TouchableOpacity
+              onPress={handleResend}
+              style={styles.resendBtn}
+              disabled={otpVerificationMutation.isPending || resendOTPMutation.isPending}
+            >
               <Text style={styles.resendText}>
-                {"Haven't got the email yet? "}
-                <Text style={styles.resendHighlight}>Resend email</Text>
+                {"Haven't got the code yet? "}
+                <Text style={styles.resendHighlight}>
+                  {resendOTPMutation.isPending ? 'Resending...' : 'Resend OTP'}
+                </Text>
               </Text>
             </TouchableOpacity>
           </>
@@ -209,7 +265,7 @@ const styles = StyleSheet.create({
   },
 
   sheet: {
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
@@ -217,7 +273,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 52 : 36,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 18,
     elevation: 14,
     gap: 18,
@@ -228,14 +284,14 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2D3532',
+    borderColor: '#D0DCD7',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeIcon: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  closeIcon: { color: '#0D0F0E', fontSize: 14, fontWeight: '700' },
 
-  sheetTitle: { fontSize: 26, fontWeight: '800', color: COLORS.textLight },
-  sheetSub: { fontSize: 13, color: COLORS.textMutedDark, lineHeight: 20 },
+  sheetTitle: { fontSize: 26, fontWeight: '800', color: '#0D0F0E' },
+  sheetSub: { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
 
   // OTP Boxes
   otpRow: {
@@ -247,21 +303,21 @@ const styles = StyleSheet.create({
   otpBox: {
     width: BOX_SIZE,
     height: BOX_SIZE,
-    backgroundColor: '#1D2422',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#2D3532',
+    borderColor: '#D0DCD7',
     borderRadius: 10,
     fontSize: 22,
     fontWeight: '800',
-    color: COLORS.textLight,
+    color: '#0D0F0E',
   },
   otpBoxFilled: {
     borderColor: COLORS.primary,
-    backgroundColor: '#1A2E26',
+    backgroundColor: '#F0FDF4',
   },
   otpBoxError: {
     borderColor: '#EF4444',
-    backgroundColor: '#2A1A1A',
+    backgroundColor: '#FEF2F2',
   },
 
   errorText: {
@@ -286,7 +342,7 @@ const styles = StyleSheet.create({
   verifyBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.4 },
 
   resendBtn: { alignSelf: 'center', paddingVertical: 6 },
-  resendText: { fontSize: 13, color: COLORS.textMutedDark },
+  resendText: { fontSize: 13, color: COLORS.textMuted },
   resendHighlight: { color: COLORS.primary, fontWeight: '700' },
 
   // Success state
@@ -309,6 +365,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   successCheck: { fontSize: 36, color: '#FFFFFF', fontWeight: '800' },
-  successTitle: { fontSize: 26, fontWeight: '800', color: COLORS.textLight },
-  successSub: { fontSize: 13, color: COLORS.textMutedDark },
+  successTitle: { fontSize: 26, fontWeight: '800', color: '#0D0F0E' },
+  successSub: { fontSize: 13, color: COLORS.textMuted },
 });

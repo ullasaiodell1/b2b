@@ -1,35 +1,27 @@
+import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useIsFocused } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Image,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { profileData, updateProfileData } from '@/components/ProfileState';
-import { useIsFocused } from '@react-navigation/native';
-import { cameraResult, setCameraResult } from '@/components/CameraState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
+import { useProfile } from '@/hooks/useProfile';
+import { uploadFile } from '@/services/api/file';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
@@ -37,39 +29,56 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { profile, updateProfile: mutateProfile, isLoading } = useProfile();
 
-  const [fullName, setFullName] = useState(profileData.fullName);
-  const [dob, setDob] = useState<Date>(() => {
-    try {
-      const parts = profileData.dob.split(' ');
-      if (parts.length === 3) {
-        const day = parseInt(parts[0], 10);
-        const monthStr = parts[1].toLowerCase();
-        const year = parseInt(parts[2], 10);
-        const months: { [key: string]: number } = {
-          january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-          july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
-        };
-        const monthIndex = months[monthStr] !== undefined ? months[monthStr] : 3;
-        return new Date(year, monthIndex, day);
-      }
-      const parsed = new Date(profileData.dob);
-      if (!isNaN(parsed.getTime())) return parsed;
-      return new Date(2005, 3, 10);
-    } catch {
-      return new Date(2005, 3, 10);
-    }
-  });
-  const [gstNo, setGstNo] = useState(profileData.gstNo);
-  const [panNo, setPanNo] = useState(profileData.panNo);
-  const [email, setEmail] = useState(profileData.email);
-  const [mobile, setMobile] = useState(profileData.mobile);
-  const [gender, setGender] = useState<'Male' | 'Female'>(profileData.gender);
-  const [address, setAddress] = useState(profileData.address);
-  const [photoUri, setPhotoUri] = useState<string | null>(profileData.photoUri);
+  const [fullName, setFullName] = useState('');
+  const [dob, setDob] = useState<Date>(new Date(2005, 3, 10));
+  const [gstNo, setGstNo] = useState('');
+  const [panNo, setPanNo] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Male');
+  const [address, setAddress] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Sync state values when profile loads
+  React.useEffect(() => {
+    if (profile) {
+      setFullName(profile.fullName || '');
+      setGstNo(profile.gstNo || '');
+      setPanNo(profile.panNo || '');
+      setEmail(profile.email || '');
+      setMobile(profile.mobile || '');
+      setGender(profile.gender || 'Male');
+      setAddress(profile.address || '');
+      setPhotoUri(profile.photoUri || null);
+
+      if (profile.dob) {
+        try {
+          const parts = profile.dob.split(' ');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const monthStr = parts[1].toLowerCase();
+            const year = parseInt(parts[2], 10);
+            const months: { [key: string]: number } = {
+              january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+              july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+            };
+            const monthIndex = months[monthStr] !== undefined ? months[monthStr] : 3;
+            setDob(new Date(year, monthIndex, day));
+          } else {
+            const parsed = new Date(profile.dob);
+            if (!isNaN(parsed.getTime())) setDob(parsed);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [profile]);
 
   React.useEffect(() => {
     if (isFocused && cameraResult && cameraResult.target === 'profile') {
@@ -112,7 +121,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!fullName.trim()) {
       Alert.alert('Validation Error', 'Please enter your full name.');
       return;
@@ -123,29 +132,61 @@ export default function EditProfileScreen() {
     }
 
     setUpdating(true);
-    setTimeout(() => {
+    let finalPhotoUri = photoUri;
+
+    try {
+      // Upload image to S3 if it's a local file URI
+      if (
+        photoUri &&
+        (photoUri.startsWith('file://') ||
+          photoUri.startsWith('content://') ||
+          photoUri.startsWith('ph://'))
+      ) {
+        const uploadResult = await uploadFile(photoUri);
+        finalPhotoUri = uploadResult.url;
+      }
+
       const formattedDob = dob.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       });
 
-      updateProfileData({
-        fullName,
-        dob: formattedDob,
-        gstNo,
-        panNo,
-        email,
-        mobile,
-        gender,
-        address,
-        photoUri,
-      });
+      const cleanedGst = gstNo.trim().toUpperCase() || null;
+      const cleanedPan = panNo.trim().toUpperCase() || null;
 
+      mutateProfile(
+        {
+          fullName: fullName.trim(),
+          dob: formattedDob,
+          gstNo: cleanedGst || '',
+          panNo: cleanedPan || '',
+          email: email.trim(),
+          mobile: mobile.trim(),
+          gender,
+          address: address.trim(),
+          photoUri: finalPhotoUri,
+        },
+        {
+          onSuccess: () => {
+            setUpdating(false);
+            Alert.alert('Success', 'Profile updated successfully!');
+            router.back();
+          },
+          onError: (err: any) => {
+            setUpdating(false);
+            const errMsg =
+              err?.response?.data?.message ||
+              err?.message ||
+              'Failed to update profile.';
+            Alert.alert('Update Failed', errMsg);
+          },
+        }
+      );
+    } catch (uploadErr: any) {
       setUpdating(false);
-      Alert.alert('Success', 'Profile updated successfully!');
-      router.back();
-    }, 600);
+      Alert.alert('Upload Failed', 'Failed to upload new profile avatar picture.');
+    }
   };
 
   const formattedDateString = (date: Date) => {
@@ -154,6 +195,15 @@ export default function EditProfileScreen() {
     const yyyy = date.getFullYear();
     return `${dd} / ${mm} / ${yyyy}`;
   };
+
+  if (isLoading && !profile.fullName) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -178,9 +228,9 @@ export default function EditProfileScreen() {
         {/* Avatar Squircle edit container */}
         <View style={styles.avatarEditContainer}>
           <View style={styles.avatarWrapper}>
-            <Image 
-              source={{ uri: photoUri || DEFAULT_AVATAR }} 
-              style={styles.avatarLarge} 
+            <Image
+              source={{ uri: photoUri || DEFAULT_AVATAR }}
+              style={styles.avatarLarge}
             />
             <TouchableOpacity onPress={handlePickImage} style={styles.cameraIconBadge} activeOpacity={0.8}>
               <Ionicons name="camera-outline" size={16} color="#FFFFFF" />

@@ -1,38 +1,25 @@
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  TextInput,
   StatusBar,
-  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#DCE5E1',
-  blue: '#3B82F6',
-  green: '#10B981',
-  orange: '#F59E0B',
-  red: '#EF4444',
-};
 
 interface EmailItem {
   id: string;
   subject: string;
   company: string;
   sentTo: string;
-  status: 'Opend' | 'Sent' | 'Draft' | 'Bounce';
+  status: 'Opened' | 'Sent' | 'Draft' | 'Bounce';
   date: string;
   deliveryStatus: string;
 }
@@ -43,7 +30,7 @@ const EMAIL_DATA: EmailItem[] = [
     subject: 'Order Confirmation - Website Redesi...',
     company: 'Ullas India IT Solutions Limited.',
     sentTo: 'Parth Solanki',
-    status: 'Opend',
+    status: 'Opened',
     date: '22 March 2026',
     deliveryStatus: 'Delivered',
   },
@@ -61,7 +48,7 @@ const EMAIL_DATA: EmailItem[] = [
     subject: 'Follow-up on Proposal Query',
     company: 'Zenith System Pvt. Ltd.',
     sentTo: 'Khushal Nadiyapara',
-    status: 'Opend',
+    status: 'Opened',
     date: '12 April 2026',
     deliveryStatus: 'Delivered',
   },
@@ -73,11 +60,11 @@ export default function EmailScreen() {
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState(params.searchQuery || '');
-  const [selectedStatusTab, setSelectedStatusTab] = useState<'All' | 'Opend' | 'Sent' | 'Draft' | 'Bounce'>('All');
+  const [selectedStatusTab, setSelectedStatusTab] = useState<'All' | 'Opened' | 'Sent' | 'Draft' | 'Bounce'>('All');
 
   // Filter calculations
   const totalCount = EMAIL_DATA.length;
-  const openedCount = EMAIL_DATA.filter((e) => e.status === 'Opend').length + 10; // match mockup "12"
+  const openedCount = EMAIL_DATA.filter((e) => e.status === 'Opened').length + 10; // match mockup "12"
   const sentCount = EMAIL_DATA.filter((e) => e.status === 'Sent').length + 19; // match mockup "20"
   const draftCount = 5;
   const bounceCount = 2;
@@ -112,13 +99,7 @@ export default function EmailScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Email" showSearch={false} />
 
       {/* SEARCH AND FILTERS */}
       <View style={styles.searchSection}>
@@ -138,7 +119,7 @@ export default function EmailScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => router.push({
             pathname: '/(tabs)/email/email-filter',
@@ -149,11 +130,11 @@ export default function EmailScreen() {
           })}
           activeOpacity={0.8}
         >
-          <Ionicons 
-            name="funnel-outline" 
-            size={16} 
-            color={hasActiveFilters ? COLORS.primary : COLORS.textDark} 
-            style={{ marginRight: 6 }} 
+          <Ionicons
+            name="funnel-outline"
+            size={16}
+            color={hasActiveFilters ? COLORS.primary : COLORS.textDark}
+            style={{ marginRight: 6 }}
           />
           <Text style={[styles.filterBtnText, hasActiveFilters && styles.filterBtnTextActive]}>Filters</Text>
         </TouchableOpacity>
@@ -162,18 +143,18 @@ export default function EmailScreen() {
       {/* HORIZONTAL STATUS FILTER PILLS */}
       <View style={styles.pillsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScroll}>
-          <TouchableOpacity 
-            style={[styles.pill, selectedStatusTab === 'Opend' && styles.pillActive]}
-            onPress={() => setSelectedStatusTab('Opend')}
+          <TouchableOpacity
+            style={[styles.pill, selectedStatusTab === 'Opened' && styles.pillActive]}
+            onPress={() => setSelectedStatusTab('Opened')}
             activeOpacity={0.8}
           >
             <View style={[styles.dot, { backgroundColor: COLORS.green }]} />
-            <Text style={[styles.pillText, selectedStatusTab === 'Opend' && styles.pillTextActive]}>
-              Opend <Text style={{ fontWeight: '800' }}>{openedCount}</Text>
+            <Text style={[styles.pillText, selectedStatusTab === 'Opened' && styles.pillTextActive]}>
+              Opened <Text style={{ fontWeight: '800' }}>{openedCount}</Text>
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Sent' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Sent')}
             activeOpacity={0.8}
@@ -184,7 +165,7 @@ export default function EmailScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Draft' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Draft')}
             activeOpacity={0.8}
@@ -195,7 +176,7 @@ export default function EmailScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.pill, selectedStatusTab === 'Bounce' && styles.pillActive]}
             onPress={() => setSelectedStatusTab('Bounce')}
             activeOpacity={0.8}
@@ -209,12 +190,12 @@ export default function EmailScreen() {
       </View>
 
       {/* EMAIL LIST */}
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {filteredEmails.map((email) => {
-          const isOpened = email.status === 'Opend';
+          const isOpened = email.status === 'Opened';
           const isSent = email.status === 'Sent';
           const statusColor = isOpened ? COLORS.green : isSent ? COLORS.blue : COLORS.orange;
 
@@ -291,7 +272,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 14,
     borderBottomWidth: 1,
@@ -312,7 +293,7 @@ const styles = StyleSheet.create({
   searchSection: {
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 12,
     paddingBottom: 10,
     gap: 12,
@@ -364,8 +345,8 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   pillsScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: 10,
+    gap: 4,
   },
   pill: {
     flexDirection: 'row',
@@ -374,18 +355,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 15,
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     paddingVertical: 5.5,
-    height: 30,
+    height: 34,
   },
   pillActive: {
     borderColor: COLORS.primary,
     backgroundColor: COLORS.primaryLight,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 5,
   },
   pillText: {
     fontSize: 11,
@@ -397,28 +378,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 14,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 10,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginBottom: 6,
+    marginBottom: 2,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '800',
   },
   cardBody: {
-    gap: 12,
+    gap: 10,
   },
   cardRow: {
     flexDirection: 'row',
@@ -442,7 +423,7 @@ const styles = StyleSheet.create({
   cardDivider: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -476,3 +457,4 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
 });
+

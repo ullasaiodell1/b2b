@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  Platform,
-  PermissionsAndroid,
-  ActivityIndicator,
-  StatusBar,
-} from 'react-native';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import CustomHeader from '@/components/CustomHeader';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  PermissionsAndroid,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 // Fallback to dynamic import to prevent bundling crashes on unsupported platforms
 let CallLogs: any = null;
@@ -21,22 +22,6 @@ try {
 } catch (e) {
   console.log('react-native-call-log not loaded or unavailable in this environment');
 }
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  incoming: '#15803D',
-  incomingBg: '#DCFCE7',
-  outgoing: '#1D4ED8',
-  outgoingBg: '#DBEAFE',
-  missed: '#B91C1C',
-  missedBg: '#FEE2E2',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
@@ -201,9 +186,9 @@ export default function CallHistoryScreen() {
 
   const renderCallItem = ({ item }: { item: CallRecord }) => {
     const config = {
-      Incoming: { bg: COLORS.incomingBg, text: COLORS.incoming, icon: 'arrow-down-back-outline', label: 'Incoming' },
-      Outgoing: { bg: COLORS.outgoingBg, text: COLORS.outgoing, icon: 'arrow-up-forward-outline', label: 'Outgoing' },
-      Missed:   { bg: COLORS.missedBg,   text: COLORS.missed,   icon: 'close-outline',          label: 'Missed'   },
+      Incoming: { bg: COLORS.incomingBg, text: COLORS.incoming, icon: 'arrow-down-outline', label: 'Incoming' },
+      Outgoing: { bg: COLORS.outgoingBg, text: COLORS.outgoing, icon: 'arrow-up-outline', label: 'Outgoing' },
+      Missed: { bg: COLORS.missedBg, text: COLORS.missed, icon: 'close', label: 'Missed' },
     }[item.type];
 
     return (
@@ -321,7 +306,7 @@ export default function CallHistoryScreen() {
               const names = ['Anjon Patel', 'Dharmesh Vala', 'Vijay Rathod', 'Nirav Chawda', 'Harshil Shah'];
               const numbers = ['+91 99887 76655', '+91 98765 43210', '+91 91234 56789', '+91 88877 66655'];
               const types: ('Incoming' | 'Outgoing' | 'Missed')[] = ['Incoming', 'Outgoing', 'Missed'];
-              
+
               const newCall: CallRecord = {
                 id: Date.now().toString(),
                 name: names[Math.floor(Math.random() * names.length)],
@@ -330,7 +315,7 @@ export default function CallHistoryScreen() {
                 duration: Math.floor(Math.random() * 20) + '.00 min',
                 type: types[Math.floor(Math.random() * types.length)],
               };
-              
+
               setCallLogs([newCall, ...callLogs]);
             }}
           >
@@ -440,9 +425,10 @@ const styles = StyleSheet.create({
 
   // List Items
   listContent: {
-    padding: 16,
+    paddingHorizontal: 4,
+    paddingTop: 8,
     paddingBottom: 24,
-    gap: 12,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,

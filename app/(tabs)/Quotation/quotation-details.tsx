@@ -1,96 +1,136 @@
+import { COLORS } from '@/constants/theme';
+import { useQuotationDetails, useUpdateQuotationStatus } from '@/hooks/useQuotations';
+import { QuotationItem } from '@/types/quotation';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Image,
-  Platform,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  blueBadge: '#E0F2FE',
-  blueText: '#0369A1',
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT:            '#6B7280',
+  SENT:             '#F59E0B',
+  VIEWED:           '#3B82F6',
+  ACCEPTED:         '#10B981',
+  REJECTED:         '#EF4444',
+  EXPIRED:          '#9CA3AF',
+  REVISED:          '#8B5CF6',
+  CANCELLED:        '#EF4444',
+  APPROVED:         '#10B981',
+  ORDER_CREATED:    '#0EA5E9',
+  PROFORMA_CREATED: '#6366F1',
 };
 
-const ITEMS_DATA = [
-  {
-    id: '1',
-    name: 'CONDITIONER',
-    spec: 'Green Apple | 20 ML',
-    desc: 'Lorem Ipsum is Simply',
-    pcs: '1200',
-    rate: '₹ 100.00',
-    gst: '18 %',
-    price: '₹ 10,00,000.00',
-  },
-  {
-    id: '2',
-    name: 'SHAMPOO',
-    spec: 'Green Apple | 20 ML',
-    desc: 'Lorem Ipsum is Simply',
-    pcs: '1200',
-    rate: '₹ 100.00',
-    gst: '18 %',
-    price: '₹ 10,00,000.00',
-  },
-];
+function formatAmount(amount?: number | null) {
+  if (amount == null) return '₹ 0.00';
+  return '₹ ' + Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
 
-const TERMS_CONDITIONS = [
-  { id: '1', text: 'Payment due within 30 days. Late payments attract 2% monthly interest.' },
-  { id: '2', text: 'Returns only for transit damage, reported within 48 hours of delivery.' },
-  { id: '3', text: 'All prices ex-factory, Rajkot. Freight & insurance on buyer\'s account.' },
-  { id: '4', text: 'GST charged as applicable. Rate changes passed on at invoicing.' },
-  { id: '5', text: 'Disputes subject to exclusive jurisdiction of Rajkot, Gujarat courts.' },
-];
-
-const DOC_ACTIONS = [
-  {
-    id: 'shell',
-    title: 'SHELL BILL',
-    sub: 'Main Sales Tax Invoice',
-    icon: 'document-text-outline',
-  },
-  {
-    id: 'e_invoice',
-    title: 'E-INVOICE',
-    sub: 'GST E-Invoice With IRN',
-    icon: 'shield-checkmark-outline',
-  },
-  {
-    id: 'e_way',
-    title: 'E-WAY BILL',
-    sub: 'Transport E-Waybill',
-    icon: 'bus-outline',
-  },
-  {
-    id: 'bilty',
-    title: 'BILTY BILL',
-    sub: 'Lorry Receipt / LR',
-    icon: 'receipt-outline',
-  },
-];
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 export default function QuotationDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const handleDownload = (docTitle: string) => {
-    Alert.alert('Download Started', `${docTitle} is downloading...`);
+  const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
+  const updateStatusMutation = useUpdateQuotationStatus();
+
+  const handleStatusChange = (newStatus: string) => {
+    if (!id) return;
+    Alert.alert(
+      'Update Status',
+      `Change status to ${newStatus}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            updateStatusMutation.mutate(
+              { id, status: newStatus },
+              {
+                onSuccess: () => {
+                  Alert.alert('Success', 'Status updated successfully');
+                  refetch();
+                },
+                onError: (err: any) => {
+                  Alert.alert('Error', err?.message || 'Failed to update status');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
   };
+
+  if (!id) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>No quotation ID provided.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnSmall}>
+          <Text style={styles.backBtnSmallText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loaderText}>Loading quotation...</Text>
+      </View>
+    );
+  }
+
+  if (isError || !quotation) {
+    return (
+      <View style={styles.centerContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+        <Text style={styles.errorText}>Failed to load quotation details.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnSmall}>
+          <Text style={styles.backBtnSmallText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const statusColor = STATUS_COLORS[quotation.status] || '#6B7280';
+  const prefix = quotation.prefix || 'QT';
+  const qNumber = quotation.quotation_number
+    ? `${prefix}-${quotation.quotation_number}`
+    : id.slice(0, 8).toUpperCase();
+
+  const clientName =
+    quotation.lead_name ||
+    quotation.lead_company_name ||
+    quotation.company_name ||
+    quotation.dealer_company_name ||
+    '—';
+
+  const items: QuotationItem[] = Array.isArray(quotation.items) ? quotation.items : [];
 
   return (
     <View style={styles.root}>
@@ -98,151 +138,234 @@ export default function QuotationDetailsScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
-        
         <Text style={styles.headerTitle}>
           <Text style={{ color: COLORS.primary }}>QUOTATION </Text>
           <Text style={{ color: COLORS.textDark }}>DETAILS</Text>
         </Text>
-
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]} 
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* PRODUCTS LIST */}
-        {ITEMS_DATA.map((item) => (
-          <View key={item.id} style={styles.productCard}>
-            <View style={styles.productTopRow}>
-              <Image 
-                source={require('@/assets/images/cosmetic_product_mockup.png')} 
-                style={styles.productImage}
-                resizeMode="cover"
-              />
-              <View style={styles.productDetailsCol}>
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.productSpec}>{item.spec}</Text>
-                <Text style={styles.productDesc}>{item.desc}</Text>
-              </View>
+        {/* Quotation Summary Card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTopRow}>
+            <View>
+              <Text style={styles.summaryQNumber}>#{qNumber}</Text>
+              <Text style={styles.summaryDate}>{formatDate(quotation.quotation_date)}</Text>
             </View>
-
-            <View style={styles.cardDivider} />
-
-            <View style={styles.productStatsGrid}>
-              <View style={styles.statsGridCol}>
-                <Text style={styles.gridLabel}>Pcs : <Text style={styles.gridVal}>{item.pcs}</Text></Text>
-                <Text style={styles.gridLabel}>GST (%) : <Text style={styles.gridVal}>{item.gst}</Text></Text>
-              </View>
-
-              <View style={[styles.statsGridCol, { alignItems: 'flex-end' }]}>
-                <Text style={styles.gridLabel}>Rate : <Text style={styles.gridVal}>{item.rate}</Text></Text>
-                <Text style={styles.gridLabel}>Price : <Text style={styles.gridPriceVal}>{item.price}</Text></Text>
-              </View>
+            <View style={[styles.statusPill, { backgroundColor: statusColor + '22', borderColor: statusColor }]}>
+              <Text style={[styles.statusPillText, { color: statusColor }]}>{quotation.status}</Text>
             </View>
           </View>
-        ))}
 
-        {/* BASIC REMARK SECTION */}
+          {/* Client info */}
+          {clientName !== '—' && (
+            <View style={styles.summaryInfoRow}>
+              <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.summaryInfoText}>{clientName}</Text>
+            </View>
+          )}
+          {!!quotation.contact_name && (
+            <View style={styles.summaryInfoRow}>
+              <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.summaryInfoText}>{quotation.contact_name}</Text>
+            </View>
+          )}
+          {!!quotation.contact_email && (
+            <View style={styles.summaryInfoRow}>
+              <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.summaryInfoText}>{quotation.contact_email}</Text>
+            </View>
+          )}
+          {!!quotation.contact_phone && (
+            <View style={styles.summaryInfoRow}>
+              <Ionicons name="call-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.summaryInfoText}>{quotation.contact_phone}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Status Update Actions */}
+        {quotation.status === 'DRAFT' && (
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
+            onPress={() => handleStatusChange('SENT')}
+            activeOpacity={0.85}
+            disabled={updateStatusMutation.isPending}
+          >
+            <Ionicons name="send-outline" size={16} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.actionBtnText}>Mark as Sent</Text>
+          </TouchableOpacity>
+        )}
+        {quotation.status === 'SENT' && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionBtnHalf, { backgroundColor: '#10B981' }]}
+              onPress={() => handleStatusChange('ACCEPTED')}
+              activeOpacity={0.85}
+              disabled={updateStatusMutation.isPending}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtnHalf, { backgroundColor: '#EF4444' }]}
+              onPress={() => handleStatusChange('REJECTED')}
+              activeOpacity={0.85}
+              disabled={updateStatusMutation.isPending}
+            >
+              <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>Reject</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Items Section */}
+        {items.length > 0 && (
+          <>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionIndicatorBar} />
+              <Text style={styles.sectionTitle}>ITEMS ({items.length})</Text>
+              <View style={styles.sectionHeaderLine} />
+            </View>
+
+            {items.map((item, idx) => (
+              <View key={item.id || String(idx)} style={styles.productCard}>
+                <View style={styles.productTopRow}>
+                  <View style={styles.productIndexBadge}>
+                    <Text style={styles.productIndexText}>{idx + 1}</Text>
+                  </View>
+                  <View style={styles.productDetailsCol}>
+                    <Text style={styles.productName}>{item.item_name}</Text>
+                    {!!item.item_code && (
+                      <Text style={styles.productSpec}>Code: {item.item_code}</Text>
+                    )}
+                    {!!item.item_description && (
+                      <Text style={styles.productDesc} numberOfLines={2}>{item.item_description}</Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.cardDivider} />
+
+                <View style={styles.productStatsGrid}>
+                  <View style={styles.statsGridCol}>
+                    <Text style={styles.gridLabel}>
+                      Qty: <Text style={styles.gridVal}>{item.quantity}</Text>
+                    </Text>
+                    <Text style={styles.gridLabel}>
+                      GST: <Text style={styles.gridVal}>{item.gst_percentage ?? 0}%</Text>
+                    </Text>
+                  </View>
+                  <View style={[styles.statsGridCol, { alignItems: 'flex-end' }]}>
+                    <Text style={styles.gridLabel}>
+                      Rate: <Text style={styles.gridVal}>{formatAmount(item.unit_price)}</Text>
+                    </Text>
+                    <Text style={styles.gridLabel}>
+                      Amount: <Text style={styles.gridPriceVal}>{formatAmount(item.amount)}</Text>
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Notes */}
+        {!!quotation.notes && (
+          <>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionIndicatorBar} />
+              <Text style={styles.sectionTitle}>NOTES</Text>
+              <View style={styles.sectionHeaderLine} />
+            </View>
+            <View style={styles.remarkCard}>
+              <View style={styles.remarkTitleRow}>
+                <Ionicons name="pin" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                <Text style={styles.remarkTitleText}>Note</Text>
+              </View>
+              <Text style={styles.remarkBodyText}>{quotation.notes}</Text>
+            </View>
+          </>
+        )}
+
+        {/* Totals */}
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionIndicatorBar} />
-          <Text style={styles.sectionTitle}>BASIC REMARK</Text>
+          <Text style={styles.sectionTitle}>AMOUNT SUMMARY</Text>
           <View style={styles.sectionHeaderLine} />
         </View>
 
-        <View style={styles.remarkCard}>
-          <View style={styles.remarkTitleRow}>
-            <Ionicons name="pin" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-            <Text style={styles.remarkTitleText}>Note</Text>
+        <View style={styles.totalsCard}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Subtotal</Text>
+            <Text style={styles.totalValue}>{formatAmount(quotation.subtotal)}</Text>
           </View>
-          <Text style={styles.remarkBodyText}>
-            {"Lorem Ipsum Is Simply Dummy Text Of The Printing And Typesetting Industry. Lorem Ipsum Has Been The Industry's Standard Dummy Text Ever Since The 1500s."}
-          </Text>
-          <View style={styles.remarkFooterRow}>
-            <Text style={styles.remarkFooterText}>Added By You</Text>
-            <Text style={styles.remarkFooterText}>Feb. 24, 2026</Text>
-          </View>
-        </View>
-
-        {/* TERMS & CONDITIONS SECTION */}
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionIndicatorBar} />
-          <Text style={styles.sectionTitle}>TERMS & CONDITIONS</Text>
-          <View style={styles.sectionHeaderLine} />
-        </View>
-
-        <View style={styles.termsContainer}>
-          {TERMS_CONDITIONS.map((cond) => (
-            <View key={cond.id} style={styles.termRow}>
-              <View style={styles.termBadge}>
-                <Text style={styles.termBadgeText}>{cond.id}</Text>
-              </View>
-              <Text style={styles.termText}>{cond.text}</Text>
+          {!!quotation.tax_total && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Tax Total</Text>
+              <Text style={styles.totalValue}>{formatAmount(quotation.tax_total)}</Text>
             </View>
-          ))}
+          )}
+          {!!quotation.discount_amount && quotation.discount_amount > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Discount</Text>
+              <Text style={[styles.totalValue, { color: '#EF4444' }]}>
+                - {formatAmount(quotation.discount_amount)}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.totalRow, styles.totalRowGrandTotal]}>
+            <Text style={styles.grandTotalLabel}>Grand Total</Text>
+            <Text style={styles.grandTotalValue}>{formatAmount(quotation.grand_total)}</Text>
+          </View>
         </View>
 
-        {/* TOTAL AMOUNT CONTAINER */}
-        <View style={styles.totalAmountBanner}>
-          <Text style={styles.totalAmountLabel}>Total Amount</Text>
-          <Text style={styles.totalAmountVal}>₹ 10,00,000.00</Text>
-        </View>
-
-        {/* DOWNLOAD ORDER ACTION BANNER */}
-        <TouchableOpacity 
+        {/* Download Quotation */}
+        <TouchableOpacity
           style={styles.downloadOrderBanner}
-          onPress={() => handleDownload('Complete Order PDF')}
+          onPress={() => Alert.alert('Download', 'Download feature coming soon')}
           activeOpacity={0.85}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.downloadOrderTitle}>Download Order</Text>
-            <Text style={styles.downloadOrderSub}>Export Complete Order As PDF</Text>
+            <Text style={styles.downloadOrderTitle}>Download Quotation</Text>
+            <Text style={styles.downloadOrderSub}>Export as PDF</Text>
           </View>
           <View style={styles.downloadOrderIconBg}>
             <Ionicons name="download" size={20} color={COLORS.primary} />
           </View>
         </TouchableOpacity>
-
-        {/* GRID ACTIONS */}
-        <View style={styles.docGrid}>
-          {DOC_ACTIONS.map((doc) => (
-            <View key={doc.id} style={styles.gridDocCard}>
-              <View style={styles.docCardIconBg}>
-                <Ionicons name={doc.icon as any} size={24} color={COLORS.primary} />
-              </View>
-              
-              <Text style={styles.docCardTitle}>{doc.title}</Text>
-              <Text style={styles.docCardSub} numberOfLines={2}>{doc.sub}</Text>
-              
-              <TouchableOpacity 
-                style={styles.docCardBtn}
-                onPress={() => handleDownload(doc.title)}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="download-outline" size={14} color={COLORS.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.docCardBtnText}>Download</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  root: { flex: 1, backgroundColor: COLORS.bgPage },
+  centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.bgPage,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgWhite,
+    gap: 12,
+    padding: 24,
   },
+  loaderText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
+  errorText: { fontSize: 14, color: COLORS.textDark, fontWeight: '700', textAlign: 'center' },
+  backBtnSmall: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  backBtnSmallText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,91 +384,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 16,
-  },
+  headerTitle: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
-  // Product card styling
-  productCard: {
+  scrollContent: { paddingHorizontal: 12, paddingTop: 12, gap: 8 },
+
+  // Summary card
+  summaryCard: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 16,
+    gap: 8,
   },
-  productTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  productImage: {
-    width: 90,
-    height: 64,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  productDetailsCol: {
-    flex: 1,
-    marginLeft: 14,
-    justifyContent: 'center',
-  },
-  productName: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  productSpec: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  productDesc: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    marginTop: 4,
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 10,
-  },
-  productStatsGrid: {
+  summaryTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  statsGridCol: {
-    flex: 1,
-    gap: 6,
+  summaryQNumber: { fontSize: 18, fontWeight: '900', color: COLORS.textDark },
+  summaryDate: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+  statusPill: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  gridLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  gridVal: {
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  gridPriceVal: {
-    fontSize: 12.5,
-    fontWeight: '900',
-    color: COLORS.textDark,
-  },
+  statusPillText: { fontSize: 11, fontWeight: '800' },
+  summaryInfoRow: { flexDirection: 'row', alignItems: 'center' },
+  summaryInfoText: { fontSize: 12.5, color: COLORS.textMuted, fontWeight: '600', flex: 1 },
 
-  // Section divider headers
-  sectionHeaderRow: {
+  // Action buttons
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    justifyContent: 'center',
+    borderRadius: 10,
+    height: 44,
   },
+  actionRow: { flexDirection: 'row', gap: 10 },
+  actionBtnHalf: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    height: 44,
+  },
+  actionBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+
+  // Section headers
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   sectionIndicatorBar: {
     width: 3.5,
     height: 14,
@@ -353,20 +442,39 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginRight: 8,
   },
-  sectionTitle: {
-    fontSize: 12.5,
-    fontWeight: '900',
-    color: COLORS.textDark,
-    letterSpacing: 0.3,
-  },
-  sectionHeaderLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginLeft: 10,
-  },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: COLORS.textDark, letterSpacing: 0.3 },
+  sectionHeaderLine: { flex: 1, height: 1, backgroundColor: COLORS.border, marginLeft: 10 },
 
-  // Remark card
+  // Product cards
+  productCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+  },
+  productTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  productIndexBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productIndexText: { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+  productDetailsCol: { flex: 1 },
+  productName: { fontSize: 13.5, fontWeight: '800', color: COLORS.textDark },
+  productSpec: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, marginTop: 2 },
+  productDesc: { fontSize: 11.5, fontWeight: '600', color: COLORS.textMuted, marginTop: 3 },
+  cardDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 10 },
+  productStatsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  statsGridCol: { flex: 1, gap: 5 },
+  gridLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
+  gridVal: { fontWeight: '800', color: COLORS.textDark },
+  gridPriceVal: { fontSize: 12.5, fontWeight: '900', color: COLORS.textDark },
+
+  // Remark
   remarkCard: {
     backgroundColor: '#FAFDFB',
     borderRadius: 14,
@@ -375,91 +483,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
-    gap: 8,
+    gap: 4,
   },
-  remarkTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  remarkTitleText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  remarkBodyText: {
-    fontSize: 11.5,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  remarkFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  remarkFooterText: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontWeight: '700',
-  },
+  remarkTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  remarkTitleText: { fontSize: 12.5, fontWeight: '800', color: COLORS.textDark },
+  remarkBodyText: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: '600', lineHeight: 16 },
 
-  // Terms and conditions
-  termsContainer: {
-    gap: 10,
-  },
-  termRow: {
-    flexDirection: 'row',
+  // Totals
+  totalsCard: {
     backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    padding: 10,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
-  termBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: COLORS.blueBadge,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  termBadgeText: {
-    color: COLORS.blueText,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  termText: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textDark,
-    lineHeight: 14,
-  },
-
-  // Total amount
-  totalAmountBanner: {
+  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    height: 48,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  totalAmountLabel: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '800',
-  },
-  totalAmountVal: {
-    color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '900',
-  },
+  totalRowGrandTotal: { borderBottomWidth: 0 },
+  totalLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  totalValue: { fontSize: 13, fontWeight: '700', color: COLORS.textDark },
+  grandTotalLabel: { fontSize: 14, fontWeight: '800', color: COLORS.textDark },
+  grandTotalValue: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
 
-  // Download complete order
+  // Download banner
   downloadOrderBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -467,80 +519,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#437E6B',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
-  downloadOrderTitle: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '800',
-  },
-  downloadOrderSub: {
-    color: '#E0EDE9',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
+  downloadOrderTitle: { color: '#FFF', fontSize: 13.5, fontWeight: '800' },
+  downloadOrderSub: { color: '#E0EDE9', fontSize: 10, fontWeight: '700', marginTop: 2 },
   downloadOrderIconBg: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  // Document Grid Actions
-  docGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 12,
-    marginTop: 4,
-  },
-  gridDocCard: {
-    width: '48%',
-    backgroundColor: COLORS.bgWhite,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    gap: 6,
-  },
-  docCardIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  docCardTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: COLORS.textDark,
-  },
-  docCardSub: {
-    fontSize: 9.5,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    textAlign: 'center',
-    height: 28,
-  },
-  docCardBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 8,
-    height: 32,
-    width: '100%',
-    marginTop: 4,
-  },
-  docCardBtnText: {
-    color: COLORS.primary,
-    fontSize: 10.5,
-    fontWeight: '800',
   },
 });

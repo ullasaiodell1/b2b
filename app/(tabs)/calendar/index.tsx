@@ -1,9 +1,12 @@
-import CustomHeader from '@/components/CustomHeader';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,26 +15,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  primaryDark: '#204036',
-  bgPage: '#FFFFFF',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#6B7280',
-  border: '#E8EFEC',
-  success: '#10B981',
-  info: '#3B82F6',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  cardBg: '#FFFFFF',
-  backdrop: 'rgba(0, 0, 0, 0.4)',
-};
 
 const isSameDay = (d1: Date, d2: Date) => {
   return (
@@ -101,6 +87,7 @@ export default function CalendarScreen() {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Local state for list data to make creation interactive
   const [meetings, setMeetings] = useState(INITIAL_MEETINGS);
@@ -208,6 +195,30 @@ export default function CalendarScreen() {
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
+        </View>
+
+        {/* Month header & Today button */}
+        <View style={styles.calendarHeaderRow}>
+          <TouchableOpacity
+            style={styles.monthHeaderBtn}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.calendarHeaderTitle}>
+              {selectedDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}
+            </Text>
+            <Ionicons name="calendar-outline" size={15} color={COLORS.primary} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
+          {!isSameDay(selectedDate, today) && (
+            <TouchableOpacity
+              onPress={() => setSelectedDate(today)}
+              style={styles.todayResetBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh-outline" size={13} color={COLORS.primary} style={{ marginRight: 3 }} />
+              <Text style={styles.todayResetText}>Today</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Weekly date strip selector */}
@@ -433,6 +444,50 @@ export default function CalendarScreen() {
         </Animated.View>
       </TouchableOpacity>
 
+      {/* System Calendar Picker */}
+      {showDatePicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="fade" visible={showDatePicker}>
+            <TouchableOpacity
+              style={styles.calendarOverlay}
+              activeOpacity={1}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <View style={styles.calendarContent}>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="inline"
+                  onChange={(event: any, date?: Date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                    }
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.modalDoneBtn, { marginTop: 10 }]}
+                  onPress={() => setShowDatePicker(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.modalDoneBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(event: any, date?: Date) => {
+              setShowDatePicker(false);
+              if (date) {
+                setSelectedDate(date);
+              }
+            }}
+          />
+        )
+      )}
     </View>
   );
 }
@@ -443,8 +498,78 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
   },
   scrollContainer: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
+  },
+  calendarHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+    marginBottom: 5,
+  },
+  calendarHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0D0F0E',
+  },
+  todayResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  todayResetText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  monthHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  calendarContent: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+    gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalDoneBtn: {
+    backgroundColor: '#000000',
+    borderRadius: 10,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  modalDoneBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   searchSection: {
     flexDirection: 'row',
@@ -553,8 +678,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
-    gap: 8,
+    gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -576,7 +700,7 @@ const styles = StyleSheet.create({
   timeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   cardTimeText: {
     fontSize: 11,
@@ -586,7 +710,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   metaText: {
     fontSize: 12.5,
@@ -599,7 +723,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -632,7 +755,7 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   statusDot: {
     width: 6,
@@ -650,7 +773,7 @@ const styles = StyleSheet.create({
   taskMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   taskMetaText: {
     fontSize: 11,
@@ -685,13 +808,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     alignItems: 'flex-end',
-    gap: 12,
+    gap: 5,
     zIndex: 999,
   },
   speedDialItemWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 5,
   },
   speedDialLabel: {
     backgroundColor: '#0D0F0E',

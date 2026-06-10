@@ -1,32 +1,20 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  Platform,
-  Modal,
-  Pressable,
-} from 'react-native';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import CustomHeader from '@/components/CustomHeader';
+import React, { useState } from 'react';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  backdrop: 'rgba(13, 15, 14, 0.45)',
-  danger: '#EF4444',
-  dangerLight: '#FEF2F2',
-};
 
 export default function AddNewScreen() {
   const router = useRouter();
@@ -99,7 +87,7 @@ export default function AddNewScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-      
+
       <CustomHeader title="New Entry" showSearch={false} />
 
       {/* Main Empty State Container */}
@@ -127,7 +115,7 @@ export default function AddNewScreen() {
       >
         <View style={styles.sheetBackdrop}>
           <Pressable style={styles.flexOne} onPress={() => setSheetVisible(false)} />
-          
+
           <View style={styles.sheetContent}>
             {/* Handle bar */}
             <View style={styles.sheetHandle} />

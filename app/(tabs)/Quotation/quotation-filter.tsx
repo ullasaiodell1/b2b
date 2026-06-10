@@ -1,29 +1,19 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  Modal,
+  Platform,
   ScrollView,
   StatusBar,
-  Platform,
-  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  danger: '#EF4444',
-};
 
 type PriorityType = 'High' | 'Normal' | 'Low';
 
@@ -104,7 +94,7 @@ export default function QuotationFilterScreen() {
     let title = '';
     let items: string[] = [];
     let selectedValue = '';
-    let setSelected = (val: string) => {};
+    let setSelected = (val: string) => { };
 
     if (activeSelectType === 'type') {
       title = 'Select Quotation Type';
@@ -125,7 +115,7 @@ export default function QuotationFilterScreen() {
 
     return (
       <Modal transparent animationType="slide" visible={!!activeSelectType}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setActiveSelectType(null)}
@@ -173,8 +163,8 @@ export default function QuotationFilterScreen() {
 
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -186,7 +176,7 @@ export default function QuotationFilterScreen() {
 
       {/* ── BODY CONTROLS ─────────────────────────── */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Filters title & Reset All */}
         <View style={styles.topRow}>
           <View style={styles.panelTitleRow}>
@@ -232,7 +222,7 @@ export default function QuotationFilterScreen() {
           </View>
 
           <View style={styles.datePickerRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dateDropdown}
               onPress={() => setShowRangePickerModal(true)}
               activeOpacity={0.8}
@@ -243,7 +233,7 @@ export default function QuotationFilterScreen() {
               <Ionicons name="chevron-down" size={15} color={COLORS.textDark} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dateResetBtn}
               onPress={handleResetDates}
               activeOpacity={0.8}
@@ -261,7 +251,7 @@ export default function QuotationFilterScreen() {
             <View style={styles.sectionLine} />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.selectBox}
             onPress={() => setActiveSelectType('type')}
             activeOpacity={0.8}
@@ -307,7 +297,7 @@ export default function QuotationFilterScreen() {
             <View style={styles.sectionLine} />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.selectBox}
             onPress={() => setActiveSelectType('client')}
             activeOpacity={0.8}
@@ -326,7 +316,7 @@ export default function QuotationFilterScreen() {
             <View style={styles.sectionLine} />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.selectBox}
             onPress={() => setActiveSelectType('sales')}
             activeOpacity={0.8}
@@ -342,16 +332,16 @@ export default function QuotationFilterScreen() {
 
       {/* ── FOOTER ACTIONS ────────────────────────── */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
-        <TouchableOpacity 
-          style={styles.cancelBtn} 
+        <TouchableOpacity
+          style={styles.cancelBtn}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.applyBtn} 
+        <TouchableOpacity
+          style={styles.applyBtn}
           onPress={handleApplyFilter}
           activeOpacity={0.85}
         >
@@ -365,7 +355,7 @@ export default function QuotationFilterScreen() {
       {/* ── SYSTEM DATE RANGE PICKER MODALS ────────── */}
       {showRangePickerModal && (
         <Modal transparent animationType="fade" visible={showRangePickerModal}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
             onPress={() => setShowRangePickerModal(false)}
@@ -401,7 +391,7 @@ export default function QuotationFilterScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.calendarDoneBtn}
                 onPress={() => setShowRangePickerModal(false)}
                 activeOpacity={0.8}
@@ -451,7 +441,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 40,
-    gap: 20,
+    gap: 2,
   },
   topRow: {
     flexDirection: 'row',
@@ -482,7 +472,7 @@ const styles = StyleSheet.create({
 
   // Sections
   section: {
-    gap: 12,
+    gap: 5,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -11,66 +12,27 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useLogin } from '@/hooks/useAuth';
 
 const { height } = Dimensions.get('window');
 
-const COLORS = {
-  primary: '#346556',
-  bgDark: '#121514',
-  textDark: '#1A1A1A',
-  textMuted: '#707A76',
-  textMutedDark: '#8F9995',
-  textLight: '#FFFFFF',
-};
-
-// ── Demo credentials ────────────────────────────────
-const DEMO_EMAIL    = 'demo@basalt.app';
-const DEMO_PASSWORD = 'Demo@1234';
-
 export default function SignInScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const insets = useSafeAreaInsets();
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [error, setError] = useState('');
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const errorAnim = useRef(new Animated.Value(-150)).current;
 
-  // Sheet for forgot password
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const [sheetEmail, setSheetEmail] = useState('');
-  const sheetAnim = useRef(new Animated.Value(height)).current;
-
-  const openSheet = () => {
-    setSheetVisible(true);
-    Animated.spring(sheetAnim, {
-      toValue: 0,
-      tension: 52,
-      friction: 9,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const closeSheet = () => {
-    Animated.timing(sheetAnim, {
-      toValue: height,
-      duration: 240,
-      useNativeDriver: true,
-    }).start(() => setSheetVisible(false));
-  };
-
-  const handleForgotSubmit = () => {
-    closeSheet();
-    router.push('/reset-password');
-  };
-
-  // Auto-fill demo credentials
-  const fillDemo = () => {
-    setEmail(DEMO_EMAIL);
-    setPassword(DEMO_PASSWORD);
-    setError('');
-  };
+  const loginMutation = useLogin();
 
   // Shake animation on wrong credentials
   const shake = () => {
@@ -83,24 +45,79 @@ export default function SignInScreen() {
     ]).start();
   };
 
-  // Sign In handler with validation
+  // Show top error banner for 3 seconds
+  const showError = (msg: string) => {
+    setError(msg);
+    // Slide down
+    Animated.spring(errorAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 40,
+      friction: 8,
+    }).start();
+
+    // Auto dismiss after 3 seconds
+    const timer = setTimeout(() => {
+      Animated.timing(errorAnim, {
+        toValue: -150,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(() => {
+        setError('');
+      });
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  };
+
+  // Sign In handler with validation and mutation
   const handleSignIn = () => {
     setError('');
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
+    if (!phoneNumber.trim()) {
+      showError('Please enter your phone number.');
       shake();
       return;
     }
-    if (
-      email.trim().toLowerCase() !== DEMO_EMAIL.toLowerCase() ||
-      password !== DEMO_PASSWORD
-    ) {
-      setError('Invalid credentials. Use the demo account below.');
+    if (phoneNumber.trim().length < 10) {
+      showError('Please enter a valid 10-digit phone number.');
       shake();
       return;
     }
-    // ✅ Success — go to main app
-    router.replace('/(tabs)');
+    if (!password.trim()) {
+      showError('Please enter your password.');
+      shake();
+      return;
+    }
+
+    loginMutation.mutate(
+      { identifier: phoneNumber.trim(), password },
+      {
+        onSuccess: async (data: any) => {
+          if (data?.token_type === 'otp') {
+            router.push({
+              pathname: '/otp',
+              params: { code: phoneNumber, token: data.token, password }
+            });
+          } else if (data?.token) {
+            const { saveAuthToken, saveUserData } = require('@/utils/storage');
+            await saveAuthToken(data.token);
+            if (data.user) {
+              await saveUserData(data.user);
+            }
+            router.replace('/(tabs)');
+          } else {
+            router.push({
+              pathname: '/otp',
+              params: { code: phoneNumber, token: data?.token || '', password }
+            });
+          }
+        },
+        onError: (err: any) => {
+          showError(err.message || 'Failed to sign in. Please try again.');
+          shake();
+        }
+      }
+    );
   };
 
   return (
@@ -110,35 +127,64 @@ export default function SignInScreen() {
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* Floating Header Error Banner */}
+      {!!error && (
+        <Animated.View
+          style={[
+            styles.floatingErrorBanner,
+            {
+              top: Math.max(insets.top, 16),
+              transform: [{ translateY: errorAnim }],
+            },
+          ]}
+        >
+          <View style={styles.floatingErrorContent}>
+            <Ionicons name="alert-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.floatingErrorText}>{error}</Text>
+          </View>
+        </Animated.View>
+      )}
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* App Logo & Name */}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={styles.logoIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoText}>BASALT</Text>
+        </View>
+
         {/* Header copy */}
         <View style={styles.headerSection}>
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSub}>
-            Go ahead and sign in, let everyone know how awesome you are!
+            Go ahead and sign up, let everyone know how awesome you are!
           </Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          {/* Email */}
+          {/* Phone Number */}
           <View style={styles.inputBlock}>
-            <Text style={styles.label}>EMAIL</Text>
+            <Text style={styles.label}>PHONE NUMBER</Text>
             <View style={styles.inputWrap}>
+              <Text style={styles.countryCode}>+91</Text>
               <TextInput
                 style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="example123@domains.com"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="Enter 10-digit mobile number"
                 placeholderTextColor="#B0BAB6"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
+                keyboardType="phone-pad"
+                maxLength={10}
+                editable={!loginMutation.isPending}
               />
             </View>
           </View>
@@ -148,115 +194,98 @@ export default function SignInScreen() {
             <Text style={styles.label}>PASSWORD</Text>
             <View style={styles.inputWrap}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder="••••••••"
                 placeholderTextColor="#B0BAB6"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
+                secureTextEntry={secureTextEntry}
+                editable={!loginMutation.isPending}
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
+              <TouchableOpacity 
+                style={styles.eyeBtn} 
+                onPress={() => setSecureTextEntry(!secureTextEntry)}
               >
-                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                <Ionicons 
+                  name={secureTextEntry ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#8F9995" 
+                />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Forgot password */}
-          <TouchableOpacity onPress={openSheet} style={styles.forgotWrap}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+          {/* Forgot Password */}
+          <TouchableOpacity 
+            style={styles.forgotWrap} 
+            activeOpacity={0.7}
+            onPress={() => router.push('/reset-password')}
+          >
+            <Text style={styles.forgotText}>Forgot Password ?</Text>
           </TouchableOpacity>
-
-          {/* Error message */}
-          {error ? (
-            <Animated.View style={[styles.errorBox, { transform: [{ translateX: shakeAnim }] }]}>
-              <Text style={styles.errorText}>⚠️  {error}</Text>
-            </Animated.View>
-          ) : null}
 
           {/* Sign In button */}
           <TouchableOpacity
             onPress={handleSignIn}
-            style={styles.signInBtn}
+            style={[styles.signInBtn, loginMutation.isPending && { opacity: 0.7 }]}
+            disabled={loginMutation.isPending}
           >
-            <Text style={styles.signInBtnText}>SIGN IN</Text>
+            <Text style={styles.signInBtnText}>
+              {loginMutation.isPending ? 'SIGNING IN...' : 'SIGN IN'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Demo Credentials Card ───────────────────── */}
-        <TouchableOpacity
-          onPress={fillDemo}
-          style={styles.demoCard}
-          activeOpacity={0.85}
-        >
-          <View style={styles.demoHeader}>
-            <View style={styles.demoBadge}>
-              <Text style={styles.demoBadgeText}>DEMO</Text>
-            </View>
-            <Text style={styles.demoTapHint}>Tap to auto-fill ↗</Text>
-          </View>
-
-          <View style={styles.demoRow}>
-            <Text style={styles.demoFieldLabel}>Email</Text>
-            <Text style={styles.demoFieldValue}>{DEMO_EMAIL}</Text>
-          </View>
-          <View style={styles.demoDivider} />
-          <View style={styles.demoRow}>
-            <Text style={styles.demoFieldLabel}>Password</Text>
-            <Text style={styles.demoFieldValue}>{DEMO_PASSWORD}</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
-
-      {/* ---- Forgot Password Bottom Sheet ---- */}
-      {sheetVisible && (
-        <>
-          <TouchableOpacity
-            style={styles.backdrop}
-            activeOpacity={1}
-            onPress={closeSheet}
-          />
-          <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetAnim }] }]}>
-            {/* Close button */}
-            <TouchableOpacity onPress={closeSheet} style={styles.sheetCloseBtn}>
-              <Text style={styles.sheetCloseIcon}>✕</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.sheetTitle}>Forgot Password?</Text>
-            <Text style={styles.sheetSub}>
-              {"Enter your email address and we'll send you a reset link."}
-            </Text>
-
-            <View style={styles.sheetInputBlock}>
-              <Text style={styles.sheetLabel}>EMAIL</Text>
-              <View style={styles.sheetInputWrap}>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={sheetEmail}
-                  onChangeText={setSheetEmail}
-                  placeholder="example123@domains.com"
-                  placeholderTextColor="#3A4844"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity onPress={handleForgotSubmit} style={styles.sheetSubmitBtn}>
-              <Text style={styles.sheetSubmitBtnText}>SUBMIT</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </>
-      )}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    justifyContent: 'center',
+  },
+  logoIcon: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
+  },
+  logoText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0D0F0E',
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  floatingErrorBanner: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 9999,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  floatingErrorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  floatingErrorText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
@@ -295,6 +324,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   input: { fontSize: 14, color: '#0D0F0E', fontWeight: '500', flex: 1 },
+  countryCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0D0F0E',
+    marginRight: 8,
+    paddingRight: 8,
+    borderRightWidth: 1.5,
+    borderRightColor: '#D0DCD7',
+  },
   eyeBtn: { padding: 4 },
   eyeIcon: { fontSize: 16 },
 
@@ -311,36 +349,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   errorText: { fontSize: 13, color: '#B91C1C', fontWeight: '600', lineHeight: 18 },
-
-  // Demo credentials card
-  demoCard: {
-    marginTop: 28,
-    backgroundColor: '#F0FAF5',
-    borderWidth: 1.5,
-    borderColor: '#C9E4D4',
-    borderRadius: 14,
-    borderStyle: 'dashed',
-    padding: 16,
-    gap: 10,
-  },
-  demoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  demoBadge: {
-    backgroundColor: '#346556',
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-  },
-  demoBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1 },
-  demoTapHint: { fontSize: 12, color: '#346556', fontWeight: '700' },
-  demoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  demoFieldLabel: { fontSize: 12, fontWeight: '600', color: '#707A76' },
-  demoFieldValue: { fontSize: 13, fontWeight: '800', color: '#0D0F0E', letterSpacing: 0.2 },
-  demoDivider: { height: 1, backgroundColor: '#C9E4D4' },
 
   signInBtn: {
     backgroundColor: COLORS.primary,

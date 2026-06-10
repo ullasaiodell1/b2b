@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -14,16 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#F8FAFC',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E2E8F0',
-  saveBtnBg: '#000000',
-  white: '#FFFFFF',
-};
+import { useUsers } from '@/hooks/useLeads';
 
 interface OwnerRecord {
   name: string;
@@ -65,10 +57,19 @@ export default function SelectOwnerScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
+  const { data: usersData } = useUsers();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOwner, setSelectedOwner] = useState(params.currentOwner || '');
 
-  const filteredOwners = OWNERS.filter((owner) =>
+  const dynamicOwners = usersData && usersData.length > 0
+    ? usersData.map((u: any) => ({
+        name: u.name,
+        email: u.email,
+        avatar: require('@/assets/images/lead_avatar.png'),
+      }))
+    : OWNERS;
+
+  const filteredOwners = dynamicOwners.filter((owner: OwnerRecord) =>
     owner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     owner.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -82,11 +83,8 @@ export default function SelectOwnerScreen() {
     router.replace({
       pathname: '/(tabs)/leads/add-lead',
       params: { 
+        ...params,
         owner: selectedOwner,
-        company: params.company,
-        fullname: params.fullname,
-        email: params.email,
-        phone: params.phone
       },
     });
   };
@@ -147,7 +145,7 @@ export default function SelectOwnerScreen() {
           contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         >
-          {filteredOwners.map((owner) => {
+          {filteredOwners.map((owner: OwnerRecord) => {
             const isSelected = selectedOwner === owner.name;
             return (
               <TouchableOpacity

@@ -1,44 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
+import { useLeads } from '@/hooks/useLeads';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
-  Modal,
   Animated,
   Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { leadsState, subscribeToLeads, LeadRecord } from '@/components/LeadState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#DCE5E1',
-  tagBg: '#ECFDF5',
-  tagText: '#047857',
-  danger: '#EF4444',
-  warning: '#F59E0B',
-};
 
 export default function LeadsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ priority?: string; tag?: string; owner?: string }>();
   const insets = useSafeAreaInsets();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [leads, setLeads] = useState<LeadRecord[]>(leadsState);
+  const { leads, isLoading, isFetching, refetch } = useLeads();
   const [isFabOpen, setIsFabOpen] = useState(false);
+
+  useEffect(() => {
+    if (leads) {
+      console.log('[LeadsScreen] Rendered leads data:', leads);
+    }
+  }, [leads]);
 
   // Speed Dial FAB Animation
   const speedDialAnim = useRef(new Animated.Value(0)).current;
@@ -72,12 +66,6 @@ export default function LeadsScreen() {
     inputRange: [0, 1],
     outputRange: [40, 0],
   });
-
-  useEffect(() => {
-    return subscribeToLeads(() => {
-      setLeads([...leadsState]);
-    });
-  }, []);
 
   // Filtering Logic
   const filteredLeads = leads.filter((lead) => {
@@ -121,13 +109,7 @@ export default function LeadsScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Leads" showSearch={false} />
 
       {/* SEARCH AND FILTERS */}
       <View style={styles.searchSection}>
@@ -147,7 +129,7 @@ export default function LeadsScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
           onPress={() => router.push({
             pathname: '/(tabs)/leads/leads-filter',
@@ -159,11 +141,11 @@ export default function LeadsScreen() {
           })}
           activeOpacity={0.8}
         >
-          <Ionicons 
-            name="funnel-outline" 
-            size={16} 
-            color={hasActiveFilters ? COLORS.primary : COLORS.textDark} 
-            style={{ marginRight: 6 }} 
+          <Ionicons
+            name="funnel-outline"
+            size={16}
+            color={hasActiveFilters ? COLORS.primary : COLORS.textDark}
+            style={{ marginRight: 6 }}
           />
           <Text style={[styles.filterBtnText, hasActiveFilters && styles.filterBtnTextActive]}>Filters</Text>
           {hasActiveFilters && (
@@ -192,8 +174,8 @@ export default function LeadsScreen() {
               </View>
             )}
           </ScrollView>
-          <TouchableOpacity 
-            style={styles.clearBtn} 
+          <TouchableOpacity
+            style={styles.clearBtn}
             onPress={() => router.push('/(tabs)/leads')}
             activeOpacity={0.7}
           >
@@ -204,74 +186,92 @@ export default function LeadsScreen() {
       )}
 
       {/* LEADS LIST */}
-      <ScrollView 
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 90 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredLeads.map((lead, idx) => (
-          <TouchableOpacity 
-            key={lead.id + '_' + idx} 
-            style={styles.card}
-            onPress={() => router.push({
-              pathname: '/(tabs)/leads/lead-details',
-              params: {
-                id: lead.id,
-                name: lead.name,
-                company: lead.company,
-                email: lead.email,
-                phone: lead.phone,
-                tag: lead.tag,
-                priority: lead.priority,
-                owner: lead.owner,
-              }
-            })}
-            activeOpacity={0.85}
-          >
-            {/* Top row: Name & Tag */}
-            <View style={styles.cardTopRow}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.cardName}>{lead.name}</Text>
-                {lead.priority === 'High' && (
-                  <View style={[styles.priorityTag, { backgroundColor: '#FEE2E2' }]}>
-                    <Text style={{ fontSize: 9, color: COLORS.danger, fontWeight: '900' }}>HIGH</Text>
-                  </View>
-                )}
+      {isLoading && leads.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 90 }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          }
+        >
+          {filteredLeads.map((lead, idx) => (
+            <TouchableOpacity
+              key={lead.id + '_' + idx}
+              style={styles.card}
+              onPress={() => router.push({
+                pathname: '/(tabs)/leads/lead-details',
+                params: {
+                  id: lead.id,
+                  name: lead.name,
+                  company: lead.company,
+                  email: lead.email,
+                  phone: lead.phone,
+                  tag: lead.tag,
+                  priority: lead.priority,
+                  owner: lead.owner,
+                }
+              })}
+              activeOpacity={0.85}
+            >
+              {/* Top row: Name & Tag */}
+              <View style={styles.cardTopRow}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.cardName}>{lead.name}</Text>
+                  {lead.priority === 'High' && (
+                    <View style={[styles.priorityTag, { backgroundColor: '#FEE2E2' }]}>
+                      <Text style={{ fontSize: 9, color: COLORS.danger, fontWeight: '900' }}>HIGH</Text>
+                    </View>
+                  )}
+                  {lead.priority === 'Normal' && (
+                    <View style={[styles.priorityTag, { backgroundColor: '#FEF3C7' }]}>
+                      <Text style={{ fontSize: 9, color: '#D97706', fontWeight: '900' }}>NORMAL</Text>
+                    </View>
+                  )}
+                  {lead.priority === 'Low' && (
+                    <View style={[styles.priorityTag, { backgroundColor: '#E0F2FE' }]}>
+                      <Text style={{ fontSize: 9, color: '#0284C7', fontWeight: '900' }}>LOW</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.tagBadge}>
+                  <Text style={styles.tagText}>{lead.tag}</Text>
+                </View>
               </View>
-              <View style={styles.tagBadge}>
-                <Ionicons name="pricetag-outline" size={10} color={COLORS.tagText} style={{ marginRight: 4 }} />
-                <Text style={styles.tagText}>{lead.tag}</Text>
+
+              {/* Company Row */}
+              <View style={styles.companyRow}>
+                <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                <Text style={styles.companyText}>{lead.company}</Text>
               </View>
+
+              {/* Contacts Row */}
+              <View style={styles.contactsRow}>
+                <View style={styles.contactItem}>
+                  <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={styles.contactText} numberOfLines={1}>{lead.email}</Text>
+                </View>
+
+                <View style={styles.contactItem}>
+                  <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={styles.contactText} numberOfLines={1}>{lead.phone}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {filteredLeads.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={48} color="#C2D3CC" />
+              <Text style={styles.emptyTitle}>No leads found</Text>
+              <Text style={styles.emptySub}>Try searching another keyword or clear filters</Text>
             </View>
-
-            {/* Company Row */}
-            <View style={styles.companyRow}>
-              <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-              <Text style={styles.companyText}>{lead.company}</Text>
-            </View>
-
-            {/* Contacts Row */}
-            <View style={styles.contactsRow}>
-              <View style={styles.contactItem}>
-                <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                <Text style={styles.contactText} numberOfLines={1}>{lead.email}</Text>
-              </View>
-
-              <View style={styles.contactItem}>
-                <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                <Text style={styles.contactText} numberOfLines={1}>{lead.phone}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {filteredLeads.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={48} color="#C2D3CC" />
-            <Text style={styles.emptyTitle}>No leads found</Text>
-            <Text style={styles.emptySub}>Try searching another keyword or clear filters</Text>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      )}
 
       {/* FAB OVERLAY BACKDROP */}
       {isFabOpen && (
@@ -299,8 +299,8 @@ export default function LeadsScreen() {
           {/* Add Lead */}
           <View style={styles.fabMenuItem}>
             <Text style={styles.fabMenuLabel}>Add Lead</Text>
-            <TouchableOpacity 
-              style={styles.fabMiniBtn} 
+            <TouchableOpacity
+              style={styles.fabMiniBtn}
               onPress={() => handleFabAction('/(tabs)/leads/add-lead')}
               activeOpacity={0.8}
             >
@@ -311,8 +311,8 @@ export default function LeadsScreen() {
           {/* Add Call */}
           <View style={styles.fabMenuItem}>
             <Text style={styles.fabMenuLabel}>Add Call</Text>
-            <TouchableOpacity 
-              style={styles.fabMiniBtn} 
+            <TouchableOpacity
+              style={styles.fabMiniBtn}
               onPress={() => handleFabAction('/(tabs)/call/add-call')}
               activeOpacity={0.8}
             >
@@ -323,8 +323,8 @@ export default function LeadsScreen() {
           {/* Add Meeting */}
           <View style={styles.fabMenuItem}>
             <Text style={styles.fabMenuLabel}>Add Meeting</Text>
-            <TouchableOpacity 
-              style={styles.fabMiniBtn} 
+            <TouchableOpacity
+              style={styles.fabMiniBtn}
               onPress={() => handleFabAction('/(tabs)/meeting/add-meeting')}
               activeOpacity={0.8}
             >
@@ -335,8 +335,8 @@ export default function LeadsScreen() {
           {/* Add Visit */}
           <View style={styles.fabMenuItem}>
             <Text style={styles.fabMenuLabel}>Add Visit</Text>
-            <TouchableOpacity 
-              style={styles.fabMiniBtn} 
+            <TouchableOpacity
+              style={styles.fabMiniBtn}
               onPress={() => handleFabAction('/(tabs)/visit/add-visit')}
               activeOpacity={0.8}
             >
@@ -347,8 +347,8 @@ export default function LeadsScreen() {
           {/* Add Task */}
           <View style={styles.fabMenuItem}>
             <Text style={styles.fabMenuLabel}>Add Task</Text>
-            <TouchableOpacity 
-              style={styles.fabMiniBtn} 
+            <TouchableOpacity
+              style={styles.fabMiniBtn}
               onPress={() => handleFabAction('/(tabs)/task/add-task')}
               activeOpacity={0.8}
             >
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -402,10 +402,10 @@ const styles = StyleSheet.create({
   searchSection: {
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 12,
+    paddingHorizontal: 8,
+    paddingTop: 4,
+    paddingBottom: 6,
+    gap: 2,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 0,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     justifyContent: 'space-between',
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 0.5,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
   },
   filterBadgeText: {
     fontSize: 10,
@@ -498,9 +498,9 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    gap: 12,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    gap: 8,
+    gap: 2,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -649,3 +649,4 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 });
+

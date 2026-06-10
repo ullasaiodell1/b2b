@@ -1,36 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Platform,
-  StatusBar,
-  TextInput,
-  Switch,
-  Alert,
-  Modal,
-} from 'react-native';
+import { MeetingRecord, meetingsState, subscribeToMeetings, updateMeetingsState } from '@/components/MeetingState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { meetingsState, updateMeetingsState, MeetingRecord, subscribeToMeetings } from '@/components/MeetingState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  success: '#10B981',
-  info: '#3B82F6',
-  danger: '#EF4444',
-};
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MeetingDetailsScreen() {
   const navigation = useNavigation<any>();
@@ -54,7 +42,7 @@ export default function MeetingDetailsScreen() {
         setMeeting({ ...meetingsState[0] });
       }
     };
-    
+
     fetchMeeting();
     return subscribeToMeetings(fetchMeeting);
   }, [id]);
@@ -117,8 +105,8 @@ export default function MeetingDetailsScreen() {
 
   const handleImagePick = async (useCamera: boolean) => {
     try {
-      const permissionResult = useCamera 
-        ? await ImagePicker.requestCameraPermissionsAsync() 
+      const permissionResult = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
@@ -128,22 +116,22 @@ export default function MeetingDetailsScreen() {
 
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-          })
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-          });
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
 
       if (!result.canceled && result.assets && result.assets.length > 0 && meeting) {
         const asset = result.assets[0];
         const fileName = asset.fileName || asset.uri.split('/').pop() || 'photo.jpg';
-        
+
         let sizeStr = '1.8 MB'; // fallback
         if (asset.fileSize) {
           if (asset.fileSize > 1024 * 1024) {
@@ -184,7 +172,7 @@ export default function MeetingDetailsScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0 && meeting) {
         const asset = result.assets[0];
         const fileName = asset.name;
-        
+
         let sizeStr = '0 B';
         if (asset.size) {
           if (asset.size > 1024 * 1024) {
@@ -294,7 +282,7 @@ export default function MeetingDetailsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* ── 3. RELATED VIEW ───────────────────────── */}
         {activeTab === 'RELATED' ? (
           <View style={styles.tabContent}>
@@ -427,10 +415,10 @@ export default function MeetingDetailsScreen() {
             </View>
           </View>
         ) : (
-          
+
           // ── 4. DETAILS VIEW ─────────────────────────
           <View style={styles.tabContent}>
-            
+
             {/* Show All Fields Toggle Switch */}
             <View style={styles.toggleRow}>
               <Text style={styles.toggleLabel}>Show All Fields</Text>
@@ -513,7 +501,7 @@ export default function MeetingDetailsScreen() {
                 <View style={styles.verticalBar} />
                 <Text style={styles.detailCardTitle}>MEETING ADDITIONAL INFORMATION</Text>
               </View>
-              
+
               <View style={styles.fieldsList}>
                 <View style={styles.fieldRow}>
                   <Text style={styles.fieldLabel}>checked in status *</Text>
@@ -545,8 +533,8 @@ export default function MeetingDetailsScreen() {
               onChangeText={setNewNoteText}
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.modalBtnCancel]} 
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
                 onPress={() => {
                   setNoteModalVisible(false);
                   setNewNoteText('');
@@ -555,8 +543,8 @@ export default function MeetingDetailsScreen() {
               >
                 <Text style={styles.modalBtnTextCancel}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.modalBtnSave]} 
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnSave]}
                 onPress={handleSaveNote}
                 activeOpacity={0.8}
               >
@@ -593,7 +581,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    gap: 16,
+    gap: 20,
   },
   backBtn: {
     width: 38,
@@ -614,7 +602,7 @@ const styles = StyleSheet.create({
 
   // Related/Details Tabs
   tabBarContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 14,
     backgroundColor: COLORS.bgPage,
   },
@@ -658,7 +646,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   tabContent: {
-    gap: 14,
+    gap: 5,
   },
 
   // Dynamic Meeting Summary Card

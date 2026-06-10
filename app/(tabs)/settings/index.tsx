@@ -1,43 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Image,
-  Alert,
-} from 'react-native';
+import { useProfile } from '@/hooks/useProfile';
+import { COLORS } from '@/constants/theme';
+import { useLogout } from '@/hooks/useAuth';
+import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { profileData, subscribeToProfile } from '@/components/ProfileState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  danger: '#EF4444',
-};
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [profile, setProfile] = useState(profileData);
-
-  useEffect(() => {
-    return subscribeToProfile(() => {
-      setProfile({ ...profileData });
-    });
-  }, []);
+  const { profile } = useProfile();
+  const logoutMutation = useLogout();
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -46,7 +33,17 @@ export default function SettingsScreen() {
         text: 'Log Out',
         style: 'destructive',
         onPress: () => {
-          router.replace('/sign-in' as any);
+          logoutMutation.mutate(undefined, {
+            onSuccess: async () => {
+              await clearAuthData();
+              router.replace('/sign-in' as any);
+            },
+            onError: async () => {
+              // Always clean local storage and redirect even if network request fails
+              await clearAuthData();
+              router.replace('/sign-in' as any);
+            }
+          });
         },
       },
     ]);
@@ -56,17 +53,11 @@ export default function SettingsScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Settings" showSearch={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Navigation Card */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileCard}
           activeOpacity={0.9}
           onPress={() => router.push('/(tabs)/profile' as any)}
@@ -89,7 +80,7 @@ export default function SettingsScreen() {
 
         {/* Settings Option Cards */}
         <View style={styles.optionsList}>
-          
+
           {/* Change Password Card */}
           <TouchableOpacity
             style={styles.optionCard}
@@ -181,7 +172,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -200,9 +191,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
     paddingBottom: 40,
   },
 
@@ -334,4 +325,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+import CustomHeader from '@/components/custom/CustomHeader';
 

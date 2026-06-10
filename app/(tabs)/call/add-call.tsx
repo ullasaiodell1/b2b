@@ -1,32 +1,23 @@
+import { CallRecord, callsState, updateCallsState } from '@/components/CallState';
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  StatusBar,
-  Platform,
   Alert,
   Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { callsState, updateCallsState, CallRecord } from '@/components/CallState';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#F8FAFC',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-  saveBtnBg: '#000000',
-};
 
 const STATUS_OPTIONS = ['Incoming', 'Outgoing', 'Missed'];
 
@@ -44,7 +35,7 @@ export default function AddCallScreen() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  
+
   const [dueDateObj, setDueDateObj] = useState(new Date());
   const [setTimeObj, setSetTimeObj] = useState(new Date());
 
@@ -88,8 +79,8 @@ export default function AddCallScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -107,7 +98,7 @@ export default function AddCallScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
         showsVerticalScrollIndicator={false}
@@ -153,7 +144,7 @@ export default function AddCallScreen() {
           {/* Due Date */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Due Date</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.85}
@@ -182,7 +173,7 @@ export default function AddCallScreen() {
           {/* Status */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Status</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowStatusModal(true)}
               activeOpacity={0.85}
@@ -197,7 +188,7 @@ export default function AddCallScreen() {
           {/* Set Time */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Set Time</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowTimePicker(true)}
               activeOpacity={0.85}
@@ -227,8 +218,8 @@ export default function AddCallScreen() {
 
       {/* Bottom Save Action Button */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
-        <TouchableOpacity 
-          style={styles.saveBtn} 
+        <TouchableOpacity
+          style={styles.saveBtn}
           onPress={handleSave}
           activeOpacity={0.85}
         >
@@ -238,7 +229,7 @@ export default function AddCallScreen() {
 
       {/* STATUS DROPDOWN MODAL */}
       <Modal transparent animationType="slide" visible={showStatusModal}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowStatusModal(false)}
@@ -314,7 +305,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -325,8 +316,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 16,
+    paddingVertical: 2,
+    marginBottom: 10,
   },
   toggleLabel: {
     fontSize: 13,
@@ -334,10 +325,10 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   formContainer: {
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 4,
   },
   inputLabel: {
     fontSize: 12.5,

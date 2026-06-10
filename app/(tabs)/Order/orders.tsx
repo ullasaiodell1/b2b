@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -12,22 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { ordersState, activeOrderFilter, subscribeToOrders, OrderRecord, updateOrderFilterState } from '@/components/OrderState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  complete: '#15803D',
-  completeBg: '#DCFCE7',
-  pending: '#B91C1C',
-  pendingBg: '#FEE2E2',
-  inprogress: '#1D4ED8',
-  inprogressBg: '#DBEAFE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 export default function OrderListScreen() {
   const navigation = useNavigation<any>();
@@ -286,9 +271,10 @@ const styles = StyleSheet.create({
 
   // List Cards
   listContent: {
-    padding: 16,
-    gap: 14,
+    paddingHorizontal: 4,
+    paddingTop: 8,
     paddingBottom: 24,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,

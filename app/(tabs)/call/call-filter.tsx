@@ -1,27 +1,19 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  Platform,
-  Modal,
-} from 'react-native';
+import { activeCallFilter, CallFilterState, updateCallFilterState } from '@/components/CallState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { activeCallFilter, updateCallFilterState, CallFilterState } from '@/components/CallState';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-};
 
 const DATE_OPTIONS = [
   '28 Dec 22 - 10 Jan 23',
@@ -60,8 +52,8 @@ export default function CallFilterScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -76,7 +68,7 @@ export default function CallFilterScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -96,7 +88,7 @@ export default function CallFilterScreen() {
         <View style={styles.filterSection}>
           <Text style={styles.sectionTitle}>Date</Text>
           <View style={styles.dateControlRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dateDropdown}
               onPress={() => setShowDatePickerModal(true)}
               activeOpacity={0.85}
@@ -105,7 +97,7 @@ export default function CallFilterScreen() {
               <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.dateResetBtn}
               onPress={handleResetDateOnly}
               activeOpacity={0.8}
@@ -119,7 +111,7 @@ export default function CallFilterScreen() {
         {/* Status Section */}
         <View style={styles.filterSection}>
           <Text style={styles.sectionTitle}>Status</Text>
-          
+
           <View style={styles.statusOptionsList}>
             {(['Incoming', 'Outgoing', 'Missed'] as const).map((statusVal) => {
               const isSelected = selectedStatus === statusVal;
@@ -143,16 +135,16 @@ export default function CallFilterScreen() {
 
       {/* Sticky Bottom Actions */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
-        <TouchableOpacity 
-          style={styles.cancelBtn} 
+        <TouchableOpacity
+          style={styles.cancelBtn}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.applyBtn} 
+        <TouchableOpacity
+          style={styles.applyBtn}
           onPress={handleApply}
           activeOpacity={0.8}
         >
@@ -162,7 +154,7 @@ export default function CallFilterScreen() {
 
       {/* DATE PICKER MODAL */}
       <Modal transparent animationType="slide" visible={showDatePickerModal}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowDatePickerModal(false)}
@@ -236,7 +228,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 20,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   subHeaderLeft: {
     flexDirection: 'row',
@@ -260,18 +252,18 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   filterSection: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textDark,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   dateControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   dateDropdown: {
     flex: 1,
@@ -307,7 +299,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   statusOptionsList: {
-    gap: 12,
+    gap: 5,
   },
   statusCardRow: {
     flexDirection: 'row',

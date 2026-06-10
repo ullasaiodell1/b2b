@@ -1,28 +1,18 @@
+import CustomHeader from '@/components/custom/CustomHeader';
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  TextInput,
-  Platform,
   StatusBar,
-  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 type TaskStatus = 'Completed' | 'Not Started' | 'waiting for input' | 'in progress';
 type PriorityType = 'High' | 'Normal' | 'Lowest';
@@ -86,7 +76,6 @@ export default function TaskScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [dateRange, setDateRange] = useState('28 Dec 22 – 10 Jan 23');
 
   const toggleTaskCompletion = (id: string) => {
     setTasks(prev =>
@@ -138,16 +127,10 @@ export default function TaskScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* ── HEADER ────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Task" showSearch={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Search & Filters Row */}
         <View style={styles.searchFilterRow}>
           <View style={styles.searchContainer}>
@@ -160,8 +143,8 @@ export default function TaskScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity 
-            style={styles.filterBtn} 
+          <TouchableOpacity
+            style={styles.filterBtn}
             activeOpacity={0.8}
             onPress={() => router.push('/(tabs)/task/task-filter' as any)}
           >
@@ -172,7 +155,7 @@ export default function TaskScreen() {
 
         {/* Stats horizontal row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.statChip, selectedFilter === 'All' && styles.statChipActive]}
             onPress={() => setSelectedFilter('All')}
             activeOpacity={0.8}
@@ -181,7 +164,7 @@ export default function TaskScreen() {
             <Text style={styles.statChipText}>Total Task {totalCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.statChip, selectedFilter === 'Completed' && styles.statChipActive]}
             onPress={() => setSelectedFilter('Completed')}
             activeOpacity={0.8}
@@ -190,7 +173,7 @@ export default function TaskScreen() {
             <Text style={styles.statChipText}>Complete {completedCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.statChip, selectedFilter === 'Not Started' && styles.statChipActive]}
             onPress={() => setSelectedFilter('Not Started')}
             activeOpacity={0.8}
@@ -200,26 +183,6 @@ export default function TaskScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Date Selector Row */}
-        <View style={styles.dateSelectorRow}>
-          <TouchableOpacity 
-            style={styles.datePickerDropdown} 
-            activeOpacity={0.8}
-            onPress={() => Alert.alert('Select Date Range', 'Calendar date range picker opened.')}
-          >
-            <Text style={styles.dateText}>{dateRange}</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.dateResetBtn}
-            onPress={() => setDateRange('28 Dec 22 – 10 Jan 23')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.dateResetBtnText}>Reset</Text>
-            <Ionicons name="refresh-outline" size={14} color={COLORS.textDark} style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
-        </View>
 
         {/* Tasks List */}
         <View style={styles.tasksList}>
@@ -229,8 +192,8 @@ export default function TaskScreen() {
             const priorityConfig = getPriorityStyle(task.priority);
 
             return (
-              <TouchableOpacity 
-                key={task.id} 
+              <TouchableOpacity
+                key={task.id}
                 style={styles.taskCard}
                 activeOpacity={0.9}
                 onPress={() => router.push({
@@ -243,10 +206,10 @@ export default function TaskScreen() {
                   }
                 } as any)}
               >
-                
+
                 {/* Header Row: Checkbox, Title, Status */}
                 <View style={styles.cardHeader}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => toggleTaskCompletion(task.id)}
                     style={styles.checkboxTouch}
                     activeOpacity={0.7}
@@ -314,7 +277,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -333,8 +296,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
     paddingBottom: 80,
   },
 
@@ -416,7 +380,7 @@ const styles = StyleSheet.create({
 
   // Tasks List
   tasksList: {
-    gap: 12,
+    gap: 5,
     marginTop: 4,
   },
   taskCard: {
@@ -498,42 +462,5 @@ const styles = StyleSheet.create({
     elevation: 10,
     zIndex: 100,
   },
-  dateSelectorRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
-  },
-  datePickerDropdown: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  dateResetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 40,
-    backgroundColor: '#FFFFFF',
-  },
-  dateResetBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
 });
+

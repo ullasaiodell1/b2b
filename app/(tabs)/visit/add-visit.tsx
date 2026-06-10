@@ -1,37 +1,26 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Switch,
-  StatusBar,
-  Platform,
-  Alert,
-  Modal,
-} from 'react-native';
+import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useIsFocused } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useIsFocused } from '@react-navigation/native';
-import { cameraResult, setCameraResult } from '@/components/CameraState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#FFFFFF',
-  bgGray: '#F9FAFB',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  saveBtnBg: '#000000',
-};
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
 const LOCATIONS = ['Western India.', 'South Korea', 'Rajkot, Gujarat', 'Ahmedabad, Gujarat'];
@@ -182,8 +171,8 @@ export default function AddVisitScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -201,7 +190,7 @@ export default function AddVisitScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -236,7 +225,7 @@ export default function AddVisitScreen() {
           {/* Company Name picker */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Company Name</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('company')}
               activeOpacity={0.85}
@@ -251,7 +240,7 @@ export default function AddVisitScreen() {
           {/* Location picker */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Location</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('location')}
               activeOpacity={0.85}
@@ -266,7 +255,7 @@ export default function AddVisitScreen() {
           {/* Due Date picker */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Due Date</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.85}
@@ -295,7 +284,7 @@ export default function AddVisitScreen() {
           {/* Status picker */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Status</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('status')}
               activeOpacity={0.85}
@@ -312,7 +301,7 @@ export default function AddVisitScreen() {
             <Text style={styles.inputLabel}>
               Subject <Text style={{ color: COLORS.danger }}>*</Text>
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('subject')}
               activeOpacity={0.85}
@@ -327,8 +316,8 @@ export default function AddVisitScreen() {
           {/* Photo Dropzone Uploader */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Photo</Text>
-            <TouchableOpacity 
-              style={styles.uploadDropzone} 
+            <TouchableOpacity
+              style={styles.uploadDropzone}
               onPress={handleUploadPress}
               activeOpacity={0.8}
             >
@@ -352,8 +341,8 @@ export default function AddVisitScreen() {
 
       {/* Sticky Bottom Actions */}
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity 
-          style={styles.saveBtn} 
+        <TouchableOpacity
+          style={styles.saveBtn}
           onPress={handleSave}
           activeOpacity={0.85}
         >
@@ -363,7 +352,7 @@ export default function AddVisitScreen() {
 
       {/* DROPDOWN OPTIONS MODAL */}
       <Modal transparent animationType="slide" visible={activePicker !== null}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setActivePicker(null)}
@@ -458,10 +447,10 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginTop: 18,
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 5,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -510,7 +499,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: '#F9FAFB',
-    gap: 10,
+    gap: 5,
   },
   uploadIconContainer: {
     width: 32,
@@ -522,7 +511,7 @@ const styles = StyleSheet.create({
   },
   uploadTextContainer: {
     flex: 1,
-    gap: 2,
+    gap: 5,
   },
   uploadTitleText: {
     fontSize: 11,

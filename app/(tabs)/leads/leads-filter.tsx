@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -12,18 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#FFFFFF',
-  bgGray: '#F3F4F6',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  success: '#10B981',
-};
 
 const INDUSTRIES = ['Hardware', 'Software', 'IT Services', 'Cybersecurity'];
 const OWNERS = ['Select Owner', 'Arjun Maheta', 'Parth Solanki', 'Khushal Nadiyapara', 'Jigar Kalariya'];

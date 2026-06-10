@@ -1,26 +1,17 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
   Alert,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 interface NotificationItemProps {
   title: string;
@@ -52,8 +43,8 @@ function NotificationItem({
 
       {/* Action Element based on Type */}
       {type === 'download-bill' && (
-        <TouchableOpacity 
-          style={styles.outlineBtn} 
+        <TouchableOpacity
+          style={styles.outlineBtn}
           activeOpacity={0.8}
           onPress={onPressButton}
         >
@@ -68,8 +59,8 @@ function NotificationItem({
       )}
 
       {type === 'track' && (
-        <TouchableOpacity 
-          style={styles.blackBtn} 
+        <TouchableOpacity
+          style={styles.blackBtn}
           activeOpacity={0.8}
           onPress={onPressButton}
         >
@@ -78,8 +69,8 @@ function NotificationItem({
       )}
 
       {type === 'confirm-order' && (
-        <TouchableOpacity 
-          style={styles.confirmBtn} 
+        <TouchableOpacity
+          style={styles.confirmBtn}
           activeOpacity={0.8}
           onPress={onPressButton}
         >
@@ -129,7 +120,7 @@ export default function NotificationScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* TODAY SECTION */}
         <View style={styles.sectionDivider}>
           <View style={styles.dividerLine} />
@@ -223,7 +214,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -235,7 +226,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 40,
   },

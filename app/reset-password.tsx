@@ -1,4 +1,6 @@
+import { COLORS } from '@/constants/theme';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -14,13 +16,6 @@ import {
 } from 'react-native';
 
 const { height } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  bgDark: '#121514',
-  textMutedDark: '#8F9995',
-  textLight: '#FFFFFF',
-};
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -93,7 +88,11 @@ export default function ResetPasswordScreen() {
               autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowNew(!showNew)} style={styles.eyeBtn}>
-              <Text style={styles.eyeIcon}>{showNew ? '' : '👁'}</Text>
+              <Ionicons 
+                name={showNew ? "eye-outline" : "eye-off-outline"} 
+                size={20} 
+                color="#8F9995" 
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -112,7 +111,11 @@ export default function ResetPasswordScreen() {
               autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={styles.eyeBtn}>
-              <Text style={styles.eyeIcon}>{showConfirm ? '' : '👁'}</Text>
+              <Ionicons 
+                name={showConfirm ? "eye-outline" : "eye-off-outline"} 
+                size={20} 
+                color="#8F9995" 
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -133,7 +136,7 @@ export default function ResetPasswordScreen() {
                           : i === 1
                             ? '#F59E0B'
                             : COLORS.primary
-                        : '#2D3532',
+                        : '#D0DCD7',
                   },
                 ]}
               />
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
   },
 
   sheet: {
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
@@ -170,7 +173,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 48 : 32,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 18,
     elevation: 14,
     gap: 16,
@@ -181,28 +184,28 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2D3532',
+    borderColor: '#D0DCD7',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeIcon: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  closeIcon: { color: '#0D0F0E', fontSize: 14, fontWeight: '700' },
 
-  sheetTitle: { fontSize: 26, fontWeight: '800', color: COLORS.textLight },
-  sheetSub: { fontSize: 13, color: COLORS.textMutedDark, lineHeight: 20 },
+  sheetTitle: { fontSize: 26, fontWeight: '800', color: '#0D0F0E' },
+  sheetSub: { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
 
   inputBlock: { gap: 8 },
-  label: { fontSize: 11, fontWeight: '800', color: COLORS.textMutedDark, letterSpacing: 1 },
+  label: { fontSize: 11, fontWeight: '800', color: '#8F9995', letterSpacing: 1 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E2422',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: '#D0DCD7',
     borderRadius: 10,
     height: 52,
     paddingHorizontal: 16,
   },
-  input: { fontSize: 14, color: COLORS.textLight, fontWeight: '500' },
+  input: { fontSize: 14, color: '#0D0F0E', fontWeight: '500' },
   eyeBtn: { padding: 4 },
   eyeIcon: { fontSize: 16 },
 
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
   strengthLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.textMutedDark,
+    color: COLORS.textMuted,
     marginLeft: 4,
     width: 40,
   },

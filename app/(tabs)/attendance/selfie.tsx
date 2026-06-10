@@ -1,31 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Platform,
-  StatusBar,
-  Dimensions,
-  Image,
-  Alert,
-} from 'react-native';
+import { attendanceState, updateAttendanceState } from '@/components/attendance/AttendanceState';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
-import { attendanceState, updateAttendanceState } from '@/components/AttendanceState';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Image,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 const { width } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  danger: '#EF4444',
-  bgDark: '#121514',
-  textLight: '#FFFFFF',
-  textMuted: '#8F9995',
-};
 
 const REAL_SELFIE_URL = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop';
 
@@ -100,7 +91,7 @@ export default function SelfieScreen() {
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
-        
+
         if (geocode && geocode.length > 0) {
           const address = geocode[0];
           locationStr = `${address.city || address.subregion || 'Surat'}, ${address.region || 'Gujarat'}`;

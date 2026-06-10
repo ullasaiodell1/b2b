@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -13,19 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E5E7EB',
-  danger: '#EF4444',
-  cancelBorder: '#E5E7EB',
-};
-
 const COMPANIES = ['Ullas India IT Solutions Limited.', 'Zenith System Pvt. Ltd.', 'NovaTech Solutions Pvt. Ltd.'];
-const STATUSES = ['Opend', 'Sent', 'Draft', 'Bounce'];
+const STATUSES = ['Opened', 'Sent', 'Draft', 'Bounce'];
 
 export default function EmailFilterScreen() {
   const router = useRouter();

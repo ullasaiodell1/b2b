@@ -1,34 +1,27 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Switch,
-} from 'react-native';
+import { MeetingRecord, meetingsState, updateMeetingsState } from '@/components/MeetingState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { meetingsState, updateMeetingsState, MeetingRecord } from '@/components/MeetingState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgDark: '#0A0A0A',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
+import React, { useState } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 
 export default function AddMeetingScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [showAllFields, setShowAllFields] = useState(false);
   const [syncToCalendar, setSyncToCalendar] = useState(true);
 
@@ -37,7 +30,7 @@ export default function AddMeetingScreen() {
   const [venue, setVenue] = useState('Development Room');
   const [location, setLocation] = useState('Hybrid');
   const [isAllDay, setIsAllDay] = useState(false);
-  
+
   // DateTimePicker State
   const [meetingDate, setMeetingDate] = useState<Date>(new Date());
   const [fromTime, setFromTime] = useState<Date>(() => {
@@ -247,17 +240,15 @@ export default function AddMeetingScreen() {
               </Text>
               <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
-            {showFromTimePicker && (
-              <DateTimePicker
-                value={fromTime}
-                mode="time"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowFromTimePicker(false);
-                  if (selected) setFromTime(selected);
-                }}
-              />
-            )}
+            <CustomTimePicker
+              visible={showFromTimePicker}
+              onClose={() => setShowFromTimePicker(false)}
+              selectedDate={fromTime}
+              onSelect={(selected) => {
+                setShowFromTimePicker(false);
+                setFromTime(selected);
+              }}
+            />
           </View>
 
           {/* Time Picker To */}
@@ -269,17 +260,15 @@ export default function AddMeetingScreen() {
               </Text>
               <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
-            {showToTimePicker && (
-              <DateTimePicker
-                value={toTime}
-                mode="time"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowToTimePicker(false);
-                  if (selected) setToTime(selected);
-                }}
-              />
-            )}
+            <CustomTimePicker
+              visible={showToTimePicker}
+              onClose={() => setShowToTimePicker(false)}
+              selectedDate={toTime}
+              onSelect={(selected) => {
+                setShowToTimePicker(false);
+                setToTime(selected);
+              }}
+            />
           </View>
 
           {/* Host Dropdown */}
@@ -297,12 +286,14 @@ export default function AddMeetingScreen() {
             </View>
           </View>
         </View>
+      </ScrollView>
 
-        {/* Save Button */}
+      {/* Sticky Bottom Actions */}
+      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
         <TouchableOpacity onPress={handleSave} style={styles.saveBtn} activeOpacity={0.9}>
           <Text style={styles.saveBtnText}>SAVE</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -318,8 +309,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 66 : 26,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -347,16 +338,27 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
-    gap: 20,
+    paddingBottom: 110,
+    gap: 5,
+  },
+  bottomStickyBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.bgWhite,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.bgWhite,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 2,
+    paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -369,14 +371,14 @@ const styles = StyleSheet.create({
 
   form: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 15,
+    padding: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 16,
+    gap: 8,
   },
   inputGroup: {
-    gap: 6,
+    gap: 5,
   },
   inputLabel: {
     fontSize: 12,
@@ -421,7 +423,7 @@ const styles = StyleSheet.create({
   // Yes/No Selector Buttons
   yesNoContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 15,
   },
   yesNoBtn: {
     flex: 1,

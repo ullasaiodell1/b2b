@@ -1,44 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Image,
-  Alert,
-  Linking,
-} from 'react-native';
+import { COLORS } from '@/constants/theme';
+import { useLogout } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React from 'react';
+import {
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { profileData, subscribeToProfile } from '@/components/ProfileState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  danger: '#EF4444',
-};
+import CustomHeader from '@/components/custom/CustomHeader';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [profile, setProfile] = useState(profileData);
+  const { profile, isLoading, isFetching, refetch } = useProfile();
+  const logoutMutation = useLogout();
 
-  useEffect(() => {
-    return subscribeToProfile(() => {
-      setProfile({ ...profileData });
-    });
-  }, []);
+  React.useEffect(() => {
+    if (profile) {
+      console.log('[ProfileScreen] Rendered profile data:', profile);
+    }
+  }, [profile]);
+
+  if (isLoading && !profile.fullName) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -47,7 +52,17 @@ export default function ProfileScreen() {
         text: 'Log Out',
         style: 'destructive',
         onPress: () => {
-          router.replace('/sign-in' as any);
+          logoutMutation.mutate(undefined, {
+            onSuccess: async () => {
+              await clearAuthData();
+              router.replace('/sign-in' as any);
+            },
+            onError: async () => {
+              // Always clean local storage and redirect even if network request fails
+              await clearAuthData();
+              router.replace('/sign-in' as any);
+            }
+          });
         },
       },
     ]);
@@ -69,23 +84,23 @@ export default function ProfileScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* ── 1. HEADER ROW ─────────────────────────── */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Profile" showSearch={false} />
 
       {/* ── 2. SCROLLABLE CONTAINER ────────────────── */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+        }
+      >
+
         {/* Profile Card Block */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <Image 
-              source={{ uri: profile.photoUri || DEFAULT_AVATAR }} 
-              style={styles.avatar} 
+            <Image
+              source={{ uri: profile.photoUri || DEFAULT_AVATAR }}
+              style={styles.avatar}
             />
           </View>
           <View style={styles.profileDetails}>
@@ -93,7 +108,7 @@ export default function ProfileScreen() {
             <Text style={styles.profileEmail}>{profile.email}</Text>
             <Text style={styles.profileMobile}>{profile.mobile}</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.editBtnBadge}
             activeOpacity={0.8}
             onPress={() => router.push('/profile/edit-profile' as any)}
@@ -105,7 +120,7 @@ export default function ProfileScreen() {
         {/* 4 Quick Action Row */}
         <View style={styles.quickActionsRow}>
           {/* Call */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}
             activeOpacity={0.7}
             onPress={handleCall}
@@ -115,7 +130,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {/* Email */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}
             activeOpacity={0.7}
             onPress={handleEmail}
@@ -125,7 +140,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {/* GST */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}
             activeOpacity={0.7}
             onPress={() => handleAlertValue('GST Number', profile.gstNo)}
@@ -135,7 +150,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {/* PAN */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}
             activeOpacity={0.7}
             onPress={() => handleAlertValue('PAN Number', profile.panNo)}
@@ -195,8 +210,8 @@ export default function ProfileScreen() {
         </View>
 
         {/* Log Out Button */}
-        <TouchableOpacity 
-          style={styles.logoutBtn} 
+        <TouchableOpacity
+          style={styles.logoutBtn}
           activeOpacity={0.8}
           onPress={handleLogout}
         >
@@ -215,7 +230,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -234,9 +249,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
     paddingBottom: 40,
   },
 

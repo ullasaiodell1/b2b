@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -11,16 +12,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  primaryDark: '#204036',
-  accent: '#E6A15C',
-  textDark: '#1A1A1A',
-  textMuted: '#707A76',
-};
 
 const SLIDES = [
   {
@@ -293,17 +287,27 @@ export default function SlidesScreen() {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < SLIDES.length - 1) {
       transition(() => setCurrentIndex((prev) =>
         Math.min(prev + 1, SLIDES.length - 1)
       ));
     } else {
+      try {
+        await AsyncStorage.setItem('@has_seen_onboarding', 'true');
+      } catch (e) {
+        console.error(e);
+      }
       router.replace('/sign-in');
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    try {
+      await AsyncStorage.setItem('@has_seen_onboarding', 'true');
+    } catch (e) {
+      console.error(e);
+    }
     router.replace('/sign-in');
   };
 

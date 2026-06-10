@@ -1,31 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Platform,
-  StatusBar,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
+import { OrderRecord, ordersState } from '@/components/OrderState';
+import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ordersState, OrderRecord } from '@/components/OrderState';
 
 const { width } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 const TERMS_CHECKLIST = [
   'Payment due within 30 days. Late payments attract 2% monthly interest.',
@@ -122,8 +113,8 @@ export default function OrderDetailsScreen() {
       </View>
 
       {/* ── 2. MAIN SCROLL CONTAINER ──────────────── */}
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Dynamic Items Ordered */}
@@ -212,7 +203,7 @@ export default function OrderDetailsScreen() {
         </View>
 
         {/* Download Order Green Box */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.downloadBox}
           activeOpacity={0.8}
           onPress={handleDownload}
@@ -226,10 +217,10 @@ export default function OrderDetailsScreen() {
             {downloading ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <Ionicons 
-                name={downloadSuccess ? "checkmark" : "download-outline"} 
-                size={16} 
-                color={COLORS.primary} 
+              <Ionicons
+                name={downloadSuccess ? "checkmark" : "download-outline"}
+                size={16}
+                color={COLORS.primary}
               />
             )}
           </View>
@@ -246,8 +237,8 @@ export default function OrderDetailsScreen() {
                   <Text style={styles.docDescText}>{doc.desc}</Text>
                 </View>
               </View>
-              <TouchableOpacity 
-                style={styles.docBtn} 
+              <TouchableOpacity
+                style={styles.docBtn}
                 activeOpacity={0.8}
                 onPress={handleDownload}
               >
@@ -281,7 +272,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    gap: 16,
   },
   backBtn: {
     width: 38,
@@ -301,7 +291,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    gap: 16,
+    gap: 5,
     paddingBottom: 40,
   },
 
@@ -312,7 +302,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
-    gap: 10,
+    gap: 5,
   },
   itemHeader: {
     flexDirection: 'row',

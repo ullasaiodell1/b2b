@@ -1,36 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  StatusBar,
-  Image,
-  Dimensions,
-} from 'react-native';
+import CustomHeader from '@/components/custom/CustomHeader';
+import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
+import { COLORS } from '@/constants/theme';
+import { useAttendance } from '@/hooks/useAttendance';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import CustomHeader from '@/components/CustomHeader';
-import { attendanceState, subscribeToAttendance, updateAttendanceState } from '@/components/AttendanceState';
+import React, { useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const { width } = Dimensions.get('window');
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  primaryDark: '#204036',
-  danger: '#EF4444',
-  dangerLight: '#FEF2F2',
-  warning: '#F59E0B',
-  warningLight: '#FFFBEB',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMid: '#3A4844',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'not_marked';
 type FilterType = 'Present' | 'Absent' | 'Late';
@@ -69,9 +55,9 @@ const HISTORY_DATA = [
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
   const config = {
-    present:    { label: 'Present',    bg: '#DCFCE7', text: '#15803D' },
-    absent:     { label: 'Absent',     bg: '#FEE2E2', text: '#B91C1C' },
-    late:       { label: 'Late',       bg: '#FEF3C7', text: '#92400E' },
+    present: { label: 'Present', bg: '#DCFCE7', text: '#15803D' },
+    absent: { label: 'Absent', bg: '#FEE2E2', text: '#B91C1C' },
+    late: { label: 'Late', bg: '#FEF3C7', text: '#92400E' },
     not_marked: { label: 'Not Marked', bg: '#F3F4F6', text: '#6B7280' },
   }[status];
 
@@ -84,15 +70,13 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 
 export default function AttendanceScreen() {
   const router = useRouter();
-  const [attState, setAttState] = useState(attendanceState);
+  const { attendance: attState } = useAttendance();
   const [activeFilter, setActiveFilter] = useState<FilterType>('Present');
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  // Subscribe to changes in raw state
-  useEffect(() => {
-    return subscribeToAttendance(() => {
-      setAttState({ ...attendanceState });
-    });
-  }, []);
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const formattedMonth = `${monthNames[selectedMonth.getMonth()]} ${selectedMonth.getFullYear()}`;
 
   const handlePunchIn = () => {
     if (attState.stampedIn) return;
@@ -119,8 +103,8 @@ export default function AttendanceScreen() {
   const todayStatus: AttendanceStatus = attState.stampedOut
     ? 'present'
     : attState.stampedIn
-    ? 'present'
-    : 'not_marked';
+      ? 'present'
+      : 'not_marked';
 
   const filteredHistory = HISTORY_DATA.filter((item) => {
     if (activeFilter === 'Present') return item.status === 'present';
@@ -280,9 +264,9 @@ export default function AttendanceScreen() {
           {/* Section Header */}
           <View style={styles.historyHeader}>
             <Text style={styles.historySectionTitle}>ATTENDANCE HISTORY</Text>
-            <TouchableOpacity style={styles.monthPicker}>
+            <TouchableOpacity style={styles.monthPicker} onPress={() => setPickerVisible(true)}>
               <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
-              <Text style={styles.monthPickerText}>January 2025</Text>
+              <Text style={styles.monthPickerText}>{formattedMonth}</Text>
               <Ionicons name="chevron-down" size={12} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
@@ -366,13 +350,27 @@ export default function AttendanceScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      <MonthYearPicker
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        selectedDate={selectedMonth}
+        onSelect={(date) => {
+          setSelectedMonth(date);
+          setPickerVisible(false);
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bgPage },
-  scrollContent: { padding: 16, gap: 16 },
+  scrollContent: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 5,
+  },
 
   // Card
   card: {
@@ -432,11 +430,11 @@ const styles = StyleSheet.create({
   // Photos comparison Row
   photosRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 5,
   },
   photoContainer: {
     flex: 1,
-    gap: 6,
+    gap: 3,
   },
   photoBoxTitle: {
     fontSize: 11,
@@ -452,7 +450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F8FAFB',
-    gap: 4,
+    gap: 1,
   },
   photoPlaceholderText: {
     fontSize: 11,
@@ -479,7 +477,7 @@ const styles = StyleSheet.create({
   statCell: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   statCellLabel: {
     fontSize: 11,
@@ -500,7 +498,7 @@ const styles = StyleSheet.create({
   // Action Buttons
   buttonsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 4,
   },
   actionBtn: {
     flex: 1,
@@ -509,7 +507,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -541,7 +539,7 @@ const styles = StyleSheet.create({
 
   // History Section
   historySection: {
-    gap: 12,
+    gap: 5,
     marginTop: 8,
   },
   historyHeader: {
@@ -564,7 +562,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 6,
+    gap: 5,
   },
   monthPickerText: {
     fontSize: 12,
@@ -578,7 +576,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAEFF1',
     borderRadius: 10,
     padding: 3,
-    gap: 2,
+    gap: 5,
   },
   filterTab: {
     flex: 1,
@@ -606,7 +604,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 12,
+    gap: 5,
   },
   historyCardHeader: {
     flexDirection: 'row',
@@ -620,14 +618,14 @@ const styles = StyleSheet.create({
   },
   historyPhotosRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 5,
     backgroundColor: '#F8FBFA',
     borderRadius: 12,
     padding: 10,
   },
   historyPhotoBox: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   historyPhotoLabel: {
     fontSize: 10,

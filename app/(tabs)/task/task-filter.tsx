@@ -1,29 +1,20 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  StatusBar,
   Alert,
   Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
 
 type PriorityType = 'High' | 'Normal' | 'Low';
 type StatusType = 'Completed' | 'Not Started' | 'In Progress' | 'Waiting For Input';
@@ -72,8 +63,8 @@ export default function TaskFilterScreen() {
 
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
+        <TouchableOpacity
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
@@ -87,7 +78,7 @@ export default function TaskFilterScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Title row */}
         <View style={styles.titleRow}>
           <View style={styles.titleLeft}>
@@ -133,8 +124,8 @@ export default function TaskFilterScreen() {
           </View>
 
           <View style={styles.dateSelectorRow}>
-            <TouchableOpacity 
-              style={styles.datePickerDropdown} 
+            <TouchableOpacity
+              style={styles.datePickerDropdown}
               activeOpacity={0.8}
               onPress={() => setShowStartPicker(true)}
             >
@@ -145,8 +136,8 @@ export default function TaskFilterScreen() {
               <Ionicons name="calendar-outline" size={16} color={COLORS.textDark} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.datePickerDropdown} 
+            <TouchableOpacity
+              style={styles.datePickerDropdown}
               activeOpacity={0.8}
               onPress={() => setShowEndPicker(true)}
             >
@@ -158,7 +149,7 @@ export default function TaskFilterScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dateResetFullBtn}
             onPress={() => {
               setStartDate(new Date(2022, 11, 28));
@@ -189,7 +180,7 @@ export default function TaskFilterScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.statusText, isSelected && styles.statusTextActive]}>{s}</Text>
-                  
+
                   <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
@@ -203,16 +194,16 @@ export default function TaskFilterScreen() {
 
       {/* Footer Actions */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
-        <TouchableOpacity 
-          style={styles.cancelBtn} 
+        <TouchableOpacity
+          style={styles.cancelBtn}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.applyBtn} 
+        <TouchableOpacity
+          style={styles.applyBtn}
           onPress={handleApplyFilter}
           activeOpacity={0.8}
         >
@@ -224,8 +215,8 @@ export default function TaskFilterScreen() {
       {showStartPicker && (
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="fade" visible={showStartPicker}>
-            <TouchableOpacity 
-              style={styles.calendarOverlay} 
+            <TouchableOpacity
+              style={styles.calendarOverlay}
               activeOpacity={1}
               onPress={() => setShowStartPicker(false)}
             >
@@ -238,8 +229,8 @@ export default function TaskFilterScreen() {
                     if (selectedDate) setStartDate(selectedDate);
                   }}
                 />
-                <TouchableOpacity 
-                  style={[styles.saveBtn, { marginTop: 10 }]} 
+                <TouchableOpacity
+                  style={[styles.saveBtn, { marginTop: 10 }]}
                   onPress={() => setShowStartPicker(false)}
                   activeOpacity={0.8}
                 >
@@ -264,8 +255,8 @@ export default function TaskFilterScreen() {
       {showEndPicker && (
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="fade" visible={showEndPicker}>
-            <TouchableOpacity 
-              style={styles.calendarOverlay} 
+            <TouchableOpacity
+              style={styles.calendarOverlay}
               activeOpacity={1}
               onPress={() => setShowEndPicker(false)}
             >
@@ -278,8 +269,8 @@ export default function TaskFilterScreen() {
                     if (selectedDate) setEndDate(selectedDate);
                   }}
                 />
-                <TouchableOpacity 
-                  style={[styles.saveBtn, { marginTop: 10 }]} 
+                <TouchableOpacity
+                  style={[styles.saveBtn, { marginTop: 10 }]}
                   onPress={() => setShowEndPicker(false)}
                   activeOpacity={0.8}
                 >
@@ -337,7 +328,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 100,
-    gap: 20,
+    gap: 5,
   },
 
   // Title Row
@@ -370,12 +361,12 @@ const styles = StyleSheet.create({
 
   // Section divider headers
   sectionContainer: {
-    gap: 12,
+    gap: 5,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 5,
   },
   sectionLabel: {
     fontSize: 13.5,
@@ -469,7 +460,7 @@ const styles = StyleSheet.create({
 
   // Statuses
   statusList: {
-    gap: 10,
+    gap: 5,
   },
   statusCard: {
     flexDirection: 'row',

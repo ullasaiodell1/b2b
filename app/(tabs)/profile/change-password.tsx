@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -9,21 +10,15 @@ import {
   Platform,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-
-const COLORS = {
-  primary: '#346556',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-};
+import { useProfile } from '@/hooks/useProfile';
 
 export default function ChangePasswordScreen() {
   const navigation = useNavigation<any>();
+  const { updateProfile: mutateProfile, isUpdating } = useProfile();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -47,14 +42,25 @@ export default function ChangePasswordScreen() {
       return;
     }
 
-    Alert.alert('Success', 'Password updated successfully!', [
+    mutateProfile(
+      { password: newPassword } as any,
       {
-        text: 'OK',
-        onPress: () => {
-          navigation.goBack();
+        onSuccess: () => {
+          Alert.alert('Success', 'Password updated successfully!', [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.goBack();
+              },
+            },
+          ]);
         },
-      },
-    ]);
+        onError: (err: any) => {
+          const errMsg = err?.response?.data?.message || err?.message || 'Failed to update password.';
+          Alert.alert('Error', errMsg);
+        },
+      }
+    );
   };
 
   return (
@@ -141,8 +147,12 @@ export default function ChangePasswordScreen() {
         </View>
 
         {/* Update Password Button */}
-        <TouchableOpacity onPress={handleUpdate} style={styles.saveBtn} activeOpacity={0.9}>
-          <Text style={styles.saveBtnText}>Update Password</Text>
+        <TouchableOpacity onPress={handleUpdate} style={styles.saveBtn} activeOpacity={0.9} disabled={isUpdating}>
+          {isUpdating ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveBtnText}>Update Password</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>

@@ -1,16 +1,16 @@
+import { attendanceState, updateAttendanceState } from "@/components/attendance/AttendanceState";
+import { setCameraResult } from "@/components/custom/CameraState";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View, StatusBar, Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { updateAttendanceState, attendanceState } from "@/components/AttendanceState";
-import { setCameraResult } from "@/components/CameraState";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo, useRef, useState } from "react";
+import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CameraCaptureScreen() {
   const router = useRouter();

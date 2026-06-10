@@ -1,35 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Platform,
-  StatusBar,
-} from 'react-native';
+import { COLORS } from '@/constants/theme';
+import { useCalls } from '@/hooks/useCalls';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { openDrawer } from '@/components/DrawerState';
-import { callsState, activeCallFilter, subscribeToCalls, updateCallFilterState, CallRecord } from '@/components/CallState';
-
-const COLORS = {
-  primary: '#346556',
-  primaryLight: '#EAF4EE',
-  bgPage: '#F4F7F5',
-  bgWhite: '#FFFFFF',
-  textDark: '#0D0F0E',
-  textMuted: '#707A76',
-  border: '#E8EFEC',
-  incoming: '#10B981',
-  incomingBg: '#D1FAE5',
-  outgoing: '#4F46E5',
-  outgoingBg: '#E0E7FF',
-  missed: '#EF4444',
-  missedBg: '#FEE2E2',
-};
+import CustomHeader from '@/components/custom/CustomHeader';
 
 type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
@@ -37,27 +24,19 @@ export default function CallHistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [calls, setCalls] = useState<CallRecord[]>(callsState);
-  const [filters, setFilters] = useState(activeCallFilter);
+  const { calls, filter: filters, updateFilter, isLoading, isFetching, refetch } = useCalls();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<CallType>('All');
 
-  useEffect(() => {
-    return subscribeToCalls(() => {
-      setCalls([...callsState]);
-      setFilters({ ...activeCallFilter });
-    });
-  }, []);
-
   const handleClearStatusFilter = () => {
-    updateCallFilterState({
+    updateFilter({
       ...filters,
       status: '',
     });
   };
 
   const handleClearDateFilter = () => {
-    updateCallFilterState({
+    updateFilter({
       ...filters,
       dateRange: '28 Dec 22 - 10 Jan 23',
     });
@@ -66,7 +45,7 @@ export default function CallHistoryScreen() {
   // Filter logs
   const filteredLogs = calls.filter((log) => {
     const matchesTab = activeTab === 'All' || log.type === activeTab;
-    
+
     // Status filter from Call Filter screen
     let matchesStatus = true;
     if (filters.status) {
@@ -84,13 +63,7 @@ export default function CallHistoryScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), justifyContent: 'center', position: 'relative' }]}>
-        <View style={styles.centerLogoSection}>
-          <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.logoText}>BASALT</Text>
-        </View>
-      </View>
+      <CustomHeader title="Call" showSearch={false} />
 
       {/* TOP SEARCH & FILTER BAR */}
       <View style={styles.topBar}>
@@ -131,8 +104,8 @@ export default function CallHistoryScreen() {
             )}
           </View>
 
-          <TouchableOpacity 
-            style={[styles.filterBtn, !!filters.status && styles.filterBtnActive]} 
+          <TouchableOpacity
+            style={[styles.filterBtn, !!filters.status && styles.filterBtnActive]}
             onPress={() => router.push('/(tabs)/call/call-filter' as any)}
             activeOpacity={0.8}
           >
@@ -166,44 +139,54 @@ export default function CallHistoryScreen() {
       </View>
 
       {/* SCROLLABLE LIST */}
-      <ScrollView 
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]} 
+      <ScrollView
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+        }
       >
-        {filteredLogs.map((item, idx) => {
-          const config = {
-            Incoming: { bg: COLORS.incomingBg, text: COLORS.incoming, icon: 'checkmark-sharp', label: 'Incoming' },
-            Outgoing: { bg: COLORS.outgoingBg, text: COLORS.outgoing, icon: 'arrow-up-forward', label: 'Outgoing' },
-            Missed:   { bg: COLORS.missedBg,   text: COLORS.missed,   icon: 'arrow-down-back', label: 'Missed'   },
-          }[item.type];
+        {isLoading && calls.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>Loading call history...</Text>
+          </View>
+        ) : (
+          filteredLogs.map((item, idx) => {
+            const config = {
+              Incoming: { bg: COLORS.incomingBg, text: COLORS.incoming, icon: 'checkmark-sharp', label: 'Incoming' },
+              Outgoing: { bg: COLORS.outgoingBg, text: COLORS.outgoing, icon: 'arrow-up', label: 'Outgoing' },
+              Missed: { bg: COLORS.missedBg, text: COLORS.missed, icon: 'arrow-down', label: 'Missed' },
+            }[item.type];
 
-          return (
-            <View key={item.id + '_' + idx} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactName}>{item.name}</Text>
-                  
-                  <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
-                    <Text style={styles.detailText}>{item.dateTime}</Text>
-                  </View>
-                  
-                  <View style={[styles.detailRow, { marginTop: 3 }]}>
-                    <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} />
-                    <Text style={styles.detailText}>{item.phoneNumber}</Text>
-                    <Ionicons name="time-outline" size={14} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
-                    <Text style={styles.detailText}>{item.duration}</Text>
-                  </View>
-                </View>
+            return (
+              <View key={item.id + '_' + idx} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{item.name}</Text>
 
-                <View style={[styles.badge, { backgroundColor: config.bg }]}>
-                  <Ionicons name={config.icon as any} size={11} color={config.text} style={{ marginRight: 3 }} />
-                  <Text style={[styles.badgeText, { color: config.text }]}>{config.label}</Text>
+                    <View style={styles.detailRow}>
+                      <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.detailText}>{item.dateTime}</Text>
+                    </View>
+
+                    <View style={[styles.detailRow, { marginTop: 3 }]}>
+                      <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.detailText}>{item.phoneNumber}</Text>
+                      <Ionicons name="time-outline" size={14} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
+                      <Text style={styles.detailText}>{item.duration}</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.badge, { backgroundColor: config.bg }]}>
+                    <Ionicons name={config.icon as any} size={11} color={config.text} style={{ marginRight: 3 }} />
+                    <Text style={[styles.badgeText, { color: config.text }]}>{config.label}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
 
         {filteredLogs.length === 0 && (
           <View style={styles.emptyArea}>
@@ -235,7 +218,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -255,7 +238,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     backgroundColor: COLORS.bgWhite,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 12,
     paddingBottom: 14,
     borderBottomWidth: 1,
@@ -361,9 +344,9 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    gap: 12,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    gap: 5,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
