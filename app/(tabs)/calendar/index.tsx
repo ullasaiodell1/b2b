@@ -1,11 +1,13 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -16,9 +18,8 @@ import {
   TextInput,
   TouchableOpacity,
   View
-, KeyboardAvoidingView} from 'react-native';
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/hooks/use-theme';
 
 const isSameDay = (d1: Date, d2: Date) => {
   return (
@@ -500,15 +501,15 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
   },
   scrollContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 5,
     gap: 5,
   },
   calendarHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 5,
     marginBottom: 5,
   },
   calendarHeaderTitle: {
@@ -520,8 +521,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.primaryLight,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
     borderRadius: 12,
   },
   todayResetText: {
@@ -539,15 +540,15 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   calendarContent: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 10,
+    padding: 16,
     width: '100%',
     maxWidth: 320,
-    gap: 5,
+    gap: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -557,7 +558,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   modalDoneBtn: {
     backgroundColor: theme.primaryColor,
     borderRadius: 10,
-    height: 48,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,
@@ -647,7 +648,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 14,
+    marginVertical: 1,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -679,7 +680,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 14,
-    padding: 14,
+    padding: 10,
     gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

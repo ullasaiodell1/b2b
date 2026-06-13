@@ -276,9 +276,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 10,
-    paddingTop: 12,
+    paddingTop: 5,
     paddingBottom: 10,
-    gap: 10,
+    gap: 5,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -315,11 +315,11 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   tabsRow: {
     backgroundColor: COLORS.bgWhite,
-    paddingBottom: 12,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  tabsScrollContent: { paddingHorizontal: 10, gap: 8, paddingTop: 10 },
+  tabsScrollContent: { paddingHorizontal: 5, gap: 4, paddingTop: 5 },
   tabChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -342,11 +342,11 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
-    gap: 10,
+    padding: 10,
+    gap: 5,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

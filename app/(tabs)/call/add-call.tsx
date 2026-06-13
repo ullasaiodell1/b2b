@@ -1,86 +1,189 @@
-import { CallRecord, callsState, updateCallsState } from '@/components/CallState';
+import { CallRecord } from '@/components/CallState';
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useUpload } from '@/hooks/useUpload';
+import { useCalls } from '@/hooks/useCalls';
+import { useLeads } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const STATUS_OPTIONS = ['Incoming', 'Outgoing', 'Missed'];
 
 export default function AddCallScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{
+    leadId?: string;
+    leadName?: string;
+    phone?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
-  const [showAllFields, setShowAllFields] = useState(false);
-  const [callType, setCallType] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [status, setStatus] = useState<'Incoming' | 'Outgoing' | 'Missed' | ''>('');
-  const [setTime, setSetTime] = useState('');
-  const [contactName, setContactName] = useState('');
+  const { addCall, isAdding } = useCalls();
+  const { leads, isLoading: isLeadsLoading } = useLeads();
 
-  const [showStatusModal, setShowStatusModal] = useState(false);
+  const uploadMutation = useUpload();
+  const [isUploading, setIsUploading] = useState(false);
+
+  const [callType, setCallType] = useState<'Outbound' | 'Inbound' | 'Missed'>('Outbound');
+  const [showCallTypeModal, setShowCallTypeModal] = useState(false);
+
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadSearchQuery, setLeadSearchQuery] = useState('');
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadName, setSelectedLeadName] = useState<string | null>(null);
+
+  const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [startTime, setStartTime] = useState<Date>(new Date());
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [recordingName, setRecordingName] = useState<string | null>(null);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [remarks, setRemarks] = useState('');
 
-  const [dueDateObj, setDueDateObj] = useState(new Date());
-  const [setTimeObj, setSetTimeObj] = useState(new Date());
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // Initialize selected lead from parameters
+  useEffect(() => {
+    if (routeParams.leadId) {
+      setSelectedLeadId(routeParams.leadId);
+      setSelectedLeadName(routeParams.leadName || 'Selected Lead');
+    }
+  }, [routeParams.leadId, routeParams.leadName]);
+
+  const formatDate = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const formatTime = (d: Date) => {
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${hours} : ${minutes} : ${seconds}`;
   };
 
-  const handleSave = () => {
-    if (!callType || !dueDate || !status || !setTime) {
-      Alert.alert('Required Fields', 'Please fill in Call Type, Due Date, Status and Set Time.');
+  const handleRecordingPick = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const pickedAsset = res.assets[0];
+        setRecordingName(pickedAsset.name);
+        setIsUploading(true);
+        try {
+          const uploadRes = await uploadMutation.mutateAsync({
+            uri: pickedAsset.uri,
+            fileName: pickedAsset.name,
+            type: pickedAsset.mimeType || 'audio/mpeg',
+          });
+          console.log('[Recording Upload Success]:', uploadRes);
+          const url = uploadRes?.url || uploadRes?.data?.url || uploadRes?.filePath || '';
+          setRecordingUri(url);
+        } catch (err: any) {
+          console.error('[Recording Upload Error]:', err);
+          Alert.alert('Upload Failed', err?.message || 'Failed to upload recording file.');
+          setRecordingName(null);
+          setRecordingUri(null);
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    } catch (err) {
+      console.log('Error picking recording:', err);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedLeadId) {
+      Alert.alert('Required Fields', 'Please select a Lead.');
+      return;
+    }
+    if (!subject.trim()) {
+      Alert.alert('Required Fields', 'Please fill in Subject.');
       return;
     }
 
-    const nameToUse = contactName.trim() || 'Vijay Rathod';
+    // Compute duration in MM:SS format
+    const diffMs = endTime && endTime.getTime() > startTime.getTime()
+      ? endTime.getTime() - startTime.getTime()
+      : 0;
+    const diffSecs = Math.round(diffMs / 1000);
+    const mins = Math.floor(diffSecs / 60);
+    const secs = diffSecs % 60;
+    const durationStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
-    const newCall: CallRecord = {
-      id: String(callsState.length + 1),
-      name: nameToUse,
-      phoneNumber: '+91 98765 43210',
-      dateTime: `${dueDate}, ${setTime}`,
-      duration: status === 'Missed' ? '00:00 min' : '15:24 min',
-      type: status || 'Incoming',
-      callType,
-      dueDate,
-    };
+    try {
+      await addCall({
+        lead_id: selectedLeadId,
+        name: subject,
+        type: callType === 'Outbound' ? 'Outgoing' : callType === 'Inbound' ? 'Incoming' : 'Missed',
+        duration: durationStr,
+        remarks: remarks || undefined,
+        recordingUrl: recordingUri || undefined,
+      });
 
-    updateCallsState([newCall, ...callsState]);
-
-    Alert.alert('Success', 'Call log created successfully!', [
-      { text: 'OK', onPress: () => router.back() }
-    ]);
+      Alert.alert('Success', 'Call log created successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (err: any) {
+      console.error('[AddCallScreen handleSave Error]:', err);
+      Alert.alert('Error', err?.message || 'Failed to create call log.');
+    }
   };
 
+  // Filter leads list for modal search
+  const filteredLeads = leads.filter((lead: any) => {
+    const query = leadSearchQuery.toLowerCase();
+    const nameMatch = (lead.name || '').toLowerCase().includes(query);
+    const companyMatch = (lead.company || '').toLowerCase().includes(query);
+    return nameMatch || companyMatch;
+  });
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
@@ -106,151 +209,215 @@ export default function AddCallScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 200 : 30, paddingTop: 16 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Toggle Switch */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Show All Fields</Text>
-          <Switch
-            value={showAllFields}
-            onValueChange={setShowAllFields}
-            trackColor={{ false: '#CBD5E1', true: theme.primaryColor }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-
         <View style={styles.formContainer}>
-          {/* Contact Name (Conditional or general) */}
-          {showAllFields && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Contact Name</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="E.G: Vijay Rathod"
-                placeholderTextColor="#9CA3AF"
-                value={contactName}
-                onChangeText={setContactName}
-              />
-            </View>
-          )}
-
-          {/* Call Type */}
+          {/* Lead Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Call Type</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="E.G : Sales Related"
-              placeholderTextColor="#9CA3AF"
-              value={callType}
-              onChangeText={setCallType}
-            />
+            <Text style={styles.inputLabel}>
+              Lead <Text style={{ color: theme.primaryColor }}>*</Text>
+            </Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => setShowLeadModal(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.pickerValueText, !selectedLeadId && styles.placeholderText]}>
+                {selectedLeadName || 'Select a lead'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
 
-          {/* Due Date */}
+          {/* Type */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Due Date</Text>
+            <Text style={styles.inputLabel}>Type</Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => setShowCallTypeModal(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.pickerValueText}>{callType}</Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Date */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>
+              Date <Text style={{ color: theme.primaryColor }}>*</Text>
+            </Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.85}
             >
-              <Text style={[styles.pickerValueText, !dueDate && styles.placeholderText]}>
-                {dueDate || 'Select Date'}
-              </Text>
+              <Text style={styles.pickerValueText}>{formatDate(date)}</Text>
               <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
-                value={dueDateObj}
+                value={date}
                 mode="date"
                 display="default"
                 onChange={(event, selected) => {
                   setShowDatePicker(false);
                   if (selected) {
-                    setDueDateObj(selected);
-                    setDueDate(formatDate(selected));
+                    setDate(selected);
                   }
                 }}
               />
             )}
           </View>
 
-          {/* Status */}
+          {/* Subject */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Status</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setShowStatusModal(true)}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !status && styles.placeholderText]}>
-                {status || 'Enter Status'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>
+              Subject <Text style={{ color: theme.primaryColor }}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Brief description of the call"
+              placeholderTextColor="#9CA3AF"
+              value={subject}
+              onChangeText={setSubject}
+            />
           </View>
 
-          {/* Set Time */}
+          {/* Start Time */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Set Time</Text>
+            <Text style={styles.inputLabel}>
+              Start Time <Text style={{ color: theme.primaryColor }}>*</Text>
+            </Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
-              onPress={() => setShowTimePicker(true)}
+              onPress={() => setShowStartTimePicker(true)}
               activeOpacity={0.85}
             >
-              <Text style={[styles.pickerValueText, !setTime && styles.placeholderText]}>
-                {setTime || 'Select Time'}
+              <Text style={styles.pickerValueText}>{formatTime(startTime)}</Text>
+              <Ionicons name="time-outline" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+            <CustomTimePicker
+              visible={showStartTimePicker}
+              onClose={() => setShowStartTimePicker(false)}
+              selectedDate={startTime}
+              onSelect={(selected) => {
+                setShowStartTimePicker(false);
+                setStartTime(selected);
+              }}
+            />
+          </View>
+
+          {/* End Time */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>End Time</Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => setShowEndTimePicker(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.pickerValueText, !endTime && styles.placeholderText]}>
+                {endTime ? formatTime(endTime) : '-- : -- : --'}
               </Text>
               <Ionicons name="time-outline" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
             <CustomTimePicker
-              visible={showTimePicker}
-              onClose={() => setShowTimePicker(false)}
-              selectedDate={setTimeObj}
+              visible={showEndTimePicker}
+              onClose={() => setShowEndTimePicker(false)}
+              selectedDate={endTime || new Date()}
               onSelect={(selected) => {
-                setShowTimePicker(false);
-                setSetTimeObj(selected);
-                setSetTime(formatTime(selected));
+                setShowEndTimePicker(false);
+                setEndTime(selected);
               }}
             />
           </View>
+
+          {/* Recording */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Recording</Text>
+            <TouchableOpacity
+              style={styles.uploadDropzone}
+              onPress={isUploading ? undefined : handleRecordingPick}
+              activeOpacity={isUploading ? 1 : 0.8}
+            >
+              <View style={styles.uploadIconContainer}>
+                <Ionicons name="mic-outline" size={20} color={theme.primaryColor} />
+              </View>
+              <View style={styles.uploadTextContainer}>
+                <Text style={styles.uploadTitleText} numberOfLines={1}>
+                  {isUploading ? 'Uploading recording...' : (recordingName || 'Select audio file or upload recording')}
+                </Text>
+                <Text style={styles.uploadSubText}>
+                  {isUploading ? 'Please wait...' : 'MP3, WAV or M4A – max 20MB'}
+                </Text>
+              </View>
+              {isUploading ? (
+                <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginRight: 8 }} />
+              ) : (
+                <TouchableOpacity style={styles.browseBtn} activeOpacity={0.8} onPress={handleRecordingPick}>
+                  <Text style={styles.browseBtnText}>Browse</Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Remarks */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Remarks</Text>
+            <TextInput
+              style={[styles.textInput, { height: 80, paddingTop: 10 }]}
+              placeholder="Enter remarks..."
+              placeholderTextColor="#9CA3AF"
+              value={remarks}
+              onChangeText={setRemarks}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
+
+        {/* ── SAVE BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={isAdding ? undefined : handleSave}
+            activeOpacity={0.85}
+            disabled={isAdding}
+          >
+            {isAdding ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>SAVE</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Bottom Save Action Button */}
-      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.saveBtnText}>SAVE</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* STATUS DROPDOWN MODAL */}
-      <Modal transparent animationType="slide" visible={showStatusModal}>
+      {/* TYPE DROPDOWN MODAL */}
+      <Modal transparent animationType="slide" visible={showCallTypeModal}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowStatusModal(false)}
+          onPress={() => setShowCallTypeModal(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Status</Text>
-              <TouchableOpacity onPress={() => setShowStatusModal(false)}>
+              <Text style={styles.modalTitle}>Select Type</Text>
+              <TouchableOpacity onPress={() => setShowCallTypeModal(false)}>
                 <Ionicons name="close" size={20} color={COLORS.textDark} />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ paddingHorizontal: 20 }}>
-              {STATUS_OPTIONS.map((opt) => (
+              {['Outbound', 'Inbound', 'Missed'].map((opt) => (
                 <TouchableOpacity
                   key={opt}
                   style={styles.modalRowItem}
                   onPress={() => {
-                    setStatus(opt as any);
-                    setShowStatusModal(false);
+                    setCallType(opt as any);
+                    setShowCallTypeModal(false);
                   }}
                   activeOpacity={0.7}
                 >
@@ -259,6 +426,71 @@ export default function AddCallScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* LEAD SELECTION MODAL */}
+      <Modal transparent animationType="slide" visible={showLeadModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLeadModal(false)}
+        >
+          <View style={[styles.modalContent, { maxHeight: '60%', paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Lead</Text>
+              <TouchableOpacity onPress={() => setShowLeadModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Search Input for Leads inside Modal */}
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search lead by name or company..."
+                placeholderTextColor="#9CA3AF"
+                value={leadSearchQuery}
+                onChangeText={setLeadSearchQuery}
+              />
+              {leadSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setLeadSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isLeadsLoading ? (
+              <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginVertical: 20 }} />
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 20 }}>
+                {filteredLeads.map((lead: any) => (
+                  <TouchableOpacity
+                    key={lead.id}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      setSelectedLeadId(lead.id);
+                      setSelectedLeadName(lead.name);
+                      setShowLeadModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalRowText}>{lead.name}</Text>
+                      {lead.company ? (
+                        <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{lead.company}</Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                {filteredLeads.length === 0 && (
+                  <Text style={{ textAlign: 'center', marginVertical: 20, color: COLORS.textMuted }}>No leads found.</Text>
+                )}
+              </ScrollView>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -378,6 +610,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 10,
+    backgroundColor: '#F8FAFC',
+    paddingBottom: 20,
+  },
   saveBtn: {
     backgroundColor: COLORS.saveBtnBg,
     borderRadius: 10,
@@ -405,7 +643,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '40%',
+    maxHeight: '60%',
     paddingBottom: 24,
   },
   modalHeader: {
@@ -435,5 +673,69 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    height: '100%',
+  },
+  uploadDropzone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.primaryColor,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    gap: 5,
+  },
+  uploadIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadTextContainer: {
+    flex: 1,
+    gap: 5,
+  },
+  uploadTitleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  uploadSubText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  browseBtn: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  browseBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.primaryColor,
   },
 });

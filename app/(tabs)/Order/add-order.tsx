@@ -1,18 +1,34 @@
+import { AdvanceAccountCard } from '@/components/custom/AdvanceAccountCard';
+import { FinancialAdjustmentsCard, LogisticsCard } from '@/components/custom/LogisticsAndAdjustmentsCards';
+import { AdditionalChargesCard, OperationalInsightsCard } from '@/components/custom/OperationalAndChargesCards';
+import SelectImagesModal from '@/components/custom/SelectImagesModal';
+import SelectProductModal from '@/components/custom/SelectProductModal';
 import { OrderRecord, ordersState, updateOrdersState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useCompanyAccounts } from '@/hooks/useCompany';
+import { useCouriers, useCreateCourier } from '@/hooks/useCourier';
+import { useImagePicker } from '@/hooks/useImagePicker';
+import { useLeads } from '@/hooks/useLeads';
+import { useCities, useCountries, useStates } from '@/hooks/useLocation';
+import { useUsersCombobox } from '@/hooks/useUsers';
+import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -24,19 +40,185 @@ const CLIENT_OPTIONS = ['NovaTech Solutions Pvt. Ltd.', 'Zenith System Pvt. Ltd.
 const CONTACT_OPTIONS = ['Arjun Maheta', 'Khushal Nadiyapara', 'Parth Solanki'];
 const STATUS_OPTIONS = ['Complete', 'Pending', 'Inprogress', 'Out Of Delivery', 'Delivered'];
 const PAYMENT_OPTIONS = ['Advance Payment', 'Cash on Delivery', 'Bank Transfer'];
+const APPROVER_OPTIONS = ['Vijay Rathod', 'Arjun Maheta', 'Khushal Nadiyapara', 'Parth Solanki'];
+const CHARGES_TYPE_OPTIONS = [
+  'Service Charge',
+  'Packaging Charge',
+  'Printing Charge',
+  'Installation Charge',
+  'Handling Charge',
+  'Freight Charge'
+];
+
+const COUNTRY_OPTIONS = ['India', 'United States', 'United Kingdom', 'Canada'];
+const STATE_OPTIONS_BY_COUNTRY: Record<string, string[]> = {
+  'India': ['Gujarat', 'Maharashtra', 'Delhi', 'Karnataka', 'Rajasthan'],
+  'United States': ['California', 'Texas', 'New York', 'Florida'],
+  'United Kingdom': ['England', 'Scotland', 'Wales'],
+  'Canada': ['Ontario', 'Quebec', 'British Columbia']
+};
+const CITY_OPTIONS_BY_STATE: Record<string, string[]> = {
+  'Gujarat': ['Rajkot', 'Ahmedabad', 'Surat', 'Vadodara'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur'],
+  'Delhi': ['New Delhi'],
+  'Karnataka': ['Bengaluru', 'Mysuru'],
+  'Rajasthan': ['Jaipur', 'Udaipur'],
+  'California': ['Los Angeles', 'San Francisco', 'San Diego'],
+  'Texas': ['Houston', 'Austin', 'Dallas'],
+  'New York': ['New York City', 'Buffalo'],
+  'Florida': ['Miami', 'Orlando'],
+  'England': ['London', 'Manchester', 'Birmingham'],
+  'Scotland': ['Edinburgh', 'Glasgow'],
+  'Wales': ['Cardiff', 'Swansea'],
+  'Ontario': ['Toronto', 'Ottawa'],
+  'Quebec': ['Montreal', 'Quebec City'],
+  'British Columbia': ['Vancouver', 'Victoria']
+};
+const SERVICE_TYPE_OPTIONS = ['Standard', 'Express', 'Priority', 'Same Day', 'Overnight'];
+
+interface ItemLine {
+  tempId: string;
+  product_id?: string | null;
+  item_name: string;
+  item_code: string;
+  item_description: string;
+  quantity: string;
+  unit_price: string;
+  gst_percentage: string;
+  item_discount: string;
+  images?: string[] | null;
+  availableImages?: string[] | null;
+  isCollapsed?: boolean;
+}
+
+function makeEmptyItem(): ItemLine {
+  return {
+    tempId: String(Date.now() + Math.random()),
+    product_id: null,
+    item_name: '',
+    item_code: '',
+    item_description: '',
+    quantity: '1',
+    unit_price: '0',
+    gst_percentage: '18',
+    item_discount: '0',
+    images: [],
+    availableImages: [],
+    isCollapsed: false,
+  };
+}
+
+function calcItem(item: ItemLine) {
+  const qty = parseFloat(item.quantity) || 0;
+  const rate = parseFloat(item.unit_price) || 0;
+  const disc = parseFloat(item.item_discount) || 0;
+  const gst = parseFloat(item.gst_percentage) || 0;
+
+  const rawAmt = qty * rate;
+  const discAmt = rawAmt * (disc / 100);
+  const taxable = rawAmt - discAmt;
+  const gstAmt = taxable * (gst / 100);
+  const totalAmt = taxable + gstAmt;
+
+  return {
+    amount: parseFloat(taxable.toFixed(2)),
+    gst_amount: parseFloat(gstAmt.toFixed(2)),
+    total: parseFloat(totalAmt.toFixed(2)),
+  };
+}
+
+function formatAmount(n: number) {
+  return '₹ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function formatDate(d: Date) {
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function numberToWords(num: number): string {
+  if (num === 0) return 'Zero Only';
+  const a = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+  ];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const formatLessThanThousand = (n: number) => {
+    let temp = '';
+    if (n >= 100) {
+      temp += a[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n > 0) {
+      if (n < 20) temp += a[n] + ' ';
+      else {
+        temp += b[Math.floor(n / 10)] + ' ';
+        if (n % 10 > 0) temp += a[n % 10] + ' ';
+      }
+    }
+    return temp;
+  };
+
+  let integerPart = Math.floor(num);
+  if (integerPart === 0) return 'Zero Only';
+
+  const crore = Math.floor(integerPart / 10000000);
+  integerPart %= 10000000;
+  const lakh = Math.floor(integerPart / 100000);
+  integerPart %= 100000;
+  const thousand = Math.floor(integerPart / 1000);
+  integerPart %= 1000;
+  const remaining = integerPart;
+
+  let words = '';
+  if (crore > 0) {
+    words += formatLessThanThousand(crore) + 'Crore ';
+  }
+  if (lakh > 0) {
+    words += formatLessThanThousand(lakh) + 'Lakh ';
+  }
+  if (thousand > 0) {
+    words += formatLessThanThousand(thousand) + 'Thousand ';
+  }
+  if (remaining > 0) {
+    words += formatLessThanThousand(remaining);
+  }
+
+  return words.trim() + ' Only';
+}
 
 export default function AddOrderScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
+  const toggleCollapse = (idx: number) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], isCollapsed: !next[idx].isCollapsed };
+      return next;
+    });
+  };
+
   const router = useRouter();
-  const { referrer } = useLocalSearchParams();
+  const params = useLocalSearchParams<{
+    referrer?: string;
+    companyName?: string;
+    contactName?: string;
+    leadId?: string;
+  }>();
+  const referrer = params.referrer;
   const insets = useSafeAreaInsets();
-  const { primaryColor } = useTheme();
+  const { primaryColor, primaryLight } = useTheme();
 
   const handleBack = () => {
-    if (referrer === 'lead-details') {
-      router.navigate('/(tabs)/leads/lead-details');
+    if (referrer === 'lead-details' && params.leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: params.leadId }
+      });
     } else {
       router.back();
     }
@@ -45,8 +227,11 @@ export default function AddOrderScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        if (referrer === 'lead-details') {
-          router.navigate('/(tabs)/leads/lead-details');
+        if (referrer === 'lead-details' && params.leadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: params.leadId }
+          });
           return true;
         }
         return false;
@@ -54,35 +239,354 @@ export default function AddOrderScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [referrer])
+    }, [referrer, params.leadId])
   );
 
-  const [orderNo, setOrderNo] = useState('');
+  const { leads } = useLeads();
+  const [customerType, setCustomerType] = useState<'DEALER' | 'LEAD'>('DEALER');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (params.leadId && leads.length > 0) {
+      const match = leads.find(l => String(l.id) === String(params.leadId));
+      if (match) {
+        setCustomerType(match.tag === 'DEALER' ? 'DEALER' : 'LEAD');
+        handleSelectCustomer(match);
+      }
+    }
+  }, [params.leadId, leads]);
+
+  const [orderNo, setOrderNo] = useState(() => 'ORD-2026-' + Math.floor(1000 + Math.random() * 9000));
   const [clientName, setClientName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [hotelLocation, setHotelLocation] = useState('');
   const [status, setStatus] = useState<OrderRecord['status']>('Pending');
   const [paymentType, setPaymentType] = useState('Advance Payment');
-  const [amount, setAmount] = useState('');
-  const [itemsCount, setItemsCount] = useState('');
 
-  const [activePicker, setActivePicker] = useState<'client' | 'contact' | 'status' | 'payment' | null>(null);
-
-  const handleSelectOption = (val: string) => {
-    if (activePicker === 'client') setClientName(val);
-    else if (activePicker === 'contact') setContactPerson(val);
-    else if (activePicker === 'status') setStatus(val as OrderRecord['status']);
-    else if (activePicker === 'payment') setPaymentType(val);
-    setActivePicker(null);
+  const handleSelectCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setCustomerSearchQuery(customer.company || customer.name || '');
+    setClientName(customer.company || customer.name || '');
+    setContactPerson(customer.name || '');
+    setHotelLocation(customer.address || customer.location || 'No address provided');
+    setShowCustomerModal(false);
   };
 
-  const handleSave = () => {
-    if (!orderNo || !clientName || !contactPerson || !hotelLocation || !amount || !itemsCount) {
-      Alert.alert('Required Fields', 'Please fill in all mandatory (*) fields.');
+  const handleClearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerSearchQuery('');
+    setClientName('');
+    setContactPerson('');
+    setHotelLocation('');
+  };
+
+  const filteredCustomerList = leads.filter((lead: any) => {
+    const isDealer = (lead.name || '').toLowerCase().includes('dealer') ||
+      (lead.company || '').toLowerCase().includes('dealer') ||
+      (lead.tag || '').toLowerCase().includes('dealer') ||
+      (lead.status || '').toLowerCase().includes('dealer');
+    if (customerType === 'DEALER') {
+      return isDealer || !leads.some(l => (l.name || '').toLowerCase().includes('dealer'));
+    } else {
+      return !isDealer || !leads.some(l => !(l.name || '').toLowerCase().includes('dealer'));
+    }
+  }).filter((lead: any) => {
+    const query = customerSearchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      (lead.name || '').toLowerCase().includes(query) ||
+      (lead.company || '').toLowerCase().includes(query) ||
+      (lead.phone || '').includes(query)
+    );
+  });
+
+  // Items State
+  const [items, setItems] = useState<ItemLine[]>([makeEmptyItem()]);
+  const [activeProductSelectIndex, setActiveProductSelectIndex] = useState<number | null>(null);
+  const [activeImageSelectIndex, setActiveImageSelectIndex] = useState<number | null>(null);
+  const [pendingProduct, setPendingProduct] = useState<any>(null);
+
+  // Operational Insights State
+  const [internalRemarks, setInternalRemarks] = useState('');
+  const [expectedDelivery, setExpectedDelivery] = useState<Date | null>(null);
+  const [showDeliveryDatePicker, setShowDeliveryDatePicker] = useState(false);
+  const [approvedBy, setApprovedBy] = useState('');
+  const [showApprovedByModal, setShowApprovedByModal] = useState(false);
+
+  // Additional Charges State
+  const [chargesGst, setChargesGst] = useState('18');
+  const [chargesType, setChargesType] = useState('Service Charge');
+  const [showChargesTypeModal, setShowChargesTypeModal] = useState(false);
+  const [chargesAmount, setChargesAmount] = useState('');
+
+  // Logistics & Charges State
+  const [transportPartners, setTransportPartners] = useState(['Blue Dart', 'Delhivery', 'FedEx', 'DHL', 'DTDC', 'Professional Couriers']);
+  const [logisticsPartner, setLogisticsPartner] = useState('');
+  const [showLogisticsModal, setShowLogisticsModal] = useState(false);
+  const [trackingAwb, setTrackingAwb] = useState('');
+  const [shippingFreight, setShippingFreight] = useState('0.00');
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [newPartnerName, setNewPartnerName] = useState('');
+  const [newPartnerContact, setNewPartnerContact] = useState('');
+  const [newPartnerCountry, setNewPartnerCountry] = useState('');
+  const [newPartnerCountryId, setNewPartnerCountryId] = useState('');
+  const [newPartnerState, setNewPartnerState] = useState('');
+  const [newPartnerStateId, setNewPartnerStateId] = useState('');
+  const [newPartnerCity, setNewPartnerCity] = useState('');
+  const [newPartnerCityId, setNewPartnerCityId] = useState('');
+  const [newPartnerServiceType, setNewPartnerServiceType] = useState('Standard');
+  const [newPartnerRating, setNewPartnerRating] = useState('4.5');
+  const [newPartnerGst, setNewPartnerGst] = useState('');
+  const [newPartnerStatus, setNewPartnerStatus] = useState(true);
+
+  // Selector visibility
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [showStateModal, setShowStateModal] = useState(false);
+  const [showCityModal, setShowCityModal] = useState(false);
+  const [showServiceTypeModal, setShowServiceTypeModal] = useState(false);
+
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const [countrySearch, setCountrySearch] = useState('');
+  const [stateSearch, setStateSearch] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+
+  // Location API queries
+  const { data: countriesData } = useCountries(countrySearch);
+  const { data: statesData } = useStates(newPartnerCountryId, stateSearch);
+  const { data: citiesData } = useCities(newPartnerStateId, citySearch);
+
+  // Couriers list query
+  const { data: couriersData } = useCouriers();
+  const createCourierMutation = useCreateCourier();
+
+  const courierList = React.useMemo(() => {
+    const defaultPartners = ['Blue Dart', 'Delhivery', 'FedEx', 'DHL', 'DTDC', 'Professional Couriers'];
+    if (!couriersData || couriersData.length === 0) return defaultPartners;
+    const apiNames = couriersData.map((c: any) => c.courier_name).filter(Boolean);
+    if (apiNames.length === 0) return defaultPartners;
+    return Array.from(new Set([...apiNames, ...defaultPartners]));
+  }, [couriersData]);
+
+  const resetAddPartnerForm = () => {
+    setNewPartnerName('');
+    setNewPartnerContact('');
+    setNewPartnerCountry('');
+    setNewPartnerCountryId('');
+    setNewPartnerState('');
+    setNewPartnerStateId('');
+    setNewPartnerCity('');
+    setNewPartnerCityId('');
+    setNewPartnerServiceType('Standard');
+    setNewPartnerRating('4.5');
+    setNewPartnerGst('');
+    setNewPartnerStatus(true);
+  };
+
+  const handleCreateTransportPartner = async () => {
+    if (!newPartnerName.trim()) {
+      Alert.alert('Validation Error', 'Transport Name is required.');
+      return;
+    }
+    if (!newPartnerContact.trim()) {
+      Alert.alert('Validation Error', 'Contact Number is required.');
+      return;
+    }
+    if (!newPartnerCountryId) {
+      Alert.alert('Validation Error', 'Country selection is required.');
+      return;
+    }
+    if (!newPartnerStateId) {
+      Alert.alert('Validation Error', 'State selection is required.');
+      return;
+    }
+    if (!newPartnerCityId) {
+      Alert.alert('Validation Error', 'City selection is required.');
       return;
     }
 
-    const formattedAmount = amount.startsWith('₹') ? amount : `₹ ${amount}`;
+    try {
+      const newCourierData = {
+        courier_name: newPartnerName.trim(),
+        contact_number: parseInt(newPartnerContact.trim(), 10) || 0,
+        country: newPartnerCountryId,
+        state: newPartnerStateId,
+        city: newPartnerCityId,
+        service_type: newPartnerServiceType,
+        efficiency_rating: parseFloat(newPartnerRating) || 4.5,
+        gst_number: newPartnerGst.trim() || null,
+        is_available: newPartnerStatus
+      };
+
+      await createCourierMutation.mutateAsync(newCourierData);
+
+      setTransportPartners((prev) => [...prev, newPartnerName.trim()]);
+      setLogisticsPartner(newPartnerName.trim());
+      setShowAddPartnerModal(false);
+      resetAddPartnerForm();
+      Alert.alert('Success', 'Courier registered successfully!');
+    } catch (err: any) {
+      console.error('[Create Courier Error]:', err);
+      // Fallback local registration
+      setTransportPartners((prev) => [...prev, newPartnerName.trim()]);
+      setLogisticsPartner(newPartnerName.trim());
+      setShowAddPartnerModal(false);
+      resetAddPartnerForm();
+      Alert.alert('Success', 'Courier registered locally!');
+    }
+  };
+
+  // Financial Adjustments State
+  const [adjustmentType, setAdjustmentType] = useState<'PERCENTAGE' | 'FLAT'>('PERCENTAGE');
+  const [discountValue, setDiscountValue] = useState('0.00');
+
+  // Advance Account State
+  const [isAdvanceAccount, setIsAdvanceAccount] = useState(false);
+  const [advanceAccountSelected, setAdvanceAccountSelected] = useState<any | null>(null);
+  const [advanceDate, setAdvanceDate] = useState<Date>(new Date());
+  const [showAdvanceDatePicker, setShowAdvanceDatePicker] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceRemark, setAdvanceRemark] = useState('');
+  const [advanceProof, setAdvanceProof] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [showAccountsModal, setShowAccountsModal] = useState(false);
+
+  const { data: accountsData } = useCompanyAccounts(selectedCustomer?.company_id || '0364bbec-99cf-42d1-8d3f-1efbb6a0c9e2');
+
+  const { showAttachmentOptions } = useImagePicker({
+    allowsEditing: false,
+    quality: 0.8,
+    onImagePicked: async (uri) => {
+      setIsUploadingProof(true);
+      try {
+        const uploadResult = await uploadFile(uri);
+        console.log('[AdvanceProof] Upload response:', JSON.stringify(uploadResult));
+        const finalUrl =
+          (typeof uploadResult === 'string' ? uploadResult : null) ||
+          uploadResult?.url ||
+          uploadResult?.file_url ||
+          uploadResult?.location ||
+          uploadResult?.path ||
+          uploadResult?.key ||
+          uploadResult?.data?.url ||
+          uploadResult?.data?.file_url ||
+          null;
+
+        if (finalUrl) {
+          setAdvanceProof(finalUrl);
+        } else {
+          setAdvanceProof(uri);
+        }
+      } catch (err) {
+        console.error('[AdvanceProof Upload Error]:', err);
+        setAdvanceProof(uri);
+        Alert.alert('Upload Warning', 'Proof image was not uploaded to server but will be saved locally.');
+      } finally {
+        setIsUploadingProof(false);
+      }
+    }
+  });
+
+  const handlePickAdvanceProof = () => {
+    showAttachmentOptions(
+      "Upload Payment Proof",
+      "Select camera or gallery to upload payment screenshot/receipt"
+    );
+  };
+
+  const { data: usersData } = useUsersCombobox();
+
+  const approverList = React.useMemo(() => {
+    if (!usersData || usersData.length === 0) {
+      return APPROVER_OPTIONS;
+    }
+    const apiNames = usersData.map((u: any) => u.name).filter(Boolean);
+    if (apiNames.length === 0) return APPROVER_OPTIONS;
+    return Array.from(new Set([...apiNames, ...APPROVER_OPTIONS]));
+  }, [usersData]);
+
+  const updateItem = (idx: number, key: keyof ItemLine, val: any) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [key]: val };
+      return next;
+    });
+  };
+
+  const addItem = () => setItems((prev) => [...prev, makeEmptyItem()]);
+
+  const removeItem = (idx: number) => {
+    if (items.length === 1) {
+      Alert.alert('Info', 'At least one item is required.');
+      return;
+    }
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Calculate Totals
+  let subTotal = 0;
+  let taxTotal = 0;
+  items.forEach((item) => {
+    const { amount, gst_amount } = calcItem(item);
+    subTotal += amount;
+    taxTotal += gst_amount;
+  });
+
+  const addChargesAmt = parseFloat(chargesAmount) || 0;
+  const addChargesGstPct = parseFloat(chargesGst) || 0;
+  const addChargesGstAmt = addChargesAmt * (addChargesGstPct / 100);
+
+  const shippingAmt = parseFloat(shippingFreight) || 0;
+
+  const computedSubTotal = subTotal + addChargesAmt;
+  const computedGstTotal = taxTotal + addChargesGstAmt;
+  const computedGrandTotal = computedSubTotal + computedGstTotal + shippingAmt;
+
+  const discountValNum = parseFloat(discountValue) || 0;
+  const discountAmt = adjustmentType === 'PERCENTAGE'
+    ? computedGrandTotal * (discountValNum / 100)
+    : discountValNum;
+
+  const payableAmt = Math.max(0, computedGrandTotal - discountAmt);
+
+  const handleSave = () => {
+    if (!selectedCustomer) {
+      Alert.alert('Required Field', 'Please select a Customer.');
+      return;
+    }
+
+    // Validate items
+    for (let i = 0; i < items.length; i++) {
+      if (!items[i].item_name.trim()) {
+        Alert.alert('Validation', `Item ${i + 1} name is required.`);
+        return;
+      }
+      if (!parseFloat(items[i].quantity) || parseFloat(items[i].quantity) <= 0) {
+        Alert.alert('Validation', `Item ${i + 1} quantity must be greater than 0.`);
+        return;
+      }
+    }
+
+    const formattedAmount = `₹ ${payableAmt.toFixed(2)}`;
 
     const newOrder: OrderRecord = {
       id: String(ordersState.length + 1),
@@ -92,19 +596,39 @@ export default function AddOrderScreen() {
       contactPerson,
       hotelLocation,
       status,
-      itemsCount: parseInt(itemsCount) || 1,
+      itemsCount: items.length,
       paymentType,
       amount: formattedAmount,
-      items: [
-        {
-          name: 'ITEM ORDERED',
-          description: 'Custom Order Item details',
-          price: formattedAmount,
-          qty: itemsCount,
-          gst: '18%',
-          total: formattedAmount,
-        }
-      ]
+      items: items.map((item) => {
+        const { total } = calcItem(item);
+        return {
+          name: item.item_name.toUpperCase(),
+          description: item.item_description || '',
+          price: `₹ ${parseFloat(item.unit_price).toFixed(2)}`,
+          qty: String(item.quantity),
+          gst: `${item.gst_percentage}%`,
+          total: `₹ ${total.toFixed(2)}`,
+        };
+      }),
+      internalRemarks: internalRemarks || undefined,
+      expectedDelivery: expectedDelivery ? formatDate(expectedDelivery) : undefined,
+      approvedBy: approvedBy || undefined,
+      chargesGst: chargesAmount ? chargesGst : undefined,
+      chargesType: chargesAmount ? chargesType : undefined,
+      chargesAmount: chargesAmount || undefined,
+      logisticsPartner: logisticsPartner || undefined,
+      trackingAwb: trackingAwb || undefined,
+      shippingFreight: shippingFreight || undefined,
+      adjustmentType: adjustmentType,
+      discountValue: discountValue,
+      isAdvanceAccount: isAdvanceAccount,
+      payableAmount: formattedAmount,
+      advanceAccountId: isAdvanceAccount && advanceAccountSelected ? advanceAccountSelected.id : undefined,
+      advanceAccountName: isAdvanceAccount && advanceAccountSelected ? advanceAccountSelected.name : undefined,
+      advanceDate: isAdvanceAccount ? formatDate(advanceDate) : undefined,
+      advanceAmount: isAdvanceAccount ? advanceAmount : undefined,
+      advanceRemark: isAdvanceAccount ? advanceRemark : undefined,
+      advanceProof: isAdvanceAccount ? (advanceProof || undefined) : undefined,
     };
 
     updateOrdersState([newOrder, ...ordersState]);
@@ -115,7 +639,7 @@ export default function AddOrderScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -141,169 +665,567 @@ export default function AddOrderScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 200 : 30 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
-          {/* Order Number */}
+          {/* CUSTOMER PICKER SECTION */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Order Number <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="e.g. QT-2026-025"
-              placeholderTextColor="#9CA3AF"
-              value={orderNo}
-              onChangeText={setOrderNo}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
+              <Text style={styles.inputLabelGrey}>CUSTOMER</Text>
+            </View>
+
+            <View style={styles.pickerRowContainer}>
+              <TouchableOpacity
+                style={styles.dropdownSelectorBtn}
+                onPress={() => {
+                  setShowTypeDropdown((prev) => !prev);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dropdownSelectorText}>{customerType}</Text>
+                <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+
+              <View style={styles.verticalSeparator} />
+
+              <TouchableOpacity
+                style={{ flex: 1, height: '100%', justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center', paddingLeft: 12, paddingRight: selectedCustomer ? 4 : 12 }}
+                onPress={() => {
+                  setShowCustomerModal(true);
+                  setShowTypeDropdown(false);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, color: selectedCustomer ? COLORS.textDark : '#9CA3AF', fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                  {selectedCustomer ? (selectedCustomer.company || selectedCustomer.name) : 'Select Customer'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {selectedCustomer ? (
+                    <TouchableOpacity onPress={handleClearCustomer} style={{ padding: 4 }}>
+                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  ) : (
+                    <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Type Dropdown Popup (Dealer / Lead selector) */}
+            {showTypeDropdown && (
+              <View style={styles.typeDropdownPopup}>
+                <TouchableOpacity
+                  style={[styles.typeDropdownItem, customerType === 'DEALER' && styles.typeDropdownItemActive]}
+                  onPress={() => {
+                    setCustomerType('DEALER');
+                    setShowTypeDropdown(false);
+                    handleClearCustomer();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {customerType === 'DEALER' && <Ionicons name="checkmark" size={14} color="#8A1C30" style={{ marginRight: 6 }} />}
+                  <Text style={[styles.typeDropdownItemText, customerType === 'DEALER' && { color: '#8A1C30', fontWeight: '700' }]}>Dealer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.typeDropdownItem, customerType === 'LEAD' && styles.typeDropdownItemActive]}
+                  onPress={() => {
+                    setCustomerType('LEAD');
+                    setShowTypeDropdown(false);
+                    handleClearCustomer();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {customerType === 'LEAD' && <Ionicons name="checkmark" size={14} color="#8A1C30" style={{ marginRight: 6 }} />}
+                  <Text style={[styles.typeDropdownItemText, customerType === 'LEAD' && { color: '#8A1C30', fontWeight: '700' }]}>Lead</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
-          {/* Client Name */}
+          {/* BILL TO SECTION */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Client Name <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('client')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !clientName && styles.placeholderText]}>
-                {clientName || 'Select Client Name'}
+            <Text style={styles.inputLabelGrey}>BILL TO</Text>
+            <View style={styles.billToBox}>
+              {selectedCustomer ? (
+                <View style={styles.billToContent}>
+                  <Text style={styles.billToCompany}>{selectedCustomer.company || selectedCustomer.name}</Text>
+                  <Text style={styles.billToText}>{selectedCustomer.email || 'No email provided'}</Text>
+                  <Text style={styles.billToText}>{selectedCustomer.phone || 'No phone provided'}</Text>
+                  <Text style={styles.billToText}>{selectedCustomer.address || selectedCustomer.location || 'No address provided'}</Text>
+                </View>
+              ) : (
+                <Text style={styles.noRecipientText}>NO RECIPIENT SELECTED</Text>
+              )}
+            </View>
+          </View>
+
+          {/* ITEMS SECTION */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>ITEMS</Text>
+            <View style={styles.sectionLine} />
+          </View>
+
+          {items.map((item, idx) => {
+            const { amount: itemTaxable, gst_amount: itemGstAmount, total: itemTotal } = calcItem(item);
+            return (
+              <View key={item.tempId} style={styles.itemCard}>
+                {/* Item header */}
+                <View style={styles.itemHeader}>
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                    onPress={() => toggleCollapse(idx)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.itemIndexBadge, { backgroundColor: primaryLight }]}>
+                      <Text style={[styles.itemIndexText, { color: primaryColor }]}>{idx + 1}</Text>
+                    </View>
+                    <Text style={styles.itemHeading} numberOfLines={1}>
+                      {item.item_name || `Item ${idx + 1}`}
+                    </Text>
+                    <Ionicons
+                      name={item.isCollapsed ? "chevron-back" : "chevron-down"}
+                      size={18}
+                      color={COLORS.textMuted}
+                    />
+                  </TouchableOpacity>
+                  {item.product_id && (
+                    <TouchableOpacity
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: '#F3F4F6',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 6,
+                      }}
+                      onPress={() => {
+                        const availableImgs = item.availableImages || [];
+                        if (availableImgs.length === 0) {
+                          Alert.alert('Info', 'No images available for this product.');
+                          return;
+                        }
+                        setActiveImageSelectIndex(idx);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="image-outline" size={16} color={primaryColor} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={styles.deleteItemBtn}
+                    onPress={() => removeItem(idx)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Form fields (only visible when expanded) */}
+                {!item.isCollapsed ? (
+                  <View style={{ gap: 12, marginTop: 4 }}>
+                    {/* Item Name Picker */}
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Item Name *</Text>
+                      <TouchableOpacity
+                        style={styles.selectTrigger}
+                        onPress={() => {
+                          setActiveProductSelectIndex(idx);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.selectTriggerText, !item.item_name && { color: '#9CA3AF' }]} numberOfLines={1}>
+                          {item.item_name || 'Select Product / Kit'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Item Code (labeled 'Code') */}
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Code</Text>
+                      <TextInput
+                        style={styles.textInputBox}
+                        placeholder="SKU / HSN / SAC code"
+                        placeholderTextColor="#9CA3AF"
+                        value={item.item_code}
+                        onChangeText={(v) => updateItem(idx, 'item_code', v)}
+                      />
+                    </View>
+
+                    {/* Description */}
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Description</Text>
+                      <TextInput
+                        style={styles.textInputBox}
+                        placeholder="Optional description"
+                        placeholderTextColor="#9CA3AF"
+                        value={item.item_description}
+                        onChangeText={(v) => updateItem(idx, 'item_description', v)}
+                      />
+                    </View>
+
+                    {/* Qty & Price inputs */}
+                    <View style={styles.gridRow}>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Qty *</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          keyboardType="numeric"
+                          value={item.quantity}
+                          onChangeText={(v) => updateItem(idx, 'quantity', v)}
+                        />
+                      </View>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Price *</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          keyboardType="numeric"
+                          value={item.unit_price}
+                          onChangeText={(v) => updateItem(idx, 'unit_price', v)}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Tax & Discount inputs */}
+                    <View style={styles.gridRow}>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Tax (%)</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          keyboardType="numeric"
+                          value={item.gst_percentage}
+                          onChangeText={(v) => updateItem(idx, 'gst_percentage', v)}
+                        />
+                      </View>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Discount (%)</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          keyboardType="numeric"
+                          value={item.item_discount}
+                          onChangeText={(v) => updateItem(idx, 'item_discount', v)}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Item total preview */}
+                    <View style={styles.itemTotalRow}>
+                      <Text style={styles.itemTotalLabel}>
+                        Taxable: <Text style={styles.itemTotalVal}>{formatAmount(itemTaxable)}</Text>
+                        {'  '}GST: <Text style={styles.itemTotalVal}>{formatAmount(itemGstAmount)}</Text>
+                      </Text>
+                      <Text style={[styles.itemGrandTotal, { color: primaryColor }]}>{formatAmount(itemTotal)}</Text>
+                    </View>
+
+                    {/* Selected images preview */}
+                    {item.images && item.images.length > 0 && (
+                      <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                        {item.images.map((imgUrl, imgIdx) => (
+                          <View
+                            key={imgIdx}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 6,
+                              borderWidth: 1,
+                              borderColor: '#E5E7EB',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <TouchableOpacity onPress={() => setPreviewImage(imgUrl)} activeOpacity={0.8}>
+                              <Image
+                                source={{ uri: imgUrl }}
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+
+          {/* Add Item Button */}
+          <TouchableOpacity
+            style={[
+              styles.addItemBtn,
+              { borderColor: primaryColor, backgroundColor: primaryLight }
+            ]}
+            onPress={addItem}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle-outline" size={18} color={primaryColor} style={{ marginRight: 6 }} />
+            <Text style={[styles.addItemBtnText, { color: primaryColor }]}>Add Item</Text>
+          </TouchableOpacity>
+          <OperationalInsightsCard
+            internalRemarks={internalRemarks}
+            setInternalRemarks={setInternalRemarks}
+            expectedDelivery={expectedDelivery}
+            onPressExpectedDelivery={() => setShowDeliveryDatePicker(true)}
+            approvedBy={approvedBy}
+            onPressApprovedBy={() => setShowApprovedByModal(true)}
+          />
+
+          <AdditionalChargesCard
+            chargesGst={chargesGst}
+            setChargesGst={setChargesGst}
+            chargesType={chargesType}
+            onPressChargesType={() => setShowChargesTypeModal(true)}
+            chargesAmount={chargesAmount}
+            setChargesAmount={setChargesAmount}
+          />
+          <LogisticsCard
+            logisticsPartner={logisticsPartner}
+            onPressLogisticsPartner={() => setShowLogisticsModal(true)}
+            onPressAddPartner={() => setShowAddPartnerModal(true)}
+            trackingAwb={trackingAwb}
+            setTrackingAwb={setTrackingAwb}
+            shippingFreight={shippingFreight}
+            setShippingFreight={setShippingFreight}
+            primaryColor={primaryColor}
+          />
+
+          <FinancialAdjustmentsCard
+            adjustmentType={adjustmentType}
+            setAdjustmentType={setAdjustmentType}
+            discountValue={discountValue}
+            setDiscountValue={setDiscountValue}
+            primaryColor={primaryColor}
+          />
+
+          {/* BILL SUMMARY */}
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="receipt-outline" size={16} color={COLORS.textMuted} />
+            <Text style={styles.sectionLabel}>BILL SUMMARY</Text>
+            <View style={styles.sectionLine} />
+          </View>
+
+          <View style={styles.totalSummaryCard}>
+            <View style={styles.totalSummaryRow}>
+              <Text style={styles.totalSummaryLabel}>Sub-Total</Text>
+              <Text style={styles.totalSummaryVal}>{formatAmount(computedSubTotal)}</Text>
+            </View>
+            <View style={styles.totalSummaryRow}>
+              <Text style={styles.totalSummaryLabel}>Estimated GST</Text>
+              <Text style={styles.totalSummaryVal}>{formatAmount(computedGstTotal)}</Text>
+            </View>
+            {shippingAmt > 0 && (
+              <View style={styles.totalSummaryRow}>
+                <Text style={styles.totalSummaryLabel}>Shipping / Freight</Text>
+                <Text style={styles.totalSummaryVal}>{formatAmount(shippingAmt)}</Text>
+              </View>
+            )}
+            {discountAmt > 0 && (
+              <View style={styles.totalSummaryRow}>
+                <Text style={styles.totalSummaryLabel}>
+                  Discount {adjustmentType === 'PERCENTAGE' ? `(${discountValue}%)` : ''}
+                </Text>
+                <Text style={[styles.totalSummaryVal, { color: COLORS.danger }]}>
+                  - {formatAmount(discountAmt)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.totalSummaryRow}>
+              <Text style={styles.totalSummaryLabel}>Grand Total</Text>
+              <Text style={styles.totalSummaryVal}>{formatAmount(computedGrandTotal)}</Text>
+            </View>
+            <View style={[styles.totalSummaryRow, styles.totalSummaryGrand]}>
+              <Text style={styles.grandLabel}>Payable Amount</Text>
+              <Text style={[styles.grandVal, { color: primaryColor }]}>{formatAmount(payableAmt)}</Text>
+            </View>
+
+            {/* Payable Amount in Words */}
+            <View style={{ paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#F3F4F6', marginTop: 4 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted, fontStyle: 'italic' }}>
+                {numberToWords(payableAmt)}
               </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Contact Person */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Contact Person <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('contact')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !contactPerson && styles.placeholderText]}>
-                {contactPerson || 'Select Contact Person'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
+          <AdvanceAccountCard
+            isAdvanceAccount={isAdvanceAccount}
+            setIsAdvanceAccount={setIsAdvanceAccount}
+            advanceAccountSelected={advanceAccountSelected}
+            onPressSelectAccount={() => setShowAccountsModal(true)}
+            advanceDate={advanceDate}
+            onPressSelectDate={() => setShowAdvanceDatePicker(true)}
+            onClearDate={() => setAdvanceDate(new Date())}
+            advanceAmount={advanceAmount}
+            setAdvanceAmount={setAdvanceAmount}
+            advanceRemark={advanceRemark}
+            setAdvanceRemark={setAdvanceRemark}
+            advanceProof={advanceProof}
+            isUploadingProof={isUploadingProof}
+            onPressPickProof={handlePickAdvanceProof}
+          />
+        </View>
 
-          {/* Hotel Location */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Hotel Location <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="e.g. The Grand Thakar Hotel, Rajkot"
-              placeholderTextColor="#9CA3AF"
-              value={hotelLocation}
-              onChangeText={setHotelLocation}
-            />
-          </View>
-
-          {/* Status */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Status <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('status')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.pickerValueText}>{status}</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Payment Method */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Payment Method</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setActivePicker('payment')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.pickerValueText}>{paymentType}</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Items Count */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Items Count <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="e.g. 21"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-              value={itemsCount}
-              onChangeText={setItemsCount}
-            />
-          </View>
-
-          {/* Amount */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Amount <Text style={{ color: COLORS.danger }}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="e.g. 10,00,000.00"
-              placeholderTextColor="#9CA3AF"
-              value={amount}
-              onChangeText={setAmount}
-            />
-          </View>
+        {/* ── SAVE ORDER BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: primaryColor }]}
+            onPress={handleSave}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.saveBtnText}>Save Order</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Save */}
-      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.saveBtnText}>save</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* OPTIONS MODAL */}
-      <Modal transparent animationType="slide" visible={activePicker !== null}>
+
+      <SelectProductModal
+        visible={activeProductSelectIndex !== null}
+        onClose={() => setActiveProductSelectIndex(null)}
+        onSelectProduct={(prod) => {
+          setPendingProduct(prod);
+          setActiveImageSelectIndex(activeProductSelectIndex);
+          setActiveProductSelectIndex(null);
+        }}
+      />
+
+      <SelectImagesModal
+        visible={activeImageSelectIndex !== null}
+        onClose={() => {
+          setActiveImageSelectIndex(null);
+          setPendingProduct(null);
+        }}
+        originalImages={
+          pendingProduct
+            ? (pendingProduct.images || [])
+            : (activeImageSelectIndex !== null ? (items[activeImageSelectIndex]?.availableImages || []) : [])
+        }
+        selectedImages={
+          activeImageSelectIndex !== null
+            ? (items[activeImageSelectIndex]?.images && items[activeImageSelectIndex].images.length > 0
+              ? items[activeImageSelectIndex].images
+              : (pendingProduct ? (pendingProduct.images || []) : []))
+            : []
+        }
+        onSave={(selectedImages) => {
+          const idx = activeImageSelectIndex;
+          if (idx !== null) {
+            if (pendingProduct) {
+              updateItem(idx, 'product_id', pendingProduct.id);
+              updateItem(idx, 'item_name', pendingProduct.product_name || '');
+              updateItem(idx, 'item_code', pendingProduct.code || '');
+              updateItem(idx, 'unit_price', String(pendingProduct.selling_price || pendingProduct.dealer_price || 0));
+              updateItem(idx, 'gst_percentage', String(pendingProduct.tax_rate ?? 18));
+              updateItem(idx, 'item_description', pendingProduct.description || '');
+              updateItem(idx, 'images', selectedImages);
+              updateItem(idx, 'availableImages', pendingProduct.images || []);
+            } else {
+              updateItem(idx, 'images', selectedImages);
+            }
+          }
+          setPendingProduct(null);
+          setActiveImageSelectIndex(null);
+        }}
+      />
+
+      {/* DELIVERY DATE PICKER */}
+      {showDeliveryDatePicker && (
+        <DateTimePicker
+          value={expectedDelivery || new Date()}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          onChange={(event, selected) => {
+            setShowDeliveryDatePicker(false);
+            if (selected) {
+              setExpectedDelivery(selected);
+            }
+          }}
+        />
+      )}
+
+      {/* ADVANCE DATE PICKER */}
+      {showAdvanceDatePicker && (
+        <DateTimePicker
+          value={advanceDate}
+          mode="date"
+          display="default"
+          onChange={(event, selected) => {
+            setShowAdvanceDatePicker(false);
+            if (selected) {
+              setAdvanceDate(selected);
+            }
+          }}
+        />
+      )}
+
+      {/* SELECT ACCOUNT MODAL */}
+      <Modal transparent animationType="slide" visible={showAccountsModal}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setActivePicker(null)}
+          onPress={() => setShowAccountsModal(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Select {activePicker === 'client' ? 'Client' : activePicker === 'contact' ? 'Contact' : activePicker === 'status' ? 'Status' : 'Payment Type'}
-              </Text>
-              <TouchableOpacity onPress={() => setActivePicker(null)}>
+              <Text style={styles.modalTitle}>Select Account</Text>
+              <TouchableOpacity onPress={() => setShowAccountsModal(false)}>
                 <Ionicons name="close" size={20} color={COLORS.textDark} />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ paddingHorizontal: 20 }}>
-              {(
-                activePicker === 'client' ? CLIENT_OPTIONS :
-                  activePicker === 'contact' ? CONTACT_OPTIONS :
-                    activePicker === 'status' ? STATUS_OPTIONS :
-                      PAYMENT_OPTIONS
-              ).map((opt) => (
+              {(accountsData || []).map((acc: any) => (
+                <TouchableOpacity
+                  key={acc.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setAdvanceAccountSelected(acc);
+                    setShowAccountsModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, paddingVertical: 4 }}>
+                    <Text style={styles.modalRowText}>{acc.name} - {acc.bank_name || 'Bank'}</Text>
+                    {acc.account_number && (
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                        A/C: {acc.account_number} | Bal: ₹{acc.balance}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* APPROVED BY MODAL */}
+      <Modal transparent animationType="slide" visible={showApprovedByModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowApprovedByModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Approver</Text>
+              <TouchableOpacity onPress={() => setShowApprovedByModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {approverList.map((opt) => (
                 <TouchableOpacity
                   key={opt}
                   style={styles.modalRowItem}
-                  onPress={() => handleSelectOption(opt)}
+                  onPress={() => {
+                    setApprovedBy(opt);
+                    setShowApprovedByModal(false);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.modalRowText}>{opt}</Text>
@@ -314,6 +1236,560 @@ export default function AddOrderScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* CHARGES TYPE MODAL */}
+      <Modal transparent animationType="slide" visible={showChargesTypeModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowChargesTypeModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Charge Type</Text>
+              <TouchableOpacity onPress={() => setShowChargesTypeModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {CHARGES_TYPE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setChargesType(opt);
+                    setShowChargesTypeModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* LOGISTICS PARTNER MODAL */}
+      <Modal transparent animationType="slide" visible={showLogisticsModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLogisticsModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Transport Partner</Text>
+              <TouchableOpacity onPress={() => setShowLogisticsModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {courierList.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setLogisticsPartner(opt);
+                    setShowLogisticsModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ADD NEW PARTNER FORM MODAL */}
+      <Modal transparent animationType="fade" visible={showAddPartnerModal}>
+        <View style={styles.modalOverlayCentered}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalFormCard}>
+            {/* Header */}
+            <View style={styles.modalFormHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalFormTitle}>Add Transport</Text>
+                <Text style={styles.modalFormSubtitle}>Register a new courier service.</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddPartnerModal(false);
+                  resetAddPartnerForm();
+                }}
+                style={styles.modalFormCloseBtn}
+              >
+                <Ionicons name="close" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Form Fields Scroll */}
+            <ScrollView contentContainerStyle={styles.modalFormScrollContent} style={{ flexShrink: 1 }}>
+              <View style={styles.modalFormBody}>
+                {/* Row 1: Transport Name & Contact Number */}
+                <View style={styles.gridRow}>
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      <Text style={{ color: COLORS.danger }}>* </Text>Transport Name
+                    </Text>
+                    <TextInput
+                      style={styles.textInputBox}
+                      placeholder="e.g. BlueDart"
+                      placeholderTextColor="#9CA3AF"
+                      value={newPartnerName}
+                      onChangeText={setNewPartnerName}
+                    />
+                  </View>
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      <Text style={{ color: COLORS.danger }}>* </Text>Contact Number
+                    </Text>
+                    <TextInput
+                      style={styles.textInputBox}
+                      placeholder="e.g. 9876543210"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="phone-pad"
+                      value={newPartnerContact}
+                      onChangeText={setNewPartnerContact}
+                    />
+                  </View>
+                </View>
+
+                {/* Row 2: Country, State, City */}
+                <View style={styles.gridRow}>
+                  {/* Country */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      <Text style={{ color: COLORS.danger }}>* </Text>Country
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.selectTrigger}
+                      onPress={() => setShowCountryModal(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.selectTriggerText, !newPartnerCountry && { color: '#9CA3AF' }]} numberOfLines={1}>
+                        {newPartnerCountry || 'Select Country'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* State */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      <Text style={{ color: COLORS.danger }}>* </Text>State
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.selectTrigger}
+                      onPress={() => {
+                        if (!newPartnerCountry) {
+                          Alert.alert('Required Field', 'Please select Country first.');
+                          return;
+                        }
+                        setShowStateModal(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.selectTriggerText, !newPartnerState && { color: '#9CA3AF' }]} numberOfLines={1}>
+                        {newPartnerState || (newPartnerCountry ? 'Select State' : 'Select Country first')}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* City */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      <Text style={{ color: COLORS.danger }}>* </Text>City
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.selectTrigger}
+                      onPress={() => {
+                        if (!newPartnerState) {
+                          Alert.alert('Required Field', 'Please select State first.');
+                          return;
+                        }
+                        setShowCityModal(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.selectTriggerText, !newPartnerCity && { color: '#9CA3AF' }]} numberOfLines={1}>
+                        {newPartnerCity || (newPartnerState ? 'Select City' : 'Select State first')}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Row 3: Service Type, Efficiency Rating, GST Number */}
+                <View style={styles.gridRow}>
+                  {/* Service Type */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Service Type</Text>
+                    <TouchableOpacity
+                      style={styles.selectTrigger}
+                      onPress={() => setShowServiceTypeModal(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.selectTriggerText}>{newPartnerServiceType}</Text>
+                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Efficiency Rating */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Efficiency Rating (0-5)</Text>
+                    <TextInput
+                      style={styles.textInputBox}
+                      placeholder="4.5"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                      value={newPartnerRating}
+                      onChangeText={setNewPartnerRating}
+                    />
+                  </View>
+
+                  {/* GST Number */}
+                  <View style={[styles.formField, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>GST Number</Text>
+                    <TextInput
+                      style={styles.textInputBox}
+                      placeholder="e.g. 22AAAAA0000A1Z5"
+                      placeholderTextColor="#9CA3AF"
+                      value={newPartnerGst}
+                      onChangeText={setNewPartnerGst}
+                    />
+                  </View>
+                </View>
+
+                {/* Row 4: Availability Status card */}
+                <View style={styles.availabilityCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.availabilityTitle}>Availability Status</Text>
+                    <Text style={styles.availabilitySubtitle}>Toggle courier operational status</Text>
+                  </View>
+                  <Switch
+                    value={newPartnerStatus}
+                    onValueChange={setNewPartnerStatus}
+                    trackColor={{ false: '#D1D5DB', true: '#E0F2FE' }}
+                    thumbColor={newPartnerStatus ? '#0284C7' : '#9CA3AF'}
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Footer Buttons */}
+            <View style={styles.modalFormFooter}>
+              <TouchableOpacity
+                style={styles.modalFormCancelBtn}
+                onPress={() => {
+                  setShowAddPartnerModal(false);
+                  resetAddPartnerForm();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalFormCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalFormSubmitBtn, { backgroundColor: '#4CB5BD' }]}
+                onPress={handleCreateTransportPartner}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalFormSubmitBtnText}>Create Transport</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* COUNTRY SELECT MODAL */}
+      <Modal transparent animationType="slide" visible={showCountryModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCountryModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              <TouchableOpacity onPress={() => setShowCountryModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={16} color="#9CA3AF" />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search country..."
+                placeholderTextColor="#9CA3AF"
+                value={countrySearch}
+                onChangeText={setCountrySearch}
+              />
+              {countrySearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCountrySearch('')}>
+                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {(countriesData || []).map((opt: any) => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setNewPartnerCountry(opt.name);
+                    setNewPartnerCountryId(opt.id);
+                    setNewPartnerState('');
+                    setNewPartnerStateId('');
+                    setNewPartnerCity('');
+                    setNewPartnerCityId('');
+                    setShowCountryModal(false);
+                    setCountrySearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt.name}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* STATE SELECT MODAL */}
+      <Modal transparent animationType="slide" visible={showStateModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStateModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select State</Text>
+              <TouchableOpacity onPress={() => setShowStateModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={16} color="#9CA3AF" />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search state..."
+                placeholderTextColor="#9CA3AF"
+                value={stateSearch}
+                onChangeText={setStateSearch}
+              />
+              {stateSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setStateSearch('')}>
+                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {(statesData || []).map((opt: any) => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setNewPartnerState(opt.name);
+                    setNewPartnerStateId(opt.id);
+                    setNewPartnerCity('');
+                    setNewPartnerCityId('');
+                    setShowStateModal(false);
+                    setStateSearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt.name}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* CITY SELECT MODAL */}
+      <Modal transparent animationType="slide" visible={showCityModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCityModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select City</Text>
+              <TouchableOpacity onPress={() => setShowCityModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search" size={16} color="#9CA3AF" />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search city..."
+                placeholderTextColor="#9CA3AF"
+                value={citySearch}
+                onChangeText={setCitySearch}
+              />
+              {citySearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCitySearch('')}>
+                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {(citiesData || []).map((opt: any) => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setNewPartnerCity(opt.name);
+                    setNewPartnerCityId(opt.id);
+                    setShowCityModal(false);
+                    setCitySearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt.name}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* SERVICE TYPE SELECT MODAL */}
+      <Modal transparent animationType="slide" visible={showServiceTypeModal}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowServiceTypeModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Service Type</Text>
+              <TouchableOpacity onPress={() => setShowServiceTypeModal(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {SERVICE_TYPE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setNewPartnerServiceType(opt);
+                    setShowServiceTypeModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── CUSTOMER PICKER MODAL ─────────────── */}
+      <Modal transparent animationType="slide" visible={showCustomerModal} onRequestClose={() => setShowCustomerModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCustomerModal(false)}
+        >
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Customer</Text>
+              <TouchableOpacity onPress={() => setShowCustomerModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Container */}
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder={customerType === 'DEALER' ? 'Search by company or name...' : 'Search by name, company...'}
+                placeholderTextColor="#9CA3AF"
+                value={customerSearchQuery}
+                onChangeText={setCustomerSearchQuery}
+                autoCorrect={false}
+                autoComplete="off"
+              />
+              {customerSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCustomerSearchQuery('')} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+              {filteredCustomerList.map((lead: any) => (
+                <TouchableOpacity
+                  key={lead.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    handleSelectCustomer(lead);
+                    setShowCustomerModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalRowText}>{lead.company || lead.name}</Text>
+                    {lead.company && lead.name && (
+                      <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
+                        {lead.name} • {lead.phone || 'No Phone'}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+              {filteredCustomerList.length === 0 && (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                    No matches found
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Full Screen Image Preview Modal */}
+      <Modal
+        visible={!!previewImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.previewModalContainer}>
+          <TouchableOpacity
+            style={styles.previewModalCloseBtn}
+            onPress={() => setPreviewImage(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -322,6 +1798,145 @@ const getStyles = (theme: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  inputLabelGrey: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#6B7280',
+    letterSpacing: 0.5,
+  },
+  pickerRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    marginTop: 4,
+  },
+  dropdownSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: '100%',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  dropdownSelectorText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  verticalSeparator: {
+    width: 1,
+    height: '60%',
+    backgroundColor: '#E5E7EB',
+  },
+  customerSearchInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  typeDropdownPopup: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    width: 120,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingVertical: 4,
+    zIndex: 1100,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  typeDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  typeDropdownItemActive: {
+    backgroundColor: '#FDF2F4',
+  },
+  typeDropdownItemText: {
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+  },
+  customerDropdownPopup: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  customerDropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  customerDropdownName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  customerDropdownSub: {
+    fontSize: 11.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  billToBox: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: '#FAFBFD',
+    minHeight: 72,
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  billToContent: {
+    gap: 3,
+  },
+  billToCompany: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  billToText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  noRecipientText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   header: {
     flexDirection: 'row',
@@ -357,14 +1972,14 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
   formContainer: {
-    marginTop: 20,
+    marginTop: 10,
     gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 4,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -406,14 +2021,19 @@ const getStyles = (theme: any) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     paddingHorizontal: 20,
     paddingTop: 12,
   },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 4,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 20,
+  },
   saveBtn: {
-    backgroundColor: COLORS.saveBtnBg,
     borderRadius: 10,
     height: 46,
     alignItems: 'center',
@@ -463,5 +2083,395 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+
+  // Items Editor
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.textMuted,
+    letterSpacing: 0.5,
+    flexShrink: 0,
+  },
+  sectionLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  itemCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    gap: 12,
+    marginTop: 8,
+  },
+  itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  itemIndexBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemIndexText: { fontSize: 11, fontWeight: '800' },
+  itemHeading: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.textDark },
+  deleteItemBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formField: { gap: 5 },
+  textInputBox: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 42,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+  },
+  selectTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 42,
+  },
+  selectTriggerText: { fontSize: 13, color: COLORS.textDark, fontWeight: '600' },
+  gridRow: { flexDirection: 'row', gap: 10 },
+  itemTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FBF9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  itemTotalLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
+  itemTotalVal: { fontWeight: '800', color: COLORS.textDark },
+  itemGrandTotal: { fontSize: 13.5, fontWeight: '900' },
+  addItemBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    height: 44,
+    marginTop: 10,
+  },
+  addItemBtnText: { fontSize: 13, fontWeight: '800' },
+
+  // Totals summary card
+  totalSummaryCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 12,
+  },
+  totalSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  totalSummaryGrand: { borderBottomWidth: 0 },
+  totalSummaryLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  totalSummaryVal: { fontSize: 13, fontWeight: '700', color: COLORS.textDark },
+  grandLabel: { fontSize: 14, fontWeight: '800', color: COLORS.textDark },
+  grandVal: { fontSize: 15, fontWeight: '900' },
+
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+    paddingVertical: 4,
+  },
+  checkboxSquare: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  radioOuter: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#9CA3AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  radioLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  inputWithIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    height: 42,
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 12,
+  },
+  inputIconText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginRight: 8,
+  },
+  inputWithIconField: {
+    flex: 1,
+    height: '100%',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  modalOverlayCentered: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  alertTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textDark,
+    textAlign: 'center',
+  },
+  alertInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    backgroundColor: '#FAFAFA',
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
+  alertBtn: {
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  alertBtnCancel: {
+    backgroundColor: '#F3F4F6',
+  },
+  alertBtnCancelText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  alertBtnSubmitText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  modalFormCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    width: '100%',
+    maxWidth: 620,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  modalFormHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#F0FDFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalFormTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  modalFormSubtitle: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  modalFormCloseBtn: {
+    padding: 4,
+  },
+  modalFormScrollContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalFormBody: {
+    gap: 12,
+  },
+  availabilityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FAFAFA',
+    marginTop: 6,
+  },
+  availabilityTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  availabilitySubtitle: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  modalFormFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  modalFormCancelBtn: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFormCancelBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  modalFormSubmitBtn: {
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFormSubmitBtnText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    paddingHorizontal: 12,
+    height: 40,
+    backgroundColor: '#FAFAFA',
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: '100%',
+    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewModalCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });

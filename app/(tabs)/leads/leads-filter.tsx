@@ -346,13 +346,13 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 5,
   },
   titleLeft: {
     flexDirection: 'row',
@@ -376,12 +376,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.danger,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 5,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 5,
   },
   sectionLabel: {
     fontSize: 12.5,
@@ -400,8 +400,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#F3F4F6',
     borderRadius: 10,
-    padding: 4,
-    height: 44,
+    padding: 2,
+    height: 35,
   },
   priorityTab: {
     flex: 1,

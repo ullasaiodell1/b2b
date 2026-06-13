@@ -2,19 +2,27 @@ import {
     createQuotation,
     deleteQuotation,
     getQuotationDetails,
-    getQuotations,
+    listQuotation,
     updateQuotation,
     updateQuotationStatus,
 } from '@/services/api/quotation';
 import { CreateQuotationPayload, QuotationFilterState, QuotationRecord } from '@/types/quotation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+export const quotationKeys = {
+  all: ['quotations'] as const,
+  lists: () => [...quotationKeys.all, 'list'] as const,
+  list: () => [...quotationKeys.lists()] as const,
+  quotationFilter: (params?: any) => [...quotationKeys.lists(), params] as const,
+  details: (id: string) => [...quotationKeys.all, 'details', id] as const,
+};
+
 // ─── List Quotations ───────────────────────────────────────────────────────────
 export function useQuotations(params?: Partial<QuotationFilterState>) {
   const query = useQuery({
-    queryKey: ['quotations', params],
+    queryKey: quotationKeys.quotationFilter(params),
     queryFn: async (): Promise<QuotationRecord[]> => {
-      const res = await getQuotations(params) as any;
+      const res = await listQuotation(params) as any;
       console.log('[useQuotations] raw response keys:', res ? Object.keys(res) : 'null');
 
       // Backend returns { total, data: [...] }
@@ -47,7 +55,7 @@ export function useQuotations(params?: Partial<QuotationFilterState>) {
 // ─── Single Quotation Details ──────────────────────────────────────────────────
 export function useQuotationDetails(id: string) {
   return useQuery({
-    queryKey: ['quotationDetails', id],
+    queryKey: quotationKeys.details(id),
     queryFn: async (): Promise<QuotationRecord | null> => {
       if (!id) return null;
       const res = await getQuotationDetails(id) as any;
@@ -68,7 +76,7 @@ export function useCreateQuotation() {
   return useMutation({
     mutationFn: (data: CreateQuotationPayload) => createQuotation(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
     },
   });
 }
@@ -78,10 +86,10 @@ export function useUpdateQuotation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateQuotationPayload> & { status: string } }) =>
-      updateQuotation(id, data),
+      updateQuotation({ id, ...data }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      queryClient.invalidateQueries({ queryKey: ['quotationDetails', variables.id] });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.details(variables.id) });
     },
   });
 }
@@ -91,10 +99,10 @@ export function useUpdateQuotationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status, reject_remarks }: { id: string; status: string; reject_remarks?: string }) =>
-      updateQuotationStatus(id, status, reject_remarks),
+      updateQuotationStatus({ id, status, reject_remarks }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      queryClient.invalidateQueries({ queryKey: ['quotationDetails', variables.id] });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.details(variables.id) });
     },
   });
 }
@@ -105,7 +113,7 @@ export function useDeleteQuotation() {
   return useMutation({
     mutationFn: (id: string) => deleteQuotation(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
     },
   });
 }

@@ -11,6 +11,8 @@ export interface CallRecord {
   dueDate?: string;
   lead_id?: string;
   remarks?: string;
+  recordingUrl?: string;
+  call_start_time?: string;
 }
 
 export interface CallFilterState {

@@ -1,5 +1,6 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { TaskRecord } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -15,15 +18,13 @@ import {
   TextInput,
   TouchableOpacity,
   View
-, KeyboardAvoidingView, Platform} from 'react-native';
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/hooks/use-theme';
 
 type TaskStatus = 'Completed' | 'Not Started' | 'waiting for input' | 'in progress';
 type PriorityType = 'High' | 'Normal' | 'Lowest';
 
 type Task = TaskRecord;
-
 
 export default function TaskScreen() {
   const theme = useTheme();
@@ -41,7 +42,7 @@ export default function TaskScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
 
-  const { tasks, isLoading, isFetching, refetch } = useTasks();
+  const { tasks, isLoading, isFetching, refetch } = useTasks(params.leadId ? { lead_id: params.leadId } : undefined);
   const updateTaskMutation = useUpdateTask();
 
   const toggleTaskCompletion = async (task: Task) => {
@@ -81,15 +82,19 @@ export default function TaskScreen() {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const leadTasks = params.leadId
+    ? tasks.filter(task => task.lead_id === params.leadId)
+    : tasks;
+
+  const filteredTasks = leadTasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'All' || task.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
-  const totalCount = tasks.length;
-  const completedCount = tasks.filter(t => t.status === 'Completed').length;
-  const notStartedCount = tasks.filter(t => t.status === 'Not Started').length;
+  const totalCount = leadTasks.length;
+  const completedCount = leadTasks.filter(t => t.status === 'Completed').length;
+  const notStartedCount = leadTasks.filter(t => t.status === 'Not Started').length;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -184,7 +189,6 @@ export default function TaskScreen() {
               </TouchableOpacity>
             </ScrollView>
 
-            {/* Tasks List */}
             <View style={styles.tasksList}>
               {filteredTasks.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40 }}>
@@ -210,6 +214,10 @@ export default function TaskScreen() {
                           due: task.due,
                           priority: task.priority,
                           status: task.status,
+                          description: task.description || '',
+                          assigned_to: task.assigned_to || '',
+                          assigned_to_name: task.assigned_to_name || '',
+                          lead_id: task.lead_id || '',
                         }
                       } as any)}
                     >
@@ -315,7 +323,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Search & Filter Row
   searchFilterRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -359,8 +367,8 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Stats Chips
   statsScroll: {
-    gap: 8,
-    paddingBottom: 14,
+    gap: 5,
+    paddingBottom: 1,
   },
   statChip: {
     flexDirection: 'row',
@@ -369,7 +377,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    gap: 8,
+    gap: 5,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -473,4 +481,3 @@ const getStyles = (theme: any) => StyleSheet.create({
     zIndex: 100,
   },
 });
-

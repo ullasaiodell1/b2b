@@ -29,7 +29,7 @@ export default function CustomDrawer() {
 
   const pathname = usePathname();
   const { isOpen: open, closeDrawer } = useDrawer();
-  const { tabs: configuredTabs, updateConfiguredTabs, allModules: ALL_TAB_MODULES } = useTabs();
+  const { tabs: configuredTabs, updateConfiguredTabs, setDynamicTab, allModules: ALL_TAB_MODULES } = useTabs();
   const [rendered, setRendered] = useState(open);
   const [searchQuery, setSearchQuery] = useState('');
   const { primaryColor } = useTheme();
@@ -111,6 +111,7 @@ export default function CustomDrawer() {
   };
 
   const handleRowPress = (route: string) => {
+    setDynamicTab(route);
     closeDrawer();
     if (route === 'index') {
       router.push('/(tabs)' as any);

@@ -12,7 +12,7 @@ export const accountLogin = (data: any) => {
       return res;
     })
     .catch((err) => {
-      console.error('[Auth API Error] accountLogin (POST /auth/login) - Error:', JSON.stringify(err, null, 2));
+      console.warn('[Auth API Error] accountLogin (POST /auth/login) - Error:', JSON.stringify(err, null, 2));
       throw err;
     });
 };
@@ -29,7 +29,7 @@ export const accountLogout = (token?: string) => {
       return res;
     })
     .catch((err) => {
-      console.error('[Auth API Error] accountLogout (DELETE /auth/logout) - Error:', JSON.stringify(err, null, 2));
+      console.warn('[Auth API Error] accountLogout (DELETE /auth/logout) - Error:', JSON.stringify(err, null, 2));
       throw err;
     });
 };
@@ -46,7 +46,7 @@ export const otpVerification = (data: any) => {
       return res;
     })
     .catch((err) => {
-      console.error('[Auth API Error] otpVerification (POST /auth/verify-login) - Error:', JSON.stringify(err, null, 2));
+      console.warn('[Auth API Error] otpVerification (POST /auth/verify-login) - Error:', JSON.stringify(err, null, 2));
       throw err;
     });
 };
@@ -62,7 +62,7 @@ export const getCurrentUser = () => {
       return res;
     })
     .catch((err) => {
-      console.error('[Auth API Error] getCurrentUser (GET /auth/me) - Error:', JSON.stringify(err, null, 2));
+      console.warn('[Auth API Error] getCurrentUser (GET /auth/me) - Error:', JSON.stringify(err, null, 2));
       throw err;
     });
 };
@@ -79,24 +79,24 @@ export const updateAuthSession = (data: any) => {
       return res;
     })
     .catch((err) => {
-      console.error('[Auth API Error] updateAuthSession (PUT /auth/session) - Error:', JSON.stringify(err, null, 2));
+      console.warn('[Auth API Error] updateAuthSession (PUT /auth/session) - Error:', JSON.stringify(err, null, 2));
       throw err;
     });
 };
 
 export const deleteSession = (sessionId: string, token: string) => {
-  console.log(`[Auth API Request] deleteSession (DELETE /auth/session/${sessionId})`);
+  console.log(`[Auth API Request] deleteSession (DELETE /auth/sessions/${sessionId})`);
   return axios({
     method: 'DELETE',
-    url: `/auth/session/${sessionId}`,
+    url: `/auth/sessions/${sessionId}`,
     headers: { Authorization: token }
   })
     .then((res) => {
-      console.log(`[Auth API Response] deleteSession (DELETE /auth/session/${sessionId}) - Success:`, JSON.stringify(res, null, 2));
+      console.log(`[Auth API Response] deleteSession (DELETE /auth/sessions/${sessionId}) - Success:`, JSON.stringify(res, null, 2));
       return res;
     })
     .catch((err) => {
-      console.error(`[Auth API Error] deleteSession (DELETE /auth/session/${sessionId}) - Error:`, JSON.stringify(err, null, 2));
+      console.warn(`[Auth API Error] deleteSession (DELETE /auth/sessions/${sessionId}) - Error:`, JSON.stringify(err, null, 2));
       throw err;
     });
 };

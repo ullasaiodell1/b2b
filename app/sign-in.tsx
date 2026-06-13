@@ -118,12 +118,16 @@ export default function SignInScreen() {
           }
         },
         onError: (err: any) => {
-          if (err?.details?.process_code === 'user_already_logged_in') {
+          const processCode = err?.process_code || err?.details?.process_code;
+          const sessions = err?.sessions || err?.details?.sessions || [];
+          const token = err?.token || err?.details?.token || '';
+
+          if (processCode === 'user_already_logged_in') {
             router.push({
               pathname: '/device-limit',
               params: {
-                sessions: JSON.stringify(err.details.sessions || []),
-                token: err.details.token || '',
+                sessions: JSON.stringify(sessions),
+                token: token,
                 phoneNumber: phoneNumber.trim(),
                 password: password,
               }

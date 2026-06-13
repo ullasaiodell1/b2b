@@ -25,12 +25,15 @@ export default function EmailFilterScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string; referrer?: string }>();
+  const params = useLocalSearchParams<{ status?: string; company?: string; referrer?: string; id?: string }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
-    if (params.referrer === 'lead-details') {
-      router.navigate('/(tabs)/leads/lead-details');
+    if (params.referrer === 'lead-details' && params.id) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: params.id }
+      });
     } else {
       router.back();
     }
@@ -39,8 +42,11 @@ export default function EmailFilterScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        if (params.referrer === 'lead-details') {
-          router.navigate('/(tabs)/leads/lead-details');
+        if (params.referrer === 'lead-details' && params.id) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: params.id }
+          });
           return true;
         }
         return false;
@@ -48,7 +54,7 @@ export default function EmailFilterScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [params.referrer])
+    }, [params.referrer, params.id])
   );
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(params.status || null);
@@ -66,6 +72,7 @@ export default function EmailFilterScreen() {
       router.navigate({
         pathname: '/(tabs)/leads/lead-details',
         params: {
+          id: params.id || '',
           emailStatus: selectedStatus || '',
           emailCompany: selectedCompany !== 'Select Company' ? selectedCompany : '',
         }

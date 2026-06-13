@@ -3,7 +3,8 @@ import {
   Modal,
   Text,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator
 } from "react-native";
 import WheelPicker from "react-native-wheel-picker-expo";
 
@@ -21,9 +22,9 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
 
   // Generate Items
   const hours = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => ({
-      label: (i + 1 < 10 ? '0' : '') + (i + 1).toString(),
-      value: i + 1
+    return Array.from({ length: 24 }, (_, i) => ({
+      label: (i < 10 ? '0' : '') + i.toString(),
+      value: i
     }));
   }, []);
 
@@ -34,41 +35,36 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
     }));
   }, []);
 
-  const amPmItems = [
-    { label: "AM", value: "AM" },
-    { label: "PM", value: "PM" }
-  ];
+  const seconds = useMemo(() => {
+    return Array.from({ length: 60 }, (_, i) => ({
+      label: (i < 10 ? '0' : '') + i.toString(),
+      value: i
+    }));
+  }, []);
 
   // Component States
-  const [tempHour, setTempHour] = useState(12);
+  const [tempHour, setTempHour] = useState(0);
   const [tempMinute, setTempMinute] = useState(0);
-  const [tempAmPm, setTempAmPm] = useState("AM");
+  const [tempSecond, setTempSecond] = useState(0);
 
   // Sync internal state when visibility changes or selectedDate changes
   useEffect(() => {
     if (visible && selectedDate) {
       const hours24 = selectedDate.getHours();
       const mins = selectedDate.getMinutes();
-      const ampmVal = hours24 >= 12 ? "PM" : "AM";
-      const hours12Val = hours24 % 12 === 0 ? 12 : hours24 % 12;
+      const secs = selectedDate.getSeconds();
 
-      setTempHour(hours12Val);
+      setTempHour(hours24);
       setTempMinute(mins);
-      setTempAmPm(ampmVal);
+      setTempSecond(secs);
     }
   }, [visible, selectedDate]);
 
   const handleConfirm = () => {
     const newDate = new Date(selectedDate);
-    let targetHours = tempHour;
-    if (tempAmPm === "PM") {
-      if (targetHours < 12) targetHours += 12;
-    } else {
-      if (targetHours === 12) targetHours = 0;
-    }
-    newDate.setHours(targetHours);
+    newDate.setHours(tempHour);
     newDate.setMinutes(tempMinute);
-    newDate.setSeconds(0);
+    newDate.setSeconds(tempSecond);
     newDate.setMilliseconds(0);
     
     onSelect(newDate);
@@ -111,7 +107,7 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
           </View>
 
           {/* Time Picker Columns */}
-          <View style={{ flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: spacing.xs, justifyContent: 'center', alignItems: 'center' }}>
             {/* Hours Column */}
             <View style={{ flex: 1 }}>
               <WheelPicker
@@ -123,7 +119,7 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
                 renderItem={(props: any) => (
                   <Text style={{
                     color: props?.isSelected ? colors.brand : colors.textSecondary,
-                    fontSize: props?.isSelected ? 19 : 16,
+                    fontSize: props?.isSelected ? 18 : 15,
                     fontFamily: props?.isSelected ? typography.family.bold : typography.family.medium,
                     textAlign: 'center'
                   }}>
@@ -135,7 +131,7 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
 
             {/* Separator Colon */}
             <Text style={{
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: '700',
               color: colors.textSecondary,
               paddingBottom: spacing.xs,
@@ -153,7 +149,7 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
                 renderItem={(props: any) => (
                   <Text style={{
                     color: props?.isSelected ? colors.brand : colors.textSecondary,
-                    fontSize: props?.isSelected ? 19 : 16,
+                    fontSize: props?.isSelected ? 18 : 15,
                     fontFamily: props?.isSelected ? typography.family.bold : typography.family.medium,
                     textAlign: 'center'
                   }}>
@@ -163,18 +159,27 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
               />
             </View>
 
-            {/* AM/PM Column */}
+            {/* Separator Colon */}
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: colors.textSecondary,
+              paddingBottom: spacing.xs,
+              textAlign: 'center'
+            }}>:</Text>
+
+            {/* Seconds Column */}
             <View style={{ flex: 1 }}>
               <WheelPicker
-                initialSelectedIndex={amPmItems.findIndex(ap => ap.value === tempAmPm)}
-                items={amPmItems}
-                onChange={({ item }) => setTempAmPm(item.value)}
+                initialSelectedIndex={seconds.findIndex(s => s.value === tempSecond)}
+                items={seconds}
+                onChange={({ item }) => setTempSecond(item.value)}
                 height={200}
                 backgroundColor={colors.surface}
                 renderItem={(props: any) => (
                   <Text style={{
                     color: props?.isSelected ? colors.brand : colors.textSecondary,
-                    fontSize: props?.isSelected ? 19 : 16,
+                    fontSize: props?.isSelected ? 18 : 15,
                     fontFamily: props?.isSelected ? typography.family.bold : typography.family.medium,
                     textAlign: 'center'
                   }}>

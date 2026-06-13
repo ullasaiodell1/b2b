@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -27,12 +28,15 @@ export default function AddEmailScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const { referrer } = useLocalSearchParams();
+  const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
-    if (referrer === 'lead-details') {
-      router.navigate('/(tabs)/leads/lead-details');
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: leadId }
+      });
     } else {
       router.back();
     }
@@ -41,8 +45,11 @@ export default function AddEmailScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        if (referrer === 'lead-details') {
-          router.navigate('/(tabs)/leads/lead-details');
+        if (referrer === 'lead-details' && leadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: leadId }
+          });
           return true;
         }
         return false;
@@ -50,7 +57,7 @@ export default function AddEmailScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [referrer])
+    }, [referrer, leadId])
   );
 
   const [subject, setSubject] = useState('');
@@ -59,6 +66,23 @@ export default function AddEmailScreen() {
   const [body, setBody] = useState('');
 
   const [activePicker, setActivePicker] = useState<'company' | 'sentTo' | null>(null);
+
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const handleSelectOption = (value: string) => {
     if (activePicker === 'company') setCompany(value);
@@ -78,7 +102,7 @@ export default function AddEmailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -104,8 +128,9 @@ export default function AddEmailScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 200 : 30 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
           {/* Subject */}
@@ -169,18 +194,18 @@ export default function AddEmailScreen() {
             />
           </View>
         </View>
-      </ScrollView>
 
-      {/* Sticky Bottom Save */}
-      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.saveBtnText}>SAVE</Text>
-        </TouchableOpacity>
-      </View>
+        {/* ── SAVE BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.saveBtnText}>SAVE</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {/* OPTIONS MODAL */}
       <Modal transparent animationType="slide" visible={activePicker !== null}>
@@ -315,6 +340,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderTopColor: COLORS.border,
     paddingHorizontal: 20,
     paddingTop: 12,
+  },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 4,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 20,
   },
   saveBtn: {
     backgroundColor: COLORS.saveBtnBg,

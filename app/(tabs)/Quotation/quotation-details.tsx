@@ -8,7 +8,9 @@ import React from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -59,6 +61,7 @@ export default function QuotationDetailsScreen() {
 
   const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
   const updateStatusMutation = useUpdateQuotationStatus();
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   const handleStatusChange = (newStatus: string) => {
     if (!id) return;
@@ -240,45 +243,59 @@ export default function QuotationDetailsScreen() {
               <View style={styles.sectionHeaderLine} />
             </View>
 
-            {items.map((item, idx) => (
-              <View key={item.id || String(idx)} style={styles.productCard}>
-                <View style={styles.productTopRow}>
-                  <View style={styles.productIndexBadge}>
-                    <Text style={styles.productIndexText}>{idx + 1}</Text>
+            {items.map((item, idx) => {
+              const itemImages = Array.isArray(item.images)
+                ? item.images
+                : (typeof item.images === 'string' && item.images ? [item.images] : []);
+              return (
+                <View key={item.id || String(idx)} style={styles.productCard}>
+                  <View style={styles.productTopRow}>
+                    {itemImages.length > 0 ? (
+                      <TouchableOpacity
+                        onPress={() => setPreviewImage(itemImages[0])}
+                        activeOpacity={0.8}
+                      >
+                        <Image source={{ uri: itemImages[0] }} style={styles.productThumbnail} />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.productIndexBadge}>
+                        <Text style={styles.productIndexText}>{idx + 1}</Text>
+                      </View>
+                    )}
+                    <View style={styles.productDetailsCol}>
+                      <Text style={styles.productName}>{item.item_name}</Text>
+                      {!!item.item_code && (
+                        <Text style={styles.productSpec}>Code: {item.item_code}</Text>
+                      )}
+                      {!!item.item_description && (
+                        <Text style={styles.productDesc} numberOfLines={2}>{item.item_description}</Text>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.productDetailsCol}>
-                    <Text style={styles.productName}>{item.item_name}</Text>
-                    {!!item.item_code && (
-                      <Text style={styles.productSpec}>Code: {item.item_code}</Text>
-                    )}
-                    {!!item.item_description && (
-                      <Text style={styles.productDesc} numberOfLines={2}>{item.item_description}</Text>
-                    )}
+
+                  <View style={styles.cardDivider} />
+
+                  <View style={styles.productStatsGrid}>
+                    <View style={styles.statsGridCol}>
+                      <Text style={styles.gridLabel}>
+                        Qty: <Text style={styles.gridVal}>{item.quantity}</Text>
+                      </Text>
+                      <Text style={styles.gridLabel}>
+                        GST: <Text style={styles.gridVal}>{item.gst_percentage ?? 0}%</Text>
+                      </Text>
+                    </View>
+                    <View style={[styles.statsGridCol, { alignItems: 'flex-end' }]}>
+                      <Text style={styles.gridLabel}>
+                        Rate: <Text style={styles.gridVal}>{formatAmount(item.unit_price)}</Text>
+                      </Text>
+                      <Text style={styles.gridLabel}>
+                        Amount: <Text style={styles.gridPriceVal}>{formatAmount(item.amount)}</Text>
+                      </Text>
+                    </View>
                   </View>
                 </View>
-
-                <View style={styles.cardDivider} />
-
-                <View style={styles.productStatsGrid}>
-                  <View style={styles.statsGridCol}>
-                    <Text style={styles.gridLabel}>
-                      Qty: <Text style={styles.gridVal}>{item.quantity}</Text>
-                    </Text>
-                    <Text style={styles.gridLabel}>
-                      GST: <Text style={styles.gridVal}>{item.gst_percentage ?? 0}%</Text>
-                    </Text>
-                  </View>
-                  <View style={[styles.statsGridCol, { alignItems: 'flex-end' }]}>
-                    <Text style={styles.gridLabel}>
-                      Rate: <Text style={styles.gridVal}>{formatAmount(item.unit_price)}</Text>
-                    </Text>
-                    <Text style={styles.gridLabel}>
-                      Amount: <Text style={styles.gridPriceVal}>{formatAmount(item.amount)}</Text>
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
 
@@ -347,6 +364,31 @@ export default function QuotationDetailsScreen() {
           </View>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Full Screen Image Preview Modal */}
+      <Modal
+        visible={!!previewImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.previewModalContainer}>
+          <TouchableOpacity
+            style={styles.previewModalCloseBtn}
+            onPress={() => setPreviewImage(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage || undefined }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -391,16 +433,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
-  scrollContent: { paddingHorizontal: 12, paddingTop: 12, gap: 8 },
+  scrollContent: { paddingHorizontal: 5, paddingTop: 5, gap: 5 },
 
   // Summary card
   summaryCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
-    gap: 8,
+    padding: 10,
+    gap: 5,
   },
   summaryTopRow: {
     flexDirection: 'row',
@@ -535,5 +577,35 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  productThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewModalCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });

@@ -47,12 +47,15 @@ export default function QuotationFilterScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const { referrer } = useLocalSearchParams();
+  const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
-    if (referrer === 'lead-details') {
-      router.navigate('/(tabs)/leads/lead-details');
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: leadId }
+      });
     } else {
       router.back();
     }
@@ -61,8 +64,11 @@ export default function QuotationFilterScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        if (referrer === 'lead-details') {
-          router.navigate('/(tabs)/leads/lead-details');
+        if (referrer === 'lead-details' && leadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: leadId }
+          });
           return true;
         }
         return false;
@@ -70,7 +76,7 @@ export default function QuotationFilterScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [referrer])
+    }, [referrer, leadId])
   );
 
   // Filters State
@@ -468,10 +474,10 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Content
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 5,
+    paddingTop: 5,
     paddingBottom: 150,
-    gap: 2,
+    gap: 5,
   },
   topRow: {
     flexDirection: 'row',

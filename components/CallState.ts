@@ -31,7 +31,7 @@ export const INITIAL_CALLS: CallRecord[] = [
 export let callsState: CallRecord[] = [...INITIAL_CALLS];
 export let activeCallFilter: CallFilterState = {
   status: '',
-  dateRange: '28 Dec 22 - 10 Jan 23',
+  dateRange: '',
 };
 
 const listeners = new Set<() => void>();

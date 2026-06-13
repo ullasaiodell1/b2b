@@ -16,12 +16,29 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-const DATE_OPTIONS = [
-  '28 Dec 22 - 10 Jan 23',
-  '11 Jan 23 - 25 Jan 23',
-  '26 Jan 23 - 10 Feb 23',
-];
+const formatDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const parseDate = (str: string): Date | null => {
+  try {
+    const parts = str.trim().split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+  } catch (e) {
+    console.log('Error parsing date:', e);
+  }
+  return null;
+};
 
 export default function CallFilterScreen() {
   const theme = useTheme();
@@ -30,23 +47,45 @@ export default function CallFilterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [dateRange, setDateRange] = useState(activeCallFilter.dateRange || '28 Dec 22 - 10 Jan 23');
+  const [fromDate, setFromDate] = useState<Date | null>(() => {
+    if (activeCallFilter.dateRange && activeCallFilter.dateRange.includes(' - ')) {
+      const parts = activeCallFilter.dateRange.split(' - ');
+      return parseDate(parts[0]);
+    }
+    return null;
+  });
+
+  const [toDate, setToDate] = useState<Date | null>(() => {
+    if (activeCallFilter.dateRange && activeCallFilter.dateRange.includes(' - ')) {
+      const parts = activeCallFilter.dateRange.split(' - ');
+      return parseDate(parts[1]);
+    }
+    return null;
+  });
+
   const [selectedStatus, setSelectedStatus] = useState<CallFilterState['status']>(activeCallFilter.status || '');
-  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
 
   const handleResetAll = () => {
-    setDateRange('28 Dec 22 - 10 Jan 23');
+    setFromDate(null);
+    setToDate(null);
     setSelectedStatus('');
   };
 
   const handleResetDateOnly = () => {
-    setDateRange('28 Dec 22 - 10 Jan 23');
+    setFromDate(null);
+    setToDate(null);
   };
 
   const handleApply = () => {
+    let finalRange = '';
+    if (fromDate && toDate) {
+      finalRange = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
+    }
     updateCallFilterState({
       status: selectedStatus,
-      dateRange: dateRange,
+      dateRange: finalRange,
     });
     router.back();
   };
@@ -91,25 +130,45 @@ export default function CallFilterScreen() {
 
         {/* Date Selector Row */}
         <View style={styles.filterSection}>
-          <Text style={styles.sectionTitle}>Date</Text>
-          <View style={styles.dateControlRow}>
+          <Text style={styles.sectionTitle}>Date Range</Text>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <TouchableOpacity
-              style={styles.dateDropdown}
-              onPress={() => setShowDatePickerModal(true)}
+              style={[styles.dateDropdown, { flex: 1, paddingVertical: 4, height: 46 }]}
+              onPress={() => setShowFromPicker(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.dateDropdownText}>{dateRange}</Text>
-              <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
+              <View>
+                <Text style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: '700' }}>FROM</Text>
+                <Text style={styles.dateDropdownText}>
+                  {fromDate ? formatDate(fromDate) : 'Select Date'}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.dateResetBtn}
-              onPress={handleResetDateOnly}
-              activeOpacity={0.8}
+              style={[styles.dateDropdown, { flex: 1, paddingVertical: 4, height: 46 }]}
+              onPress={() => setShowToPicker(true)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.dateResetText}>Reset</Text>
-              <Ionicons name="refresh-outline" size={14} color={COLORS.textDark} style={{ marginLeft: 4 }} />
+              <View>
+                <Text style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: '700' }}>TO</Text>
+                <Text style={styles.dateDropdownText}>
+                  {toDate ? formatDate(toDate) : 'Select Date'}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
+
+            {(fromDate || toDate) && (
+              <TouchableOpacity
+                style={[styles.dateResetBtn, { width: 44, paddingHorizontal: 0, height: 46 }]}
+                onPress={handleResetDateOnly}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh-outline" size={18} color={COLORS.textDark} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -157,39 +216,34 @@ export default function CallFilterScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* DATE PICKER MODAL */}
-      <Modal transparent animationType="slide" visible={showDatePickerModal}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDatePickerModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Date Range</Text>
-              <TouchableOpacity onPress={() => setShowDatePickerModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {DATE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setDateRange(opt);
-                    setShowDatePickerModal(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {showFromPicker && (
+        <DateTimePicker
+          value={fromDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowFromPicker(false);
+            if (selectedDate) {
+              setFromDate(selectedDate);
+            }
+          }}
+        />
+      )}
+
+      {showToPicker && (
+        <DateTimePicker
+          value={toDate || new Date()}
+          mode="date"
+          display="default"
+          minimumDate={fromDate || undefined}
+          onChange={(event, selectedDate) => {
+            setShowToPicker(false);
+            if (selectedDate) {
+              setToDate(selectedDate);
+            }
+          }}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

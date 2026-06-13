@@ -203,8 +203,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
 
   scrollContent: {
-    padding: 20,
-    gap: 24,
+    padding: 8,
+    gap: 5,
     paddingBottom: 150,
   },
 
@@ -236,10 +236,10 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Form
   form: {
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 1,
   },
   inputLabel: {
     fontSize: 11.5,
@@ -270,8 +270,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Button
   saveBtn: {
     backgroundColor: theme.primaryColor,
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 10,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: theme.primaryColor,
@@ -279,7 +279,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 6,
-    marginTop: 10,
+    marginTop: 20,
   },
   saveBtnText: {
     color: '#FFFFFF',

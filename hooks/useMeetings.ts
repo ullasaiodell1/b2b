@@ -52,11 +52,19 @@ export const mapToMeetingRecord = (item: any): MeetingRecord => {
     method: item.follow_up_method || '',
     scheduledAt,
     scheduledDate,
+    leadId: item.lead_id ? String(item.lead_id) : undefined,
   };
 };
 
 // ── READ (fetch from backend & sync to local state) ────────────────
-export function useMeetings(selectedDate?: Date) {
+export const meetingKeys = {
+  all: ['meetings'] as const,
+  lists: () => [...meetingKeys.all, 'list'] as const,
+  list: () => [...meetingKeys.lists()] as const,
+  meetingFilter: (dateParam?: string, leadId?: string) => [...meetingKeys.lists(), dateParam, leadId] as const,
+};
+
+export function useMeetings(selectedDate?: Date, leadId?: string) {
   // Format selected date as YYYY-MM-DD using LOCAL time (not UTC)
   // Using toISOString() would shift the date for IST/non-UTC timezones
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -65,10 +73,12 @@ export function useMeetings(selectedDate?: Date) {
     : undefined;
 
   const query = useQuery({
-    queryKey: ['meetings', dateParam],
+    queryKey: meetingKeys.meetingFilter(dateParam, leadId),
     queryFn: async () => {
       // Send date param to backend so it can filter server-side
-      const apiParams = dateParam ? { date: dateParam } : undefined;
+      const apiParams: any = {};
+      if (dateParam) apiParams.startDate = dateParam;
+      if (leadId) apiParams.lead_id = leadId;
       const response: any = await getMeetings(apiParams);
 
       let rawData: any[] = [];
@@ -159,7 +169,7 @@ export function useCreateMeeting() {
     };
 
     const res = await createMeeting(targetLeadId, payload);
-    queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
     return res;
   };
 
@@ -212,7 +222,7 @@ export function useUpdateMeeting() {
     }
 
     const res = await updateMeeting(targetLeadId, id, payload);
-    queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
     return res;
   };
 
@@ -240,7 +250,7 @@ export function useDeleteMeeting() {
     }
 
     await deleteMeeting(targetLeadId, id);
-    queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
   };
 
   return { mutateAsync, isPending: false };

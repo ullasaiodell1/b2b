@@ -1,5 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTask } from '@/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -38,23 +39,23 @@ export default function TaskDetailsScreen() {
   const [activeTab, setActiveTab] = useState<'RELATED' | 'DETAILS'>('RELATED');
   const [showAllFields, setShowAllFields] = useState(false);
 
+  const { task } = useTask(params.id as string);
+
   // Retrieve task info from route params or fallback to mock data
-  const taskTitle = (params.title as string) || 'Website Redesign';
-  const taskDue = (params.due as string) || '18 Feb 2028 • 10:00 AM';
-  const taskPriority = (params.priority as string) || 'High';
-  const taskStatus = (params.status as string) || 'Completed';
+  const taskTitle = task?.title || (params.title as string) || '';
+  const taskDue = task?.due || (params.due as string) || '';
+  const taskPriority = task?.priority || (params.priority as string) || '';
+  const taskStatus = task?.status || (params.status as string) || '';
+  const taskDescription = task?.description || (params.description as string) || '';
+  const taskAssignedToName = task?.assigned_to_name || (params.assigned_to_name as string) || '';
 
   // Dynamic Notes State
-  const [notes, setNotes] = useState<string[]>([
-    "Lorem Ipsum Is Simply Dummy Text Of The Printing And Typesetting Industry. Lorem Ipsum Has Been The Industry's Standard Dummy Text Ever Since The 1500s, When An Unknown Printer Took A Galley Of Type And Scrambled It To Make A Type Specimen Book."
-  ]);
+  const [notes, setNotes] = useState<string[]>([]);
   const [noteModalVisible, setNoteModalVisible] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
   // Dynamic Attachments State
-  const [attachments, setAttachments] = useState<Attachment[]>([
-    { id: '1', name: 'Demo_brief.Pdf', size: '2.6 MB', added: 'Feb 23' }
-  ]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const handleAddAttachment = async () => {
     try {
@@ -87,7 +88,20 @@ export default function TaskDetailsScreen() {
   };
 
   const handleEditTask = () => {
-    Alert.alert('Edit Task', 'Open update task edit page...');
+    router.push({
+      pathname: '/(tabs)/task/add-task',
+      params: {
+        id: (params.id as string) || task?.id || '',
+        title: taskTitle,
+        description: task?.description || (params.description as string) || '',
+        due: task?.due || (params.due as string) || '',
+        priority: taskPriority,
+        status: taskStatus,
+        assignedTo: task?.assigned_to || (params.assigned_to as string) || '',
+        assignedToName: task?.assigned_to_name || (params.assigned_to_name as string) || '',
+        leadId: task?.lead_id || (params.lead_id as string) || '',
+      }
+    } as any);
   };
 
   return (
@@ -284,7 +298,7 @@ export default function TaskDetailsScreen() {
               <View style={styles.infoList}>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Tasks Owner</Text>
-                  <Text style={styles.infoValue}>Parth Solanki</Text>
+                  <Text style={styles.infoValue}>{taskAssignedToName}</Text>
                 </View>
 
                 <View style={styles.infoRow}>
@@ -294,7 +308,7 @@ export default function TaskDetailsScreen() {
 
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Due Date</Text>
-                  <Text style={styles.infoValue}>Yesterday</Text>
+                  <Text style={styles.infoValue}>{taskDue}</Text>
                 </View>
 
                 <View style={styles.infoRow}>
@@ -309,13 +323,20 @@ export default function TaskDetailsScreen() {
 
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Created By</Text>
-                  <Text style={styles.infoValue}>Parth Solanki</Text>
+                  <Text style={styles.infoValue}>{taskAssignedToName}</Text>
                 </View>
 
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Send Notification Email</Text>
                   <Ionicons name="checkmark-done" size={16} color={COLORS.textDark} />
                 </View>
+
+                {taskDescription ? (
+                  <View style={[styles.infoRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 4, borderBottomWidth: 0 }]}>
+                    <Text style={styles.infoLabel}>Description</Text>
+                    <Text style={[styles.infoValue, { color: COLORS.textDark, marginTop: 2 }]}>{taskDescription}</Text>
+                  </View>
+                ) : null}
 
                 {showAllFields && (
                   <>
@@ -467,8 +488,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 8,
+    paddingTop: 5,
     paddingBottom: 150,
   },
   tabContentContainer: {
@@ -478,10 +499,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Main task card (RELATED tab)
   mainTaskCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 12,
   },
   mainCardHeader: {
     flexDirection: 'row',
@@ -496,7 +517,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   mainCardMeta: {
     paddingLeft: 28,
-    marginTop: 8,
+    marginTop: 1,
   },
   metaRow: {
     flexDirection: 'row',
@@ -523,12 +544,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 1,
   },
   sectionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
   },
   verticalGreenLine: {
     width: 3,
@@ -553,11 +574,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Note Card
   noteCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    gap: 5,
+    padding: 12,
+    gap: 4,
   },
   noteText: {
     fontSize: 11.5,
@@ -586,17 +607,17 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Empty state cards
   emptyStateCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
-    gap: 5,
+    gap: 1,
     borderStyle: 'dashed',
   },
   emptyIconCircle: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 22,
     backgroundColor: '#F4F7F5',
     alignItems: 'center',
@@ -638,13 +659,13 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
   },
   attachmentInfo: {
-    gap: 5,
+    gap: 1,
   },
   attachmentName: {
     fontSize: 12.5,
@@ -671,12 +692,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 10,
+    paddingVertical: 1,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 8,
+    marginBottom: 1,
   },
   toggleLabel: {
     fontSize: 12.5,
@@ -685,10 +706,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   detailsBlock: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
+    padding: 12,
     gap: 5,
   },
   detailsBlockHeader: {

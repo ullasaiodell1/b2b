@@ -2,7 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useMeetings } from '@/hooks/useMeetings';
 import { MeetingRecord } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -43,7 +43,7 @@ export default function MeetingScreen() {
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(initialDate);
 
   // 1. Dynamic Meeting State — filtered by selectedDate via the hook
-  const { meetings, isLoading, isFetching, refetch } = useMeetings(selectedDate);
+  const { meetings, isLoading, isFetching, refetch } = useMeetings(selectedDate, params.leadId);
 
   // 3. Tab Filter State
   const [activeTab, setActiveTab] = useState<'All' | 'Upcoming' | 'In Process' | 'Complete' | 'Pending'>('All');
@@ -152,7 +152,18 @@ export default function MeetingScreen() {
 
   // FAB Press
   const handleAddMeetingPress = () => {
-    router.push('/(tabs)/meeting/add-meeting' as any);
+    if (params.leadId) {
+      router.push({
+        pathname: '/(tabs)/meeting/add-meeting',
+        params: {
+          leadId: params.leadId,
+          leadName: params.leadName,
+          company: params.company,
+        },
+      } as any);
+    } else {
+      router.push('/(tabs)/meeting/add-meeting' as any);
+    }
   };
 
   // Status-specific mapping helpers
@@ -501,7 +512,7 @@ const s = StyleSheet.create({
     right: 0,
     top: 0,
     height: 60,
-    paddingHorizontal: 6,
+    paddingHorizontal: 1,
     justifyContent: 'center',
   },
   weeklyRow: {
@@ -559,7 +570,7 @@ const s = StyleSheet.create({
     right: 0,
     top: 0,
     height: 280,
-    paddingHorizontal: 10,
+    paddingHorizontal: 1,
   },
   monthNavRow: {
     flexDirection: 'row',
@@ -630,7 +641,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.bgPage,
-    height: 18,
+    height: 1,
   },
   handleTouchArea: {
     paddingHorizontal: 20,
@@ -646,8 +657,8 @@ const s = StyleSheet.create({
 
   // Tab filter styling
   tabBarContainer: {
-    paddingHorizontal: 10,
-    marginVertical: 10,
+    paddingHorizontal: 8,
+    marginVertical: 8,
     backgroundColor: COLORS.bgPage,
   },
   tabBar: {
@@ -692,9 +703,9 @@ const s = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     padding: 10,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     gap: 5,

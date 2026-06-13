@@ -164,6 +164,8 @@ export default function OrderDetailsScreen() {
           );
         })}
 
+
+
         {/* Section: Basic Remark */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>BASIC REMARK</Text>
@@ -294,8 +296,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     letterSpacing: 0.5,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 8,
+    paddingTop: 8,
     gap: 5,
     paddingBottom: 150,
   },
@@ -303,16 +305,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Item Card
   itemCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 12,
+    padding: 10,
     gap: 5,
   },
   itemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   productMockContainer: {
     width: 76,
@@ -391,8 +393,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
+    gap: 5,
+    marginTop: 1,
   },
   sectionLabel: {
     fontSize: 12.5,
@@ -411,16 +413,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Remark Card
   remarkCard: {
     backgroundColor: '#F9FAF9',
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    gap: 8,
+    padding: 10,
+    gap: 5,
   },
   remarkTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   remarkNoteTitle: {
     fontSize: 12,
@@ -449,17 +451,17 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Terms Cards
   termsList: {
-    gap: 8,
+    gap: 5,
   },
   termCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
   },
   termIndexContainer: {
     width: 20,
@@ -486,12 +488,12 @@ const getStyles = (theme: any) => StyleSheet.create({
   totalBox: {
     backgroundColor: theme.primaryColor,
     borderRadius: 10,
-    height: 44,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: 8,
+    paddingHorizontal: 10,
+    marginTop: 5,
   },
   totalBoxLabel: {
     fontSize: 13,
@@ -508,11 +510,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   downloadBox: {
     backgroundColor: '#4C8070',
     borderRadius: 10,
-    height: 54,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   downloadTitle: {
     fontSize: 13,
@@ -541,9 +543,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 10,
   },
   docCard: {
-    width: (width - 50) / 2,
+    width: (width - 30) / 2,
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 10,

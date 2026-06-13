@@ -25,12 +25,17 @@ axiosInstance.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      Toast.show({
-        type: 'error',
-        text1: error.response?.data?.message || 'Unauthorized',
-      });
-      clearAuthData();
-      router.replace('/sign-in');
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      const processCode = error.response?.data?.details?.process_code || error.response?.data?.process_code;
+
+      if (!isLoginRequest && processCode !== 'user_already_logged_in') {
+        Toast.show({
+          type: 'error',
+          text1: error.response?.data?.message || 'Unauthorized',
+        });
+        clearAuthData();
+        router.replace('/sign-in');
+      }
     }
     return Promise.reject(error.response?.data || error);
   },

@@ -164,25 +164,25 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
 
   scrollContent: {
-    padding: 1,
-    gap: 1,
+    padding: 5,
+    gap: 5,
     paddingBottom: 150,
   },
 
   categoryTitle: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.textDark,
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: 1,
+    marginBottom: 1,
     paddingLeft: 4,
   },
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   switchRow: {
     flexDirection: 'row',
@@ -193,7 +193,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderBottomColor: '#F0F4F2',
   },
   switchLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textDark,
     fontWeight: '700',
   },

@@ -191,14 +191,14 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.textDark,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 16,
+    paddingHorizontal: 5,
+    paddingTop: 5,
+    gap: 2,
     paddingBottom: 150,
   },
   detailHeaderCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 24,
@@ -249,7 +249,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   infoCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,

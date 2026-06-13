@@ -138,7 +138,7 @@ const getStyles = (theme: any) => StyleSheet.create({
 
 
   scrollContent: {
-    padding: 16,
+    padding: 5,
     gap: 5,
     paddingBottom: 150,
   },
@@ -202,10 +202,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,

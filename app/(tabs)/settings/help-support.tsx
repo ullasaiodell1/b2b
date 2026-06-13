@@ -136,7 +136,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Banner
   bannerCard: {
     backgroundColor: theme.primaryColor,
-    borderRadius: 16,
+    borderRadius: 10,
     padding: 15,
     alignItems: 'center',
     gap: 2,
@@ -162,15 +162,15 @@ const getStyles = (theme: any) => StyleSheet.create({
   // List info
   infoList: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F4F2',
   },

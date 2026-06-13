@@ -12,10 +12,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
+import { usePathname } from 'expo-router';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
+
+  const pathname = usePathname();
+  const pathnameParts = pathname.split('/');
+  const lastPathSegment = pathnameParts[pathnameParts.length - 1];
 
   const slideAnim = useRef(new Animated.Value(100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -42,22 +47,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
   const currentRoute = state.routes ? state.routes[state.index] : null;
   const activeLeafRouteName = currentRoute ? getActiveRouteName(currentRoute) : '';
-
   const activeRouteName = state.routes[state.index]?.name;
-
-  useEffect(() => {
-    if (activeRouteName && activeRouteName !== 'add') {
-      const isValidModule = ALL_TAB_MODULES.some(m => m.id === activeRouteName);
-      if (isValidModule) {
-        setDynamicTab(activeRouteName);
-      }
-    }
-  }, [activeRouteName]);
 
   // Hide the tab bar on specific sub-screens/nested stack screens
   const hiddenTabBarScreens = [
     'add-meeting', 'meeting-details',
-    'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner',
+    'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner', 'edit-lead', 'select-category',
     'add-order', 'order-details', 'order-filter',
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
@@ -67,7 +62,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'theme-settings', 'notification-settings', 'help-support'
   ];
 
-  if (hiddenTabBarScreens.includes(activeLeafRouteName)) {
+  if (
+    hiddenTabBarScreens.includes(activeLeafRouteName) ||
+    hiddenTabBarScreens.includes(lastPathSegment)
+  ) {
     return null;
   }
 

@@ -1,10 +1,13 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadDetails, useLeads } from '@/hooks/useLeads';
+import { useMeetings } from '@/hooks/useMeetings';
+import { useQuotations } from '@/hooks/useQuotations';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -42,6 +45,36 @@ const DetailRow: React.FC<DetailRowProps> = ({ label, value, required }) => {
   );
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT: '#6B7280',
+  SENT: '#F59E0B',
+  VIEWED: '#3B82F6',
+  ACCEPTED: '#10B981',
+  REJECTED: '#EF4444',
+  EXPIRED: '#9CA3AF',
+  REVISED: '#8B5CF6',
+  CANCELLED: '#EF4444',
+  APPROVED: '#10B981',
+  ORDER_CREATED: '#0EA5E9',
+  PROFORMA_CREATED: '#6366F1',
+};
+
+function formatAmount(amount?: number | null) {
+  if (amount == null) return '₹ 0.00';
+  return '₹ ' + Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function LeadDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -60,6 +93,14 @@ export default function LeadDetailsScreen() {
 
   const { data: dbLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
   const { deleteLead } = useLeads();
+  const { quotations: dbQuotations, isLoading: isQuotationsLoading, isFetching: isQuotationsFetching, refetch: refetchQuotations } = useQuotations({ lead_id: params.id || '' });
+  const { meetings: dbMeetings, refetch: refetchMeetings } = useMeetings(undefined, params.id || '');
+
+  const handleRefresh = () => {
+    refetch();
+    refetchQuotations();
+    refetchMeetings();
+  };
 
   const leadName = dbLead?.name || params.name || '----';
   const leadCompany = dbLead?.company || params.company || '----';
@@ -76,6 +117,7 @@ export default function LeadDetailsScreen() {
   const [descExpanded, setDescExpanded] = useState(true);
   const [emailSearchQuery, setEmailSearchQuery] = useState('');
   const [emailSelectedStatus, setEmailSelectedStatus] = useState<'All' | 'Opened' | 'Sent' | 'Draft' | 'Bounce'>('All');
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleAction = (type: string) => {
     const routeParams = {
@@ -100,43 +142,21 @@ export default function LeadDetailsScreen() {
   };
 
   const handleEditLead = () => {
+    if (isNavigating) return;
     if (!params.id) {
       Alert.alert('Error', 'Lead ID is missing.');
       return;
     }
+    setIsNavigating(true);
     router.push({
-      pathname: '/(tabs)/leads/add-lead',
+      pathname: '/(tabs)/leads/edit-lead',
       params: {
         id: params.id,
-        fullname: leadName,
-        company: leadCompany,
-        email: leadEmail,
-        phone: leadPhone,
-        tags: leadTag,
-        priority: leadPriority,
-        owner: leadOwner,
-        ownerId: dbLead?.assigned_to ? String(dbLead.assigned_to) : '',
-        status: dbLead?.status || '',
-        source: dbLead?.source || '',
-        whatsapp: dbLead?.alternate_phone || '',
-        country: dbLead?.country_name || dbLead?.country || '',
-        stateName: dbLead?.state_name || dbLead?.state || '',
-        cityName: dbLead?.city_name || dbLead?.city || '',
-        pincode: dbLead?.pincode || '',
-        propertyType: dbLead?.property_type || '',
-        businessType: dbLead?.business_type || '',
-        designation: dbLead?.designation || '',
-        website: dbLead?.website || '',
-        gstNo: dbLead?.gst_number || '',
-        interestedCategory: dbLead?.interested_category || '',
-        panNo: dbLead?.pan_number || '',
-        addressLine1: dbLead?.address_line1 || '',
-        addressLine2: dbLead?.address_line2 || '',
-        expectedRevenue: dbLead?.expected_revenue ? String(dbLead.expected_revenue) : '',
-        remark: dbLead?.remarks || '',
-        emailOptOut: dbLead?.email_opt_out ? 'true' : 'false',
       }
     });
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 1000);
   };
 
   const handleDeleteLead = () => {
@@ -197,9 +217,6 @@ export default function LeadDetailsScreen() {
       </Text>
     );
   };
-
-  // Mock data for Quotation Tab
-  const QUOTATIONS: any[] = [];
 
   // Mock data for Order Tab
   const ORDERS: any[] = [];
@@ -263,7 +280,7 @@ export default function LeadDetailsScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
+          <RefreshControl refreshing={isFetching || isQuotationsFetching} onRefresh={handleRefresh} colors={[theme.primaryColor]} />
         }
       >
         {/* TAB 1: OVERVIEW */}
@@ -347,26 +364,12 @@ export default function LeadDetailsScreen() {
                   <DetailRow label="Title" value={dbLead?.designation || "----"} />
                   <DetailRow label="Email" value={leadEmail} />
                   <DetailRow label="Phone" value={leadPhone} />
-                  <DetailRow label="Fax" value="----" />
                   <DetailRow label="Mobile" value={dbLead?.alternate_phone || "----"} />
                   <DetailRow label="Website" value={dbLead?.website || "----"} />
                   <DetailRow label="Lead Source" value={leadTag} />
                   <DetailRow label="Lead Status" value={dbLead?.status || "----"} />
-                  <DetailRow label="Industry" value="----" />
-                  <DetailRow label="No. Of Employee" value="----" />
-                  <DetailRow label="Annual Revenue" value={dbLead?.expected_revenue ? `₹ ${dbLead.expected_revenue}` : "----"} />
-                  <DetailRow label="Raitng" value="----" />
                   <DetailRow label="Created By" value={dbLead?.created_by_name || leadOwner} />
-                  <DetailRow label="Email Opt Out" value="----" />
-                  <DetailRow label="Skype ID" value="----" />
                   <DetailRow label="Modified By" value={leadOwner} />
-                  <DetailRow label="Created Time" value="Today 2:29 pm" />
-                  <DetailRow label="Modified Time" value="Today 2:29 pm" />
-                  <DetailRow label="Salutation" value="----" />
-                  <DetailRow label="Secondary Email" value="----" />
-                  <DetailRow label="Twitter" value="----" />
-                  <DetailRow label="Last Activity Time" value="----" />
-                  <DetailRow label="Lead Conversion Time" value="----" />
                 </View>
               )}
             </View>
@@ -393,21 +396,12 @@ export default function LeadDetailsScreen() {
 
               {addressExpanded && (
                 <View style={styles.accordionContent}>
-                  <DetailRow
-                    label="Address"
-                    value={
-                      dbLead
-                        ? [
-                          dbLead.address_line1,
-                          dbLead.address_line2,
-                          dbLead.city_name || dbLead.city,
-                          dbLead.state_name || dbLead.state,
-                          dbLead.country_name || dbLead.country,
-                          dbLead.pincode
-                        ].filter(Boolean).join(', ') || '-----'
-                        : '-----'
-                    }
-                  />
+                  <DetailRow label="Address Line 1" value={dbLead?.address_line1 || "----"} />
+                  <DetailRow label="Address Line 2" value={dbLead?.address_line2 || "----"} />
+                  <DetailRow label="Country" value={dbLead?.country_name || dbLead?.country || "----"} />
+                  <DetailRow label="State" value={dbLead?.state_name || dbLead?.state || "----"} />
+                  <DetailRow label="City" value={dbLead?.city_name || dbLead?.city || "----"} />
+                  <DetailRow label="Pincode" value={dbLead?.pincode || "----"} />
                 </View>
               )}
             </View>
@@ -448,26 +442,6 @@ export default function LeadDetailsScreen() {
               <View style={styles.badgeRowTitleLeft}>
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>VISIT</Text>
-                <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>0</Text>
-                </View>
-              </View>
-              <View style={styles.arrowCircleBg}>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.badgeRowCard, { marginBottom: 1 }]}
-              onPress={() => handleAction('Follow Up')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.badgeRowTitleLeft}>
-                <View style={styles.indicatorBar} />
-                <Text style={styles.badgeCardTitle}>FOLLOW UP</Text>
-                <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>0</Text>
-                </View>
               </View>
               <View style={styles.arrowCircleBg}>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
@@ -482,9 +456,6 @@ export default function LeadDetailsScreen() {
               <View style={styles.badgeRowTitleLeft}>
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>MEETING</Text>
-                <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>0</Text>
-                </View>
               </View>
               <View style={styles.arrowCircleBg}>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
@@ -499,9 +470,6 @@ export default function LeadDetailsScreen() {
               <View style={styles.badgeRowTitleLeft}>
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>TASK</Text>
-                <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>0</Text>
-                </View>
               </View>
               <View style={styles.arrowCircleBg}>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
@@ -516,9 +484,6 @@ export default function LeadDetailsScreen() {
               <View style={styles.badgeRowTitleLeft}>
                 <View style={styles.indicatorBar} />
                 <Text style={styles.badgeCardTitle}>CALL</Text>
-                <View style={styles.badgeCountChip}>
-                  <Text style={styles.badgeCountText}>0</Text>
-                </View>
               </View>
               <View style={styles.arrowCircleBg}>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
@@ -540,7 +505,7 @@ export default function LeadDetailsScreen() {
                 style={styles.filterIconBtn}
                 onPress={() => router.push({
                   pathname: '/(tabs)/Quotation/quotation-filter',
-                  params: { referrer: 'lead-details' }
+                  params: { referrer: 'lead-details', leadId: params.id || '' }
                 })}
                 activeOpacity={0.8}
               >
@@ -550,53 +515,76 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* List */}
-            {QUOTATIONS.map((item, idx) => (
-              <View key={item.id + '_' + idx} style={styles.quotationCard}>
-                <View style={styles.quotationTopRow}>
-                  <View style={styles.quotationTypeRow}>
-                    <View style={[styles.dot, { backgroundColor: COLORS.blue }]} />
-                    <Text style={styles.quotationTypeText}>{item.type}</Text>
-                  </View>
-                  <Text style={[styles.statusTextLabel, { color: item.statusColor }]}>+ {item.status}</Text>
-                </View>
-
-                <Text style={styles.quotationTitle}># {item.id}</Text>
-
-                <View style={styles.cardDetailsList}>
-                  <View style={styles.cardDetailItem}>
-                    <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.cardDetailText}>{item.company}</Text>
-                  </View>
-                  <View style={styles.cardDetailItem}>
-                    <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.cardDetailText}>{item.contact}</Text>
-                  </View>
-                  <View style={styles.cardDetailItem}>
-                    <Ionicons name="home-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.cardDetailText}>{item.location}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardDivider} />
-
-                <View style={styles.quotationBottomRow}>
-                  <View style={styles.leftMetrics}>
-                    <View style={styles.metricItem}>
-                      <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                      <Text style={styles.metricText}>{item.date}</Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Ionicons name="flag-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                      <Text style={styles.metricText}>{item.itemsCount} Items</Text>
-                    </View>
-                  </View>
-                  <View style={styles.rightAmountCol}>
-                    <Text style={styles.amountLabel}>Amount</Text>
-                    <Text style={styles.amountValue}>{item.amount}</Text>
-                  </View>
-                </View>
+            {isQuotationsLoading ? (
+              <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginVertical: 20 }} />
+            ) : dbQuotations.length === 0 ? (
+              <View style={styles.placeholderTab}>
+                <Ionicons name="document-text-outline" size={40} color={COLORS.textMuted} />
+                <Text style={styles.placeholderTabText}>No quotations found for this lead.</Text>
               </View>
-            ))}
+            ) : (
+              dbQuotations.map((item: any, idx: number) => {
+                const prefix = item.prefix || 'QT';
+                const qNumber = item.quotation_number ? `${prefix}-${item.quotation_number}` : item.id.slice(0, 8).toUpperCase();
+                const statusColor = STATUS_COLORS[item.status] || '#6B7280';
+                const clientName = item.company_name || item.lead_company_name || '—';
+                const contactName = item.contact_name || item.lead_name || '—';
+                const dateStr = formatDate(item.quotation_date);
+                const itemsCount = Array.isArray(item.items) ? item.items.length : item.total_items || 0;
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.quotationCard}
+                    activeOpacity={0.8}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/Quotation/quotation-details',
+                      params: { id: item.id }
+                    })}
+                  >
+                    <View style={styles.quotationTopRow}>
+                      <View style={styles.quotationTypeRow}>
+                        <View style={[styles.dot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.quotationTypeText, { color: statusColor }]}>{item.status}</Text>
+                      </View>
+                      <Text style={[styles.statusTextLabel, { color: statusColor }]}>+ {item.status}</Text>
+                    </View>
+
+                    <Text style={styles.quotationTitle}># {qNumber}</Text>
+
+                    <View style={styles.cardDetailsList}>
+                      <View style={styles.cardDetailItem}>
+                        <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                        <Text style={styles.cardDetailText}>{clientName}</Text>
+                      </View>
+                      <View style={styles.cardDetailItem}>
+                        <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                        <Text style={styles.cardDetailText}>{contactName}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardDivider} />
+
+                    <View style={styles.quotationBottomRow}>
+                      <View style={styles.leftMetrics}>
+                        <View style={styles.metricItem}>
+                          <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
+                          <Text style={styles.metricText}>{dateStr}</Text>
+                        </View>
+                        <View style={styles.metricItem}>
+                          <Ionicons name="flag-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
+                          <Text style={styles.metricText}>{itemsCount} Items</Text>
+                        </View>
+                      </View>
+                      <View style={styles.rightAmountCol}>
+                        <Text style={styles.amountLabel}>Amount</Text>
+                        <Text style={styles.amountValue}>{formatAmount(item.grand_total)}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         )}
 
@@ -613,7 +601,7 @@ export default function LeadDetailsScreen() {
                 style={styles.filterIconBtn}
                 onPress={() => router.push({
                   pathname: '/(tabs)/Order/order-filter',
-                  params: { referrer: 'lead-details' }
+                  params: { referrer: 'lead-details', leadId: params.id || '' }
                 })}
                 activeOpacity={0.8}
               >
@@ -623,7 +611,7 @@ export default function LeadDetailsScreen() {
             </View>
 
             {/* List */}
-            {ORDERS.map((item, idx) => (
+            {ORDERS.map((item: any, idx: number) => (
               <View key={item.id + '_' + idx} style={styles.orderCard}>
                 <View style={styles.orderTopRow}>
                   <Text style={styles.orderTitle}># {item.id}</Text>
@@ -704,7 +692,7 @@ export default function LeadDetailsScreen() {
                 style={styles.filterIconBtn}
                 onPress={() => router.push({
                   pathname: '/(tabs)/email/email-filter',
-                  params: { referrer: 'lead-details' }
+                  params: { referrer: 'lead-details', id: params.id || '' }
                 })}
                 activeOpacity={0.8}
               >
@@ -835,17 +823,32 @@ export default function LeadDetailsScreen() {
             if (activeTab === 'Quotation') {
               router.push({
                 pathname: '/(tabs)/Quotation/add-quotation',
-                params: { referrer: 'lead-details' }
+                params: {
+                  referrer: 'lead-details',
+                  leadId: params.id || '',
+                  contactName: leadName !== '----' ? leadName : '',
+                  companyName: leadCompany !== '----' ? leadCompany : '',
+                  contactPhone: leadPhone !== '----' ? leadPhone : '',
+                  contactEmail: leadEmail !== '----' ? leadEmail : '',
+                  gstNumber: dbLead?.gst_number || '',
+                  panNumber: dbLead?.pan_number || '',
+                  notes: dbLead?.remarks || '',
+                }
               });
             } else if (activeTab === 'Order') {
               router.push({
                 pathname: '/(tabs)/Order/add-order',
-                params: { referrer: 'lead-details' }
+                params: {
+                  referrer: 'lead-details',
+                  leadId: params.id || '',
+                  companyName: leadCompany !== '----' ? leadCompany : '',
+                  contactName: leadName !== '----' ? leadName : '',
+                }
               });
             } else {
               router.push({
                 pathname: '/(tabs)/email/add-email',
-                params: { referrer: 'lead-details' }
+                params: { referrer: 'lead-details', leadId: params.id || '' }
               });
             }
           }}

@@ -7,6 +7,7 @@ export interface TaskRecord {
   due: string;
   priority: TaskPriority | string;
   status: TaskStatus | string;
+  due_date?: string;
   description?: string;
   assigned_to?: string;
   assigned_to_name?: string;

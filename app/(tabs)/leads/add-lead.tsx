@@ -1,16 +1,15 @@
-import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeads, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
+import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -42,6 +41,12 @@ export default function AddLeadScreen() {
   const { data: sourcesData } = useLeadSources();
   const { data: usersData } = useUsers();
   const { data: apiTagsData } = useLeadTags();
+  const { products } = useProducts();
+  const categoriesList = React.useMemo(() => {
+    const rawCats = products.map((p: any) => p.category_name).filter(Boolean);
+    const uniqueCats = Array.from(new Set(rawCats));
+    return uniqueCats.length > 0 ? uniqueCats : ['AYURVEDA', 'BASALT ELECTRONIC AMENITIES', 'BASALT ROOM AMENITIES', 'TOILETRIES'];
+  }, [products]);
 
   // Show All Fields Toggle
   const [showAllFields, setShowAllFields] = useState(false);
@@ -49,6 +54,8 @@ export default function AddLeadScreen() {
   // Tag Input states
   const [tagInput, setTagInput] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const tagInputRef = React.useRef<any>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Form States
   const [status, setStatus] = useState('New');
@@ -61,8 +68,11 @@ export default function AddLeadScreen() {
   const [phone, setPhone] = useState(''); // Phone
   const [whatsapp, setWhatsapp] = useState('');
   const [country, setCountry] = useState('');
+  const [countryId, setCountryId] = useState('');
   const [stateName, setStateName] = useState('');
+  const [stateId, setStateId] = useState('');
   const [cityName, setCityName] = useState('');
+  const [cityId, setCityId] = useState('');
   const [pincode, setPincode] = useState('');
   const [company, setCompany] = useState(''); // Company Name
   const [propertyType, setPropertyType] = useState('');
@@ -77,6 +87,68 @@ export default function AddLeadScreen() {
   const [expectedRevenue, setExpectedRevenue] = useState('');
   const [remark, setRemark] = useState('');
   const [emailOptOut, setEmailOptOut] = useState(false);
+
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // Effect to listen to returns from select screens (owner, company, category)
+  React.useEffect(() => {
+    if (isFocused) {
+      const selection = (global as any).leadSelection;
+      if (selection) {
+        if (selection.owner !== undefined) {
+          setOwner(selection.owner);
+        }
+        if (selection.ownerId !== undefined) {
+          setOwnerId(selection.ownerId);
+        }
+        if (selection.company !== undefined) {
+          setCompany(selection.company);
+        }
+        if (selection.interestedCategory !== undefined) {
+          setInterestedCategory(selection.interestedCategory);
+        }
+        // Clear selection once consumed
+        (global as any).leadSelection = {};
+      }
+    }
+  }, [isFocused]);
+
+  // Picker States
+  const [activePicker, setActivePicker] = useState<
+    'status' | 'source' | 'priority' | 'country' | 'state' | 'city' | 'interestedCategory' | 'tags' | null
+  >(null);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(modalSearchQuery);
+    }, 350);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [modalSearchQuery]);
+
+  React.useEffect(() => {
+    setModalSearchQuery('');
+    setDebouncedSearchQuery('');
+  }, [activePicker]);
 
   // Sync default status & source from backend if not set
   React.useEffect(() => {
@@ -93,9 +165,20 @@ export default function AddLeadScreen() {
   }, [sourcesData, routeParams?.source]);
 
   // Fetch Country, State, City options from API
-  const { data: countriesData } = useCountries();
-  const { data: statesData } = useStates(country);
-  const { data: citiesData } = useCities(stateName);
+  const { data: countriesData } = useCountries(activePicker === 'country' ? debouncedSearchQuery : '');
+
+  const countriesList = React.useMemo(() => Array.isArray(countriesData) ? countriesData : (countriesData?.data || []), [countriesData]);
+  const selectedCountryObjForStates = React.useMemo(() => countriesList.find((c: any) => (c.name || c.title || String(c)) === country), [countriesList, country]);
+  const effectiveCountryId = countryId || selectedCountryObjForStates?.id || '';
+
+  const { data: statesData } = useStates(effectiveCountryId, activePicker === 'state' ? debouncedSearchQuery : '');
+
+  const statesList = React.useMemo(() => Array.isArray(statesData) ? statesData : (statesData?.data || []), [statesData]);
+  const selectedStateObjForCities = React.useMemo(() => statesList.find((s: any) => (s.name || s.title || String(s)) === stateName), [statesList, stateName]);
+  const effectiveStateId = stateId || selectedStateObjForCities?.id || '';
+
+  const { data: citiesData } = useCities(effectiveStateId, activePicker === 'city' ? debouncedSearchQuery : '');
+  const citiesList = React.useMemo(() => Array.isArray(citiesData) ? citiesData : (citiesData?.data || []), [citiesData]);
 
   // Ref to track last parsed routeParams string to prevent reset loops on typing
   const lastParamsStringRef = React.useRef('');
@@ -200,101 +283,9 @@ export default function AddLeadScreen() {
     }
   }, [currentParamsString]);
 
-  // Photo State
-  const [photoName, setPhotoName] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (isFocused && cameraResult && cameraResult.target === 'lead') {
-      const uri = cameraResult.uri;
-      const pickedName = uri.split('/').pop() || 'photo.jpg';
-      setPhotoName(pickedName);
-      setCameraResult(null);
-    }
-  }, [isFocused]);
 
-  const handleImagePick = async (useCamera: boolean) => {
-    if (useCamera) {
-      router.push({
-        pathname: '/camera-capture',
-        params: {
-          sourceScreen: 'add-lead',
-          target: 'lead',
-        },
-      });
-      return;
-    }
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Denied', 'Permission to access photo library is required.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const pickedName = result.assets[0].fileName || result.assets[0].uri.split('/').pop() || 'photo.jpg';
-        setPhotoName(pickedName);
-      }
-    } catch (err) {
-      console.log('Error picking image:', err);
-    }
-  };
-
-  const handleDocPick = async () => {
-    try {
-      const res = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        setPhotoName(res.assets[0].name);
-      }
-    } catch (err) {
-      console.log('Error picking document:', err);
-    }
-  };
-
-  const handleUploadPress = () => {
-    Alert.alert(
-      'Upload Attachment',
-      'Choose a source for your file:',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => handleImagePick(true),
-        },
-        {
-          text: 'Choose from Gallery',
-          onPress: () => handleImagePick(false),
-        },
-        {
-          text: 'Choose Document',
-          onPress: () => handleDocPick(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
-
-  // Picker States
-  const [activePicker, setActivePicker] = useState<
-    'status' | 'source' | 'country' | 'state' | 'city' | null
-  >(null);
-  const [modalSearchQuery, setModalSearchQuery] = useState('');
-
-  React.useEffect(() => {
-    setModalSearchQuery('');
-  }, [activePicker]);
 
   const getPickerOptions = () => {
     let rawOptions: any[] = [];
@@ -309,6 +300,9 @@ export default function AddLeadScreen() {
           ? sourcesData
           : ['Website', 'Referral', 'Social Media', 'Cold Call', 'Exhibition', 'Self', 'Reference'];
         break;
+      case 'priority':
+        rawOptions = ['Hot', 'Warm', 'Cold'];
+        break;
       case 'country':
         rawOptions = Array.isArray(countriesData) ? countriesData : (countriesData?.data || []);
         break;
@@ -317,6 +311,12 @@ export default function AddLeadScreen() {
         break;
       case 'city':
         rawOptions = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
+        break;
+      case 'interestedCategory':
+        rawOptions = categoriesList;
+        break;
+      case 'tags':
+        rawOptions = suggestedTags;
         break;
       default:
         rawOptions = [];
@@ -332,15 +332,27 @@ export default function AddLeadScreen() {
   const handleSelectOption = (val: string) => {
     if (activePicker === 'status') setStatus(val);
     else if (activePicker === 'source') setSource(val);
+    else if (activePicker === 'priority') setPriority(val);
     else if (activePicker === 'country') {
+      const selectedObj = countriesList.find((c: any) => (c.name || c.title || String(c)) === val);
       setCountry(val);
+      setCountryId(selectedObj?.id || '');
       setStateName('');
+      setStateId('');
       setCityName('');
+      setCityId('');
     } else if (activePicker === 'state') {
+      const selectedObj = statesList.find((s: any) => (s.name || s.title || String(s)) === val);
       setStateName(val);
+      setStateId(selectedObj?.id || '');
       setCityName('');
+      setCityId('');
     } else if (activePicker === 'city') {
+      const selectedObj = citiesList.find((c: any) => (c.name || c.title || String(c)) === val);
       setCityName(val);
+      setCityId(selectedObj?.id || '');
+    } else if (activePicker === 'interestedCategory') {
+      setInterestedCategory(val);
     }
     setActivePicker(null);
   };
@@ -400,8 +412,14 @@ export default function AddLeadScreen() {
   }, [apiTagsData]);
 
   const handleSave = async () => {
-    if (!fullname.trim() || !phone.trim() || !owner) {
-      Alert.alert('Required Fields', 'Please fill in Name, Phone, and Lead Owner.');
+    if (!status || !source || !fullname.trim() || !phone.trim() || !email.trim() || !company.trim() || !owner.trim()) {
+      Alert.alert('Required Fields', 'Please fill in Status, Source, Assigned To, Fullname, Phone, Email, and Company.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email.trim() && !emailRegex.test(email.trim())) {
+      Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }
 
@@ -425,6 +443,10 @@ export default function AddLeadScreen() {
     const selectedSourceObj = (sourcesData || []).find((s: any) => s.name === source) || sourcesData?.[0];
     const selectedUserObj = (usersData || []).find((u: any) => u.name === owner);
 
+    const selectedCountryObj = countriesList.find((c: any) => (c.name || c.title || String(c)) === country);
+    const selectedStateObj = statesList.find((s: any) => (s.name || s.title || String(s)) === stateName);
+    const selectedCityObj = citiesList.find((c: any) => (c.name || c.title || String(c)) === cityName);
+
     const payload = {
       name: fullname.trim(),
       phone: phone.trim(),
@@ -434,11 +456,11 @@ export default function AddLeadScreen() {
       alternate_phone: whatsapp.trim() || null,
       address_line1: addressLine1.trim() || null,
       address_line2: addressLine2.trim() || null,
-      city_id: null,
-      state_id: null,
-      country_id: null,
+      city_id: cityId || selectedCityObj?.id || null,
+      state_id: effectiveStateId || selectedStateObj?.id || null,
+      country_id: effectiveCountryId || selectedCountryObj?.id || null,
       assigned_to: ownerId ? ownerId : (selectedUserObj?.id || null),
-      priority: priority.toUpperCase() === 'HIGH' ? 'HOT' : priority.toUpperCase() === 'NORMAL' ? 'WARM' : 'COLD',
+      priority: (priority.toUpperCase() === 'HOT' || priority.toUpperCase() === 'HIGH') ? 'HOT' : (priority.toUpperCase() === 'WARM' || priority.toUpperCase() === 'NORMAL') ? 'WARM' : 'COLD',
       company_name: company.trim() || null,
       designation: designation.trim() || null,
       website: website.trim() || null,
@@ -452,25 +474,29 @@ export default function AddLeadScreen() {
     };
 
     try {
+      console.log('Sending lead creation payload:', JSON.stringify(payload, null, 2));
       await createLead(payload);
       Alert.alert('Success', 'Lead created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)/leads') }
       ]);
     } catch (error: any) {
       console.error('Error creating lead:', error);
+      if (error.response?.data) {
+        console.log('Lead Create Error response details:', JSON.stringify(error.response.data, null, 2));
+      }
       Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to create lead. Please check inputs.');
     }
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/(tabs)/leads')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -489,7 +515,7 @@ export default function AddLeadScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 48, paddingTop: 5 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 250 : 30, paddingTop: 5 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -512,98 +538,47 @@ export default function AddLeadScreen() {
         </View>
 
         <View style={styles.formContainer}>
-          {/* Lead Owner */}
+          {/* Status */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Lead Owner</Text>
+            <Text style={styles.inputLabel}>Status <Text style={{ color: primaryColor }}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => setActivePicker('status')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.pickerValueText}>{status || 'New'}</Text>
+              <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Source */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Source <Text style={{ color: primaryColor }}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => setActivePicker('source')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.pickerValueText, !source && styles.placeholderText]}>
+                {source || 'Select Source'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Assigned To */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Assigned To <Text style={{ color: primaryColor }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => router.push({
                 pathname: '/(tabs)/leads/select-owner',
-                params: getNavigationParams({ currentOwner: owner, currentOwnerId: ownerId })
+                params: { currentOwner: owner, currentOwnerId: ownerId }
               })}
               activeOpacity={0.85}
             >
               <Text style={[styles.pickerValueText, !owner && styles.placeholderText]}>
-                {owner || 'Enter Lead Owner Name'}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Status */}
-          {showAllFields && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Status</Text>
-              <TouchableOpacity
-                style={styles.pickerTrigger}
-                onPress={() => setActivePicker('status')}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.pickerValueText}>{status || 'New'}</Text>
-                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Source */}
-          {showAllFields && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Source</Text>
-              <TouchableOpacity
-                style={styles.pickerTrigger}
-                onPress={() => setActivePicker('source')}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.pickerValueText, !source && styles.placeholderText]}>
-                  {source || 'Select Source'}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Priority */}
-          {showAllFields && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Priority</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {['Hot', 'Warm', 'Cold'].map((p) => (
-                  <TouchableOpacity
-                    key={p}
-                    style={[
-                      styles.priorityBtn,
-                      priority === p && {
-                        backgroundColor: p === 'Hot' ? '#FEE2E2' : p === 'Warm' ? '#FEF3C7' : '#E0F2FE',
-                        borderColor: p === 'Hot' ? '#EF4444' : p === 'Warm' ? '#F59E0B' : '#0EA5E9',
-                      }
-                    ]}
-                    onPress={() => setPriority(p)}
-                  >
-                    <Text style={[
-                      styles.priorityBtnText,
-                      priority === p && {
-                        color: p === 'Hot' ? '#B91C1C' : p === 'Warm' ? '#B45309' : '#0369A1'
-                      }
-                    ]}>{p}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Company */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Company</Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/select-company',
-                params: getNavigationParams({ currentCompany: company })
-              })}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
-                {company || 'Select Company'}
+                {owner || 'Select Assigned User'}
               </Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
@@ -611,7 +586,7 @@ export default function AddLeadScreen() {
 
           {/* Fullname */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Fullname</Text>
+            <Text style={styles.inputLabel}>Fullname <Text style={{ color: primaryColor }}>*</Text></Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Full Name"
@@ -621,9 +596,22 @@ export default function AddLeadScreen() {
             />
           </View>
 
+          {/* Phone */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Phone <Text style={{ color: primaryColor }}>*</Text></Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter Phone Number"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+            />
+          </View>
+
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email</Text>
+            <Text style={styles.inputLabel}>Email <Text style={{ color: primaryColor }}>*</Text></Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Email"
@@ -634,18 +622,38 @@ export default function AddLeadScreen() {
             />
           </View>
 
-          {/* Phone */}
+          {/* Company */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Enter Phone Number"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-            />
+            <Text style={styles.inputLabel}>Company <Text style={{ color: primaryColor }}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => router.push({
+                pathname: '/(tabs)/leads/select-company',
+                params: { currentCompany: company }
+              })}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
+                {company || 'Select Company'}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
+
+          {/* Priority */}
+          {showAllFields && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Priority</Text>
+              <TouchableOpacity
+                style={styles.pickerTrigger}
+                onPress={() => setActivePicker('priority')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.pickerValueText}>{priority || 'Select Priority'}</Text>
+                <Ionicons name="chevron-expand" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Whatsapp Number */}
           {showAllFields && (
@@ -666,79 +674,33 @@ export default function AddLeadScreen() {
           {showAllFields && (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Tags</Text>
-              <View style={styles.inputWithIconContainer}>
-                <TextInput
-                  style={styles.textInputWithIcon}
-                  placeholder="Select or enter tags..."
-                  placeholderTextColor="#9CA3AF"
-                  value={tagInput}
-                  onChangeText={(val) => {
-                    if (val.endsWith(',')) {
-                      const tagText = val.slice(0, -1).trim();
-                      if (tagText && !selectedTags.includes(tagText)) {
-                        setSelectedTags([...selectedTags, tagText]);
-                      }
-                      setTagInput('');
-                    } else {
-                      setTagInput(val);
-                    }
-                  }}
-                  onSubmitEditing={handleAddTag}
-                  blurOnSubmit={false}
-                />
-                <TouchableOpacity
-                  style={styles.inputRightIconContainer}
-                  onPress={handleAddTag}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="add" size={22} color={primaryColor} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Selected Tags Chips */}
-              {selectedTags.length > 0 && (
-                <View style={styles.chipsContainer}>
-                  {selectedTags.map((t) => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[styles.chip, { borderColor: primaryColor, backgroundColor: '#EEF2FF' }]}
-                      onPress={() => setSelectedTags(selectedTags.filter(item => item !== t))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.chipText, { color: primaryColor, fontWeight: '700' }]}>{t} ✕</Text>
-                    </TouchableOpacity>
-                  ))}
+              <TouchableOpacity
+                style={[styles.pickerTrigger, { height: undefined, minHeight: 48 }]}
+                onPress={() => setActivePicker('tags')}
+                activeOpacity={0.85}
+              >
+                <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 4 }}>
+                  {selectedTags.length > 0 ? (
+                    selectedTags.map((tag) => (
+                      <View key={tag} style={[styles.tagChipInline, { marginVertical: 2 }]}>
+                        <Text style={styles.tagChipInlineText}>{tag}</Text>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setSelectedTags(selectedTags.filter(t => t !== tag));
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.placeholderText}>Select or enter tags...</Text>
+                  )}
                 </View>
-              )}
-
-              {/* Suggested Tags */}
-              <Text style={[styles.inputLabel, { marginTop: 6, fontSize: 11, color: COLORS.textMuted }]}>
-                Suggested Tags
-              </Text>
-              <View style={styles.chipsContainer}>
-                {suggestedTags.map((t) => {
-                  const isSelected = selectedTags.includes(t);
-                  return (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.chip,
-                        isSelected && { borderColor: primaryColor, backgroundColor: '#EEF2FF' }
-                      ]}
-                      onPress={() => {
-                        if (isSelected) {
-                          setSelectedTags(selectedTags.filter(s => s !== t));
-                        } else {
-                          setSelectedTags([...selectedTags, t]);
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.chipText, isSelected && { color: primaryColor, fontWeight: '700' }]}>{t}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -953,13 +915,19 @@ export default function AddLeadScreen() {
               {/* Interested Category */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Interested Category</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Select or enter category..."
-                  placeholderTextColor="#9CA3AF"
-                  value={interestedCategory}
-                  onChangeText={setInterestedCategory}
-                />
+                <TouchableOpacity
+                  style={styles.pickerTrigger}
+                  onPress={() => router.push({
+                    pathname: '/(tabs)/leads/select-category',
+                    params: { currentCategory: interestedCategory }
+                  })}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.pickerValueText, !interestedCategory && styles.placeholderText]}>
+                    {interestedCategory || 'Select Category'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
               </View>
 
               {/* Remark */}
@@ -979,53 +947,12 @@ export default function AddLeadScreen() {
           </>
         )}
 
-        {/* SECTION HEADER: OTHER DETAILS */}
-        <View style={[styles.sectionHeaderRow, { marginTop: 20 }]}>
-          <View style={styles.sectionHeaderIndicator} />
-          <Text style={styles.sectionHeaderTitle}>OTHER DETAILS</Text>
-          <View style={styles.sectionHeaderLine} />
-        </View>
-
-        <View style={styles.formContainer}>
-          {/* Email Opt Out */}
-          <View style={styles.optOutRow}>
-            <Text style={styles.optOutLabel}>Email Opt Out</Text>
-            <Switch
-              value={emailOptOut}
-              onValueChange={setEmailOptOut}
-              trackColor={{ false: '#E2E8F0', true: theme.primaryColor }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          {/* Photo Attachment */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Photo</Text>
-            <TouchableOpacity
-              style={styles.uploadDropzone}
-              onPress={handleUploadPress}
-              activeOpacity={0.8}
-            >
-              <View style={styles.uploadIconContainer}>
-                <Ionicons name="arrow-up-circle-outline" size={20} color={theme.primaryColor} />
-              </View>
-              <View style={styles.uploadTextContainer}>
-                <Text style={styles.uploadTitleText} numberOfLines={1}>
-                  {photoName || 'Select a file or drag and drop here'}
-                </Text>
-                <Text style={styles.uploadSubText}>JPG, PNG or PDF – max 10MB</Text>
-              </View>
-              <TouchableOpacity style={styles.browseBtn} activeOpacity={0.8} onPress={handleUploadPress}>
-                <Text style={styles.browseBtnText}>Browse</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-
-          {/* Save Lead Button */}
+        {/* Save Lead Button inside ScrollView flow */}
+        <View style={styles.nonStickySaveContainer}>
           <TouchableOpacity
             style={[
               styles.saveBtn,
-              { marginTop: 32, borderRadius: 25, height: 50 },
+              { borderRadius: 25, height: 50 },
               isCreating && { opacity: 0.6 }
             ]}
             onPress={handleSave}
@@ -1035,6 +962,7 @@ export default function AddLeadScreen() {
             <Text style={styles.saveBtnText}>{isCreating ? 'Saving...' : 'Save Lead'}</Text>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
 
       {/* PICKER MODALS */}
@@ -1050,9 +978,12 @@ export default function AddLeadScreen() {
                 Select {
                   activePicker === 'status' ? 'Status' :
                     activePicker === 'source' ? 'Source' :
-                      activePicker === 'country' ? 'Country' :
-                        activePicker === 'state' ? 'State' :
-                          activePicker === 'city' ? 'City' : 'Value'
+                      activePicker === 'priority' ? 'Priority' :
+                        activePicker === 'country' ? 'Country' :
+                          activePicker === 'state' ? 'State' :
+                            activePicker === 'city' ? 'City' :
+                              activePicker === 'tags' ? 'Tags' :
+                                activePicker === 'interestedCategory' ? 'Interested Category' : 'Value'
                 }
               </Text>
               <TouchableOpacity onPress={() => setActivePicker(null)}>
@@ -1061,13 +992,14 @@ export default function AddLeadScreen() {
             </View>
 
             {/* Search Input for Location Picker Modals */}
-            {(activePicker === 'country' || activePicker === 'state' || activePicker === 'city') && (
+            {(activePicker === 'country' || activePicker === 'state' || activePicker === 'city' || activePicker === 'tags') && (
               <View style={styles.modalSearchContainer}>
                 <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
                   style={styles.modalSearchInput}
                   placeholder={`Search ${activePicker === 'country' ? 'Country' :
-                    activePicker === 'state' ? 'State' : 'City'
+                    activePicker === 'state' ? 'State' :
+                      activePicker === 'tags' ? 'Tags' : 'City'
                     }...`}
                   placeholderTextColor="#9CA3AF"
                   value={modalSearchQuery}
@@ -1083,18 +1015,62 @@ export default function AddLeadScreen() {
               </View>
             )}
 
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {getPickerOptions().map((opt) => (
+            <ScrollView style={{ paddingHorizontal: 24 }}>
+              {activePicker === 'tags' && modalSearchQuery.trim() !== '' && !suggestedTags.some(t => t.toLowerCase() === modalSearchQuery.toLowerCase().trim()) && (
                 <TouchableOpacity
-                  key={opt}
                   style={styles.modalRowItem}
-                  onPress={() => handleSelectOption(opt)}
+                  onPress={() => {
+                    const newTag = modalSearchQuery.trim();
+                    if (!selectedTags.includes(newTag)) {
+                      setSelectedTags([...selectedTags, newTag]);
+                    }
+                    setModalSearchQuery('');
+                  }}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.modalRowText}>{opt}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                  <Text style={[styles.modalRowText, { color: theme.primaryColor }]}>+ Create Tag "{modalSearchQuery.trim()}"</Text>
+                  <Ionicons name="add" size={18} color={theme.primaryColor} />
                 </TouchableOpacity>
-              ))}
+              )}
+              {getPickerOptions().map((opt) => {
+                const isSelected = (activePicker === 'status' && status === opt) ||
+                  (activePicker === 'source' && source === opt) ||
+                  (activePicker === 'priority' && priority === opt) ||
+                  (activePicker === 'country' && country === opt) ||
+                  (activePicker === 'state' && stateName === opt) ||
+                  (activePicker === 'city' && cityName === opt) ||
+                  (activePicker === 'interestedCategory' && interestedCategory === opt) ||
+                  (activePicker === 'tags' && selectedTags.includes(opt));
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      if (activePicker === 'tags') {
+                        if (selectedTags.includes(opt)) {
+                          setSelectedTags(selectedTags.filter(t => t !== opt));
+                        } else {
+                          setSelectedTags([...selectedTags, opt]);
+                        }
+                      } else {
+                        handleSelectOption(opt);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.modalRowText, isSelected && { color: theme.primaryColor }]}>{opt}</Text>
+                    {activePicker === 'tags' ? (
+                      isSelected ? (
+                        <Ionicons name="checkmark" size={18} color={theme.primaryColor} />
+                      ) : (
+                        <Ionicons name="add" size={18} color="#94A3B8" />
+                      )
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
               {getPickerOptions().length === 0 && (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ color: COLORS.textMuted, fontSize: 13.5, fontWeight: '600' }}>
@@ -1151,7 +1127,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
   toggleCard: {
     flexDirection: 'row',
@@ -1161,9 +1137,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 1,
+    marginTop: 1,
   },
   toggleCardLabel: {
     fontSize: 13.5,
@@ -1175,7 +1151,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 5,
     marginBottom: 10,
   },
   sectionHeaderIndicator: {
@@ -1199,10 +1175,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
 
   formContainer: {
-    gap: 12,
+    gap: 1,
   },
   inputGroup: {
-    gap: 6,
+    gap: 3,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -1341,105 +1317,142 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Modal styles for option selector
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '65%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '65%',
     paddingBottom: 24,
   },
   modalSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    height: 40,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 8,
+    height: 46,
   },
   modalSearchInput: {
     flex: 1,
-    height: '100%',
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textDark,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#F1F5F9',
     marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 14.5,
-    fontWeight: '800',
-    color: COLORS.textDark,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   modalRowItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#F1F5F9',
   },
   modalRowText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: COLORS.textDark,
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: '#1E293B',
   },
 
   // Premium Tags styles
-  inputWithIconContainer: {
+  tagsInputContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#FFFFFF',
-    height: 48,
-    paddingRight: 12,
+    gap: 6,
+    minHeight: 48,
   },
-  textInputWithIcon: {
+  tagChipInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 6,
+  },
+  tagChipInlineText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  tagTextInputInline: {
     flex: 1,
-    height: '100%',
+    minWidth: 80,
+    height: 32,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    padding: 0,
+  },
+  suggestionsDropdown: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 9999,
+    marginBottom: 6,
+    maxHeight: 180,
+  },
+  suggestionItem: {
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  suggestionItemHighlighted: {
+    backgroundColor: '#F0F9FF',
+  },
+  suggestionText: {
     fontSize: 13.5,
     fontWeight: '600',
     color: COLORS.textDark,
   },
-  inputRightIconContainer: {
-    padding: 4,
+  bottomStickyBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  nonStickySaveContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginTop: 10,
     backgroundColor: '#FFFFFF',
   },
-  chipActive: {},
-  chipText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  chipTextActive: {},
 });

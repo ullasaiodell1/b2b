@@ -203,15 +203,15 @@ const getStyles = (theme: any) => StyleSheet.create({
     marginTop: 2,
   },
   scrollContent: {
-    padding: 20,
-    gap: 24,
+    padding: 5,
+    gap: 5,
     paddingBottom: 150,
   },
 
   // Banner lock badge
   bannerContainer: {
     alignItems: 'center',
-    gap: 6,
+    gap: 1,
     marginVertical: 10,
   },
   bannerBadge: {
@@ -236,10 +236,10 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Form Fields
   form: {
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 3,
   },
   inputLabel: {
     fontSize: 12,

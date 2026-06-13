@@ -330,7 +330,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     letterSpacing: 0.2,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     paddingTop: 5,
     paddingBottom: 150,
     gap: 5,

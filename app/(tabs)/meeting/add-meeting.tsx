@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -48,7 +49,6 @@ export default function AddMeetingScreen() {
   const [method, setMethod] = useState<MeetingMethod | null>(null);
   const [methodDropdownOpen, setMethodDropdownOpen] = useState(false);
   const [purpose, setPurpose] = useState('');
-  const [remarks, setRemarks] = useState('');
 
   // ─── DateTime State ───────────────────────────────────────────
   const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
@@ -62,6 +62,23 @@ export default function AddMeetingScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   const formatDate = (date: Date) =>
     date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -70,16 +87,8 @@ export default function AddMeetingScreen() {
 
   // ─── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!purpose.trim()) {
-      Alert.alert('Required', 'Please enter a Meeting Purpose.');
-      return;
-    }
     if (!status) {
       Alert.alert('Required', 'Please select a Status.');
-      return;
-    }
-    if (!method) {
-      Alert.alert('Required', 'Please select a Method.');
       return;
     }
 
@@ -103,7 +112,7 @@ export default function AddMeetingScreen() {
               startDate: combined,
               endDate,
               location: method,
-              notes: remarks || undefined,
+              notes: undefined,
             });
           }
         }
@@ -116,7 +125,7 @@ export default function AddMeetingScreen() {
       await createMeetingMutation.mutateAsync({
         leadId: params.leadId,
         title: purpose,
-        venue: remarks,
+        venue: '',
         location: method,
         isAllDay: false,
         fromTime: formatTime(scheduledTime),
@@ -130,7 +139,7 @@ export default function AddMeetingScreen() {
         _status: status ?? 'SCHEDULED',
         _followUpMethod: method ?? 'Online',
         _purpose: purpose,
-        _remarks: remarks,
+        _remarks: '',
       } as any);
       router.back();
     } catch (err: any) {
@@ -142,7 +151,7 @@ export default function AddMeetingScreen() {
   const isLoading = createMeetingMutation.isPending;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* ── HEADER ──────────────────────────────────── */}
@@ -163,7 +172,7 @@ export default function AddMeetingScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardVisible ? 200 : 30 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -306,10 +315,8 @@ export default function AddMeetingScreen() {
 
           {/* ── Purpose ─────────────────────────────── */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Purpose <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={[styles.inputRow, !purpose.trim() && styles.inputError]}>
+            <Text style={styles.inputLabel}>Purpose</Text>
+            <View style={styles.inputRow}>
               <Ionicons name="briefcase-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
@@ -325,9 +332,7 @@ export default function AddMeetingScreen() {
 
           {/* ── Scheduled Date & Time ────────────────── */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Scheduled Date &amp; Time <Text style={styles.required}>*</Text>
-            </Text>
+            <Text style={styles.inputLabel}>Scheduled Date &amp; Time</Text>
             <View style={styles.dateTimeRow}>
               {/* Date */}
               <TouchableOpacity
@@ -357,26 +362,6 @@ export default function AddMeetingScreen() {
             </View>
           </View>
 
-          <View style={styles.divider} />
-
-          {/* ── Remarks ─────────────────────────────── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Remarks</Text>
-            <View style={[styles.inputRow, styles.textareaRow]}>
-              <Ionicons name="document-text-outline" size={16} color={COLORS.textMuted} style={[styles.inputIcon, { marginTop: 2 }]} />
-              <TextInput
-                style={[styles.textInput, styles.textarea]}
-                placeholder="Add any notes or remarks..."
-                placeholderTextColor="#9CA3AF"
-                value={remarks}
-                onChangeText={setRemarks}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-
           {/* ── Lead (read-only if passed) ───────────── */}
           {params.leadName ? (
             <>
@@ -395,23 +380,23 @@ export default function AddMeetingScreen() {
           ) : null}
 
         </View>
-      </ScrollView>
 
-      {/* ── STICKY SAVE BUTTON ───────────────────────── */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity
-          onPress={handleSave}
-          style={[styles.saveBtn, isLoading && { opacity: 0.7 }]}
-          activeOpacity={0.9}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveBtnText}>SAVE MEETING</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* ── SAVE MEETING BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveBtn, isLoading && { opacity: 0.7 }]}
+            activeOpacity={0.9}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>SAVE MEETING</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {/* ── DATE PICKER ───────────────────────────────── */}
       {showDatePicker && (
@@ -509,9 +494,8 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // ── Scroll ──────────────────────────────────────────
   scrollContent: {
-    padding: 12,
-    paddingBottom: 150,
-    gap: 10,
+    padding: 5,
+    gap: 8,
   },
 
   // ── Sync Toggle ─────────────────────────────────────
@@ -520,8 +504,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.bgWhite,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 1,
+    paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -529,7 +513,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   toggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   toggleLabel: {
     fontSize: 13,
@@ -540,14 +524,14 @@ const getStyles = (theme: any) => StyleSheet.create({
   // ── Form Card ────────────────────────────────────────
   formCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 14,
+    gap: 5,
   },
   inputGroup: {
-    gap: 8,
+    gap: 5,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -653,6 +637,10 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderTopColor: COLORS.border,
     paddingHorizontal: 20,
     paddingTop: 12,
+  },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
   saveBtn: {
     backgroundColor: theme.primaryColor,

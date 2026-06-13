@@ -1,8 +1,14 @@
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useUsers } from '@/hooks/useLeads';
-import { useCreateTask } from '@/hooks/useTasks';
+import { useLeadDetails, useUsers } from '@/hooks/useLeads';
+import {
+  TASK_PRIORITY_MAP,
+  TASK_STATUS_MAP,
+  useCreateTask,
+  useTask,
+  useUpdateTask
+} from '@/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
@@ -11,6 +17,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,7 +31,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 
 // ─── Option sets ──────────────────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -54,24 +60,59 @@ interface UserRecord {
 export default function AddTaskScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-
   const router = useRouter();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ leadId?: string; lead_id?: string; leadName?: string }>();
+  const primaryColor = theme.primaryColor;
 
-  const leadId = params.leadId || params.lead_id || '';
-  const leadName = params.leadName || '';
-  const { primaryColor, primaryLight } = useTheme();
+  const id = params.id as string;
+  const leadId = params.leadId as string;
+  const leadName = params.leadName as string;
 
-  const createTaskMutation = useCreateTask();
+  const { task } = useTask(id);
+  const effectiveLeadId = leadId || task?.lead_id || '';
+  const { data: dbLead } = useLeadDetails(effectiveLeadId);
+  const resolvedLeadName = leadName || dbLead?.name || '';
+
   const { data: usersData, isLoading: isLoadingUsers } = useUsers();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
 
-  // ─── Form State ────────────────────────────────────────────────
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<StatusType | null>(null);
-  const [priority, setPriority] = useState<PriorityType | null>(null);
-  const [assignedUser, setAssignedUser] = useState<UserRecord | null>(null);
+  const [title, setTitle] = useState((params.title as string) || '');
+  const [description, setDescription] = useState((params.description as string) || '');
+  const [status, setStatus] = useState<StatusType | null>(() => {
+    const pStatus = params.status as string;
+    if (pStatus) {
+      return (TASK_STATUS_MAP[pStatus] || pStatus) as StatusType;
+    }
+    return null;
+  });
+  const [priority, setPriority] = useState<PriorityType | null>(() => {
+    const pPriority = params.priority as string;
+    if (pPriority) {
+      return (TASK_PRIORITY_MAP[pPriority] || pPriority) as PriorityType;
+    }
+    return null;
+  });
+  const [assignedUser, setAssignedUser] = useState<UserRecord | null>(() => {
+    if (params.assignedTo) {
+      return {
+        id: params.assignedTo as string,
+        name: (params.assignedToName as string) || '',
+        email: '',
+      };
+    }
+    return null;
+  });
+  const [dueDateObj, setDueDateObj] = useState<Date>(() => {
+    if (params.due) {
+      const parsedDate = new Date(params.due as string);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    return new Date();
+  });
 
   // ─── Validation Error States ───────────────────────────────────
   const [titleError, setTitleError] = useState(false);
@@ -84,7 +125,6 @@ export default function AddTaskScreen() {
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
   // ─── Date State ────────────────────────────────────────────────
-  const [dueDateObj, setDueDateObj] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -95,6 +135,61 @@ export default function AddTaskScreen() {
   // ─── Sync with Calendar State ─────────────────────────────────
   const [syncToCalendar, setSyncToCalendar] = useState(true);
 
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // ─── Initialize form when task is loaded (for editing) ─────────
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title || '');
+      setDescription(task.description || '');
+
+      // status mapping
+      if (task.status) {
+        const mappedStatus = TASK_STATUS_MAP[task.status] || task.status;
+        setStatus(mappedStatus as StatusType);
+      }
+
+      // priority mapping
+      if (task.priority) {
+        const mappedPriority = TASK_PRIORITY_MAP[task.priority] || task.priority;
+        setPriority(mappedPriority as PriorityType);
+      }
+
+      // assigned user mapping
+      if (task.assigned_to) {
+        setAssignedUser({
+          id: String(task.assigned_to),
+          name: task.assigned_to_name || '',
+          email: '',
+        });
+      }
+
+      // due date mapping
+      if (task.due_date) {
+        setDueDateObj(new Date(task.due_date));
+      } else if (task.due) {
+        const parsedDate = new Date(task.due);
+        if (!isNaN(parsedDate.getTime())) {
+          setDueDateObj(parsedDate);
+        }
+      }
+    }
+  }, [task]);
 
   // ─── Auto-select user if match found ──────────────────────────
   useEffect(() => {
@@ -121,7 +216,6 @@ export default function AddTaskScreen() {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
   };
 
-  // ─── Save ──────────────────────────────────────────────────────
   const syncToSystemCalendar = async (taskTitle: string, taskDescription: string, taskDueDate: Date) => {
     try {
       const { status: calendarPerm } = await Calendar.requestCalendarPermissionsAsync();
@@ -213,15 +307,30 @@ export default function AddTaskScreen() {
     }
 
     try {
-      await createTaskMutation.mutateAsync({
-        title: title.trim(),
-        description: description.trim(),
-        due: dueDateObj.toISOString(),
-        priority: priority!,
-        status: status!,
-        assigned_to: assignedUser!.id,
-        lead_id: leadId || undefined,
-      });
+      if (id) {
+        await updateTaskMutation.mutateAsync({
+          id,
+          data: {
+            title: title.trim(),
+            description: description.trim(),
+            due: dueDateObj.toISOString(),
+            priority: priority!,
+            status: status!,
+            assigned_to: assignedUser!.id,
+            lead_id: effectiveLeadId || undefined,
+          },
+        });
+      } else {
+        await createTaskMutation.mutateAsync({
+          title: title.trim(),
+          description: description.trim(),
+          due: dueDateObj.toISOString(),
+          priority: priority!,
+          status: status!,
+          assigned_to: assignedUser!.id,
+          lead_id: effectiveLeadId || undefined,
+        });
+      }
 
       if (syncToCalendar) {
         await syncToSystemCalendar(title.trim(), description.trim(), dueDateObj);
@@ -230,11 +339,11 @@ export default function AddTaskScreen() {
       router.back();
     } catch (err: any) {
       console.error('[AddTask] save error:', err);
-      Alert.alert('Error', err?.message || 'Failed to create task. Please try again.');
+      Alert.alert('Error', err?.message || `Failed to ${id ? 'update' : 'create'} task. Please try again.`);
     }
   };
 
-  const isLoading = createTaskMutation.isPending;
+  const isLoading = createTaskMutation.isPending || updateTaskMutation.isPending;
 
   // Filter users based on search query
   const filteredUsers = (usersData || []).filter((user: any) =>
@@ -245,7 +354,7 @@ export default function AddTaskScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
@@ -256,16 +365,16 @@ export default function AddTaskScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            <Text style={{ color: primaryColor }}>ADD </Text>
+            <Text style={{ color: primaryColor }}>{id ? 'EDIT ' : 'ADD '}</Text>
             <Text style={{ color: COLORS.textDark }}>TASK</Text>
           </Text>
-          <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
+          <Text style={styles.headerSubtitle}>{id ? 'Modify The Details Below' : 'Fill In The Details Below'}</Text>
         </View>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardVisible ? 200 : 30 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -298,12 +407,12 @@ export default function AddTaskScreen() {
         <View style={styles.form}>
 
           {/* ── Related Lead (If applicable) ────────── */}
-          {leadName ? (
+          {resolvedLeadName ? (
             <View style={styles.fieldContainer}>
               <Text style={styles.fieldLabel}>Related Lead</Text>
               <View style={[styles.inputContainer, styles.disabledInput]}>
                 <Ionicons name="link-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
-                <Text style={styles.disabledInputText}>{leadName}</Text>
+                <Text style={styles.disabledInputText}>{resolvedLeadName}</Text>
               </View>
             </View>
           ) : null}
@@ -311,7 +420,7 @@ export default function AddTaskScreen() {
           {/* ── Title (required) ──────────────────── */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Title <Text style={{ color: '#EF4444' }}>*</Text>
+              Title <Text style={{ color: primaryColor }}>*</Text>
             </Text>
             <View style={[styles.inputContainer, titleError && styles.inputError]}>
               <Ionicons name="create-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
@@ -349,14 +458,13 @@ export default function AddTaskScreen() {
           {/* ── Status full-width dropdown ────────────────────────── */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Status <Text style={{ color: '#EF4444' }}>*</Text>
+              Status <Text style={{ color: primaryColor }}>*</Text>
             </Text>
             <TouchableOpacity
               style={[styles.selectBox, statusError && styles.inputError]}
               activeOpacity={0.8}
               onPress={() => {
-                setShowStatusDropdown(!showStatusDropdown);
-                setShowPriorityDropdown(false);
+                setShowStatusDropdown(true);
               }}
             >
               <Text style={status ? styles.selectText : styles.placeholderText}>
@@ -366,48 +474,18 @@ export default function AddTaskScreen() {
               </Text>
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
-
-            {showStatusDropdown && (
-              <View style={[styles.dropdownList, { zIndex: 3000 }]}>
-                {STATUS_OPTIONS.map((opt) => {
-                  const isSelected = status === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && { backgroundColor: opt.bgColor },
-                      ]}
-                      onPress={() => {
-                        setStatus(opt.value);
-                        setShowStatusDropdown(false);
-                        setStatusError(false);
-                      }}
-                    >
-                      <Text style={[
-                        styles.dropdownItemText,
-                        isSelected && { color: opt.textColor, fontWeight: '700' },
-                      ]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
           </View>
 
           {/* ── Priority full-width dropdown ──────────────────────── */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Priority <Text style={{ color: '#EF4444' }}>*</Text>
+              Priority <Text style={{ color: primaryColor }}>*</Text>
             </Text>
             <TouchableOpacity
               style={[styles.selectBox, priorityError && styles.inputError]}
               activeOpacity={0.8}
               onPress={() => {
-                setShowPriorityDropdown(!showPriorityDropdown);
-                setShowStatusDropdown(false);
+                setShowPriorityDropdown(true);
               }}
             >
               <Text style={priority ? styles.selectText : styles.placeholderText}>
@@ -417,41 +495,12 @@ export default function AddTaskScreen() {
               </Text>
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
-
-            {showPriorityDropdown && (
-              <View style={[styles.dropdownList, { zIndex: 2000 }]}>
-                {PRIORITY_OPTIONS.map((opt) => {
-                  const isSelected = priority === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && { backgroundColor: opt.bgColor },
-                      ]}
-                      onPress={() => {
-                        setPriority(opt.value);
-                        setShowPriorityDropdown(false);
-                        setPriorityError(false);
-                      }}
-                    >
-                      <Text style={[
-                        styles.dropdownItemText,
-                        isSelected && { color: opt.textColor, fontWeight: '700' },
-                      ]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
           </View>
 
           {/* ── Assigned To (required) ──────────────── */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Assigned To <Text style={{ color: '#EF4444' }}>*</Text>
+              Assigned To <Text style={{ color: primaryColor }}>*</Text>
             </Text>
             <TouchableOpacity
               style={[styles.selectBox, assignedError && styles.inputError]}
@@ -471,7 +520,7 @@ export default function AddTaskScreen() {
           {/* ── Due Date (required) ─────────────────── */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Due Date <Text style={{ color: '#EF4444' }}>*</Text>
+              Due Date <Text style={{ color: primaryColor }}>*</Text>
             </Text>
             <TouchableOpacity
               style={styles.selectBox}
@@ -488,19 +537,21 @@ export default function AddTaskScreen() {
 
         </View>
 
-        {/* ── SAVE BUTTON ─────────────────────────────── */}
-        <TouchableOpacity
-          style={[styles.saveBtn, isLoading && { opacity: 0.7 }]}
-          onPress={handleSave}
-          activeOpacity={0.9}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveBtnText}>SAVE TASK</Text>
-          )}
-        </TouchableOpacity>
+        {/* ── SAVE TASK BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            style={[styles.saveBtn, isLoading && { opacity: 0.7 }]}
+            onPress={handleSave}
+            activeOpacity={0.9}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>{id ? 'UPDATE TASK' : 'SAVE TASK'}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* ── DATE & TIME PICKER (iOS Modal) ────────────── */}
@@ -670,6 +721,76 @@ export default function AddTaskScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── STATUS DROPDOWN MODAL ──────────────────────── */}
+      <Modal transparent animationType="slide" visible={showStatusDropdown}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStatusDropdown(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity onPress={() => setShowStatusDropdown(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {STATUS_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setStatus(opt.value);
+                    setShowStatusDropdown(false);
+                    setStatusError(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── PRIORITY DROPDOWN MODAL ────────────────────── */}
+      <Modal transparent animationType="slide" visible={showPriorityDropdown}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPriorityDropdown(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Priority</Text>
+              <TouchableOpacity onPress={() => setShowPriorityDropdown(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20 }}>
+              {PRIORITY_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setPriority(opt.value);
+                    setShowPriorityDropdown(false);
+                    setPriorityError(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{opt.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -720,8 +841,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
-    paddingVertical: 2,
+    borderRadius: 10,
+    paddingVertical: 1,
     paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -747,17 +868,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 8,
     paddingTop: 5,
-    paddingBottom: 150,
   },
-
   scrollBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 90,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
+    zIndex: 10,
   },
 
   // Form
@@ -765,25 +880,13 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 2,
   },
   fieldContainer: {
-    gap: 7,
+    gap: 2,
   },
   fieldLabel: {
     fontSize: 12.5,
     fontWeight: '700',
     color: COLORS.textMuted,
     paddingLeft: 2,
-  },
-
-  // Side-by-side dropdown styling
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    zIndex: 1000,
-  },
-  col: {
-    flex: 1,
-    position: 'relative',
-    gap: 7,
   },
 
   // Text Input
@@ -864,34 +967,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  // Dropdown list styling
-  dropdownList: {
-    position: 'absolute',
-    top: 75,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingVertical: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2000,
-    zIndex: 2000,
-  },
-  dropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  dropdownItemText: {
-    fontSize: 13.5,
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-
   // Save button
   saveBtn: {
     backgroundColor: theme.primaryColor,
@@ -899,7 +974,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
     shadowColor: theme.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -1081,5 +1155,35 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.textMuted,
+  },
+  modalRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalRowText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  bottomStickyBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.bgWhite,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 8,
+    backgroundColor: COLORS.bgWhite,
+    paddingBottom: 20,
   },
 });

@@ -5,12 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/constants/theme';
@@ -108,7 +108,12 @@ export default function DeviceLimitScreen() {
       { identifier: phoneNumber, password },
       {
         onSuccess: async (data: any) => {
-          if (data?.token) {
+          if (data?.token_type === 'otp') {
+            router.push({
+              pathname: '/otp',
+              params: { code: phoneNumber, token: data.token, password }
+            });
+          } else if (data?.token) {
             const { saveAuthToken, saveUserData } = require('@/utils/storage');
             await saveAuthToken(data.token);
             if (data.user) {
@@ -116,7 +121,10 @@ export default function DeviceLimitScreen() {
             }
             router.replace('/(tabs)');
           } else {
-            router.replace('/sign-in');
+            router.push({
+              pathname: '/otp',
+              params: { code: phoneNumber, token: data?.token || '', password }
+            });
           }
         },
         onError: (err: any) => {
@@ -182,7 +190,7 @@ export default function DeviceLimitScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#121514" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgPage} />
       
       {/* Back Button */}
       <View style={styles.header}>
@@ -191,18 +199,19 @@ export default function DeviceLimitScreen() {
           onPress={() => router.back()}
           disabled={isPending}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Central Illustration */}
-        <View style={styles.illustrationContainer}>
+        {/* App Logo & Name */}
+        <View style={styles.logoContainer}>
           <Image
-            source={require('@/assets/images/device_limit_illustration.png')}
-            style={styles.illustration}
+            source={require('@/assets/images/android-icon-foreground.png')}
+            style={styles.logoIcon}
             resizeMode="contain"
           />
+          <Text style={styles.logoText}>BASALT</Text>
         </View>
 
         {/* Heading */}
@@ -221,7 +230,7 @@ export default function DeviceLimitScreen() {
                 <Ionicons
                   name={session.user_agent?.toLowerCase().includes('okhttp') ? "phone-portrait" : "desktop-outline"}
                   size={22}
-                  color="#FFFFFF"
+                  color={theme.primaryColor}
                 />
               </View>
               <View style={styles.deviceDetails}>
@@ -250,7 +259,7 @@ export default function DeviceLimitScreen() {
           disabled={isPending}
         >
           {logoutMutation.isPending ? (
-            <ActivityIndicator size="small" color="#8F9995" />
+            <ActivityIndicator size="small" color={theme.primaryColor} />
           ) : (
             <Text style={styles.logoutAllText}>Log out from all devices</Text>
           )}
@@ -271,7 +280,7 @@ export default function DeviceLimitScreen() {
 const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121514',
+    backgroundColor: COLORS.bgPage,
   },
   header: {
     paddingHorizontal: 16,
@@ -293,16 +302,23 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  illustrationContainer: {
-    width: '100%',
-    height: 240,
+  logoContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 40,
     justifyContent: 'center',
-    marginBottom: 24,
   },
-  illustration: {
-    width: 240,
-    height: 240,
+  logoIcon: {
+    width: 42,
+    height: 42,
+    marginRight: 10,
+  },
+  logoText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: COLORS.textDark,
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   headingContainer: {
     alignItems: 'center',
@@ -312,14 +328,14 @@ const getStyles = (theme: any) => StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: COLORS.textDark,
     textAlign: 'center',
     lineHeight: 28,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: '#8F9995',
+    color: COLORS.textMuted,
     textAlign: 'center',
   },
   sectionContainer: {
@@ -328,8 +344,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#E6A15C', // Gold/Amber/Peach accent
+    fontWeight: '800',
+    color: theme.primaryColor,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 16,
@@ -337,18 +353,24 @@ const getStyles = (theme: any) => StyleSheet.create({
   deviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E2422',
-    borderWidth: 1,
-    borderColor: '#2D3532',
+    backgroundColor: COLORS.bgWhite,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
     borderRadius: 12,
     padding: 16,
     width: '100%',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   deviceIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#2D3532',
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -359,15 +381,15 @@ const getStyles = (theme: any) => StyleSheet.create({
   deviceName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.textDark,
     marginBottom: 4,
   },
   deviceLastUsed: {
     fontSize: 12,
-    color: '#8F9995',
+    color: COLORS.textMuted,
   },
   logoutButton: {
-    backgroundColor: '#2D3532',
+    backgroundColor: theme.primaryColor,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -388,12 +410,13 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   logoutAllText: {
     fontSize: 14,
-    color: '#8F9995',
+    color: theme.primaryColor,
+    fontWeight: '700',
     textDecorationLine: 'underline',
   },
   loaderBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,

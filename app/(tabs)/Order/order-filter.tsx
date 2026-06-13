@@ -2,7 +2,7 @@ import { activeOrderFilter, updateOrderFilterState } from '@/components/OrderSta
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   BackHandler,
@@ -37,12 +37,15 @@ const FILTER_OPTIONS = ['Complete', 'Process', 'Pending', 'Out Of Delivery', 'Ca
 
 export default function OrderFilterScreen() {
   const router = useRouter();
-  const { referrer } = useLocalSearchParams();
+  const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
-    if (referrer === 'lead-details') {
-      router.navigate('/(tabs)/leads/lead-details');
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: leadId }
+      });
     } else {
       router.back();
     }
@@ -51,8 +54,11 @@ export default function OrderFilterScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        if (referrer === 'lead-details') {
-          router.navigate('/(tabs)/leads/lead-details');
+        if (referrer === 'lead-details' && leadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: leadId }
+          });
           return true;
         }
         return false;
@@ -60,7 +66,7 @@ export default function OrderFilterScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [referrer])
+    }, [referrer, leadId])
   );
 
   const [selectedStatus, setSelectedStatus] = useState<string>('');
@@ -124,7 +130,11 @@ export default function OrderFilterScreen() {
       </View>
 
       {/* ── 2. SCROLLABLE FILTER CONTROLS ─────────── */}
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Reset Panel */}
         <View style={s.panelHeader}>
           <Text style={s.panelTitle}>Filters</Text>
@@ -204,7 +214,7 @@ export default function OrderFilterScreen() {
       </ScrollView>
 
       {/* ── 3. BOTTOM BUTTON PANEL ───────────────── */}
-      <View style={s.footer}>
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 12, 20) }]}>
         <TouchableOpacity
           onPress={handleBack}
           style={[s.footerBtn, s.cancelBtn]}
@@ -338,10 +348,14 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 1,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 100,
+    gap: 5,
   },
   panelHeader: {
     flexDirection: 'row',
@@ -471,9 +485,14 @@ const s = StyleSheet.create({
 
   // Bottom Buttons
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     gap: 12,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     backgroundColor: COLORS.bgWhite,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,

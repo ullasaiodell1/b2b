@@ -2,9 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { getAnalysis } from '@/services/api/analysis';
 import { useEffect } from 'react';
 
+export const analysisKeys = {
+  all: ['analysis'] as const,
+  lists: () => [...analysisKeys.all, 'list'] as const,
+  list: () => [...analysisKeys.lists()] as const,
+  analysisFilter: (params?: any) => [...analysisKeys.lists(), params] as const,
+};
+
 export function useAnalysis(params?: any) {
   const query = useQuery({
-    queryKey: ['analysis', params],
+    queryKey: analysisKeys.analysisFilter(params),
     queryFn: async () => {
       const raw = await getAnalysis(params);
       const { dashboardData, orderData, visitsData } = raw;

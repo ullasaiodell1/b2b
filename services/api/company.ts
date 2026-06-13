@@ -50,3 +50,13 @@ export const deleteCompany = async (id: string) => {
   console.log(`[API deleteCompany] ID: ${id} Response:`, res?.data || res);
   return res;
 };
+
+export const getCompanyAccounts = async (companyId: string) => {
+  const res = await axios({
+    method: 'GET',
+    url: `/companies/${companyId}/accounts`
+  });
+  console.log(`[API getCompanyAccounts] ID: ${companyId} Response:`, res?.data || res);
+  return res;
+};
+

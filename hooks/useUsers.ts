@@ -2,10 +2,11 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { User, ApiErrorResponse, UserListResponse } from '@/types/user';
 import { listUsers } from '@/services/api/users';
 
-const queryKeys = {
-  users: {
-    list: (params?: any) => ['users', 'list', params],
-  }
+export const userKeys = {
+  all: ['users'] as const,
+  lists: () => [...userKeys.all, 'list'] as const,
+  list: () => [...userKeys.lists()] as const,
+  userFilter: (params?: any) => [...userKeys.lists(), params] as const,
 };
 
 export const useUsersCombobox = (
@@ -16,7 +17,7 @@ export const useUsersCombobox = (
   >,
 ) => {
   return useQuery<User[], ApiErrorResponse>({
-    queryKey: queryKeys.users.list({ ...params, combobox: true }),
+    queryKey: userKeys.userFilter({ ...params, combobox: true }),
     queryFn: async () => {
       const response = await listUsers({
         ...params,

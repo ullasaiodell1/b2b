@@ -2,6 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUsers } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -33,14 +34,8 @@ export default function SelectOwnerScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    currentOwner?: string;
-    currentOwnerId?: string;
-    company?: string;
-    fullname?: string;
-    email?: string;
-    phone?: string;
-  }>();
+  const navigation = useNavigation<any>();
+  const params = useLocalSearchParams<any>();
   const insets = useSafeAreaInsets();
 
   const { data: usersData } = useUsers();
@@ -67,15 +62,13 @@ export default function SelectOwnerScreen() {
       Alert.alert('Selection Required', 'Please select a lead owner to proceed.');
       return;
     }
-    // Navigate back and pass parameters
-    router.navigate({
-      pathname: '/(tabs)/leads/add-lead',
-      params: {
-        ...params,
-        owner: selectedOwnerName,
-        ownerId: selectedOwnerId,
-      },
-    });
+    // Save selection to global object and go back
+    (global as any).leadSelection = {
+      ...(global as any).leadSelection,
+      owner: selectedOwnerName,
+      ownerId: selectedOwnerId,
+    };
+    router.back();
   };
 
   return (
@@ -236,8 +229,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 8,
+    paddingTop: 5,
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -248,7 +241,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     height: 48,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    marginBottom: 1,
   },
   searchIcon: {
     marginRight: 8,
@@ -273,9 +266,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginBottom: 5,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,

@@ -4,9 +4,16 @@ import { createVisit, getVisits } from '@/services/api/visit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+export const visitKeys = {
+  all: ['visits'] as const,
+  lists: () => [...visitKeys.all, 'list'] as const,
+  list: () => [...visitKeys.lists()] as const,
+  visitFilter: (params?: any) => [...visitKeys.lists(), params] as const,
+};
+
 export function useVisits(params?: any) {
   const query = useQuery({
-    queryKey: ['visits', params],
+    queryKey: visitKeys.visitFilter(params),
     queryFn: async () => {
       const response: any = await getVisits(params);
       
@@ -176,7 +183,7 @@ export function useCreateVisit() {
     };
 
     const res = await createVisit(targetLeadId, apiPayload as any);
-    queryClient.invalidateQueries({ queryKey: ['visits'] });
+    queryClient.invalidateQueries({ queryKey: visitKeys.lists() });
     return res;
   };
 

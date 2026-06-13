@@ -2,6 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getCompanies } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -34,13 +35,8 @@ export default function SelectCompanyScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    currentCompany?: string;
-    owner?: string;
-    fullname?: string;
-    email?: string;
-    phone?: string;
-  }>();
+  const navigation = useNavigation<any>();
+  const params = useLocalSearchParams<any>();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState(params.currentCompany || '');
@@ -85,14 +81,12 @@ export default function SelectCompanyScreen() {
       Alert.alert('Selection Required', 'Please select a company to proceed.');
       return;
     }
-    // Navigate back and pass parameters
-    router.navigate({
-      pathname: '/(tabs)/leads/add-lead',
-      params: {
-        ...params,
-        company: selectedCompany,
-      },
-    });
+    // Save selection to global object and go back
+    (global as any).leadSelection = {
+      ...(global as any).leadSelection,
+      company: selectedCompany,
+    };
+    router.back();
   };
 
   return (
@@ -240,8 +234,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 8,
+    paddingTop: 5,
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -251,8 +245,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 12,
     height: 48,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    paddingHorizontal: 5,
+    marginBottom: 1,
   },
   searchIcon: {
     marginRight: 8,
@@ -277,9 +271,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 5,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,

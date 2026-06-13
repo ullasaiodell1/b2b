@@ -3,6 +3,12 @@ import { getProfile, updateProfile } from '@/services/api/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+export const profileKeys = {
+  all: ["userProfile"] as const,
+  lists: () => [...profileKeys.all, 'list'] as const,
+  list: () => [...profileKeys.lists()] as const,
+};
+
 export function useProfile() {
   const queryClient = useQueryClient();
   const [localProfile, setLocalProfile] = useState<ProfileData>(profileData);
@@ -19,7 +25,7 @@ export function useProfile() {
   // httpRequest interceptor unwraps response.data → res = JSON body
   // So res = { data: { ...user } } and res.data is the user object itself
   const profileQuery = useQuery({
-    queryKey: ['profile'],
+    queryKey: profileKeys.list(),
     queryFn: async (): Promise<ProfileData> => {
       const response = await getProfile();
       console.log('[useProfile] Raw response:', JSON.stringify(response));
@@ -90,15 +96,15 @@ export function useProfile() {
     },
     onSuccess: (updatedData) => {
       // Optimistically merge the new values into the cached profile immediately
-      queryClient.setQueryData<ProfileData>(['profile'], (old) => {
+      queryClient.setQueryData<ProfileData>(profileKeys.list(), (old) => {
         if (!old) return old;
         return { ...old, ...updatedData };
       });
       // Also update the global ProfileState so all subscribers see the new image
-      const current = queryClient.getQueryData<ProfileData>(['profile']);
+      const current = queryClient.getQueryData<ProfileData>(profileKeys.list());
       if (current) updateProfileData(current);
       // Then invalidate so we eventually get the authoritative server data
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: profileKeys.lists() });
     },
   });
 

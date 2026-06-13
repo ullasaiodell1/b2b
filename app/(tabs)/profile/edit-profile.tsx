@@ -460,24 +460,24 @@ const getStyles = (theme: any) => StyleSheet.create({
     marginTop: 2,
   },
   scrollContent: {
-    padding: 20,
+    padding: 8,
     paddingBottom: 150,
-    gap: 20,
+    gap: 2,
   },
 
   // Edit Squircle Avatar
   avatarEditContainer: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 5,
   },
   avatarWrapper: {
     position: 'relative',
-    width: 110,
-    height: 110,
+    width: 150,
+    height: 150,
   },
   avatarLarge: {
-    width: 110,
-    height: 110,
+    width: 150,
+    height: 150,
     borderRadius: 24,
     backgroundColor: '#E5E7EB',
   },
@@ -497,13 +497,13 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Form
   form: {
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
-    gap: 6,
+    gap: 1,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: COLORS.textMuted,
   },

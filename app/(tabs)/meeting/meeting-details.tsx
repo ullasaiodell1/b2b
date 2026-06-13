@@ -122,14 +122,12 @@ export default function MeetingDetailsScreen() {
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
+          allowsEditing: false,
           quality: 1,
         })
         : await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
+          allowsEditing: false,
           quality: 1,
         });
 
@@ -338,28 +336,15 @@ export default function MeetingDetailsScreen() {
             </View>
 
             {/* Render Notes list */}
-            {meeting.notes && meeting.notes.length > 0 ? (
-              meeting.notes.map((noteText, idx) => (
-                <View key={`note-${idx}`} style={styles.noteCard}>
-                  <Text style={styles.noteText}>{noteText}</Text>
-                  <View style={styles.noteFooter}>
-                    <Text style={styles.noteFooterText}>Added By You</Text>
-                    <Text style={styles.noteFooterText}>Feb, 24, 2026</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              // Fallback default note card matching screenshot
-              <View style={styles.noteCard}>
-                <Text style={styles.noteText}>
-                  {"Lorem Ipsum Is Simply Dummy Text Of The Printing And Typesetting Industry. Lorem Ipsum Has Been The Industry's Standard Dummy Text Ever Since The 1500s, When An Unknown Printer Took A Galley Of Type And Scrambled It To Make A Type Specimen Book."}
-                </Text>
+            {meeting.notes && meeting.notes.map((noteText, idx) => (
+              <View key={`note-${idx}`} style={styles.noteCard}>
+                <Text style={styles.noteText}>{noteText}</Text>
                 <View style={styles.noteFooter}>
                   <Text style={styles.noteFooterText}>Added By You</Text>
                   <Text style={styles.noteFooterText}>Feb, 24, 2026</Text>
                 </View>
               </View>
-            )}
+            ))}
 
             {/* Dashed Add notes block */}
             <View style={styles.dashedBox}>
@@ -382,30 +367,17 @@ export default function MeetingDetailsScreen() {
             </View>
 
             {/* Render Attachments list */}
-            {meeting.attachments && meeting.attachments.length > 0 ? (
-              meeting.attachments.map((file, idx) => (
-                <View key={`attach-${idx}`} style={styles.attachmentCard}>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.attachmentTitle}>{file.name}</Text>
-                    <Text style={styles.attachmentSubtitle}>{file.size} · Added Feb 23</Text>
-                  </View>
-                  <View style={styles.attachmentIconWrap}>
-                    <Ionicons name="download-outline" size={18} color={COLORS.textDark} />
-                  </View>
-                </View>
-              ))
-            ) : (
-              // Fallback default attachment card matching screenshot
-              <View style={styles.attachmentCard}>
+            {meeting.attachments && meeting.attachments.map((file, idx) => (
+              <View key={`attach-${idx}`} style={styles.attachmentCard}>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={styles.attachmentTitle}>Demo_brief.Pdf</Text>
-                  <Text style={styles.attachmentSubtitle}>2.4 MB · Added Feb 23</Text>
+                  <Text style={styles.attachmentTitle}>{file.name}</Text>
+                  <Text style={styles.attachmentSubtitle}>{file.size} · Added Feb 23</Text>
                 </View>
                 <View style={styles.attachmentIconWrap}>
                   <Ionicons name="download-outline" size={18} color={COLORS.textDark} />
                 </View>
               </View>
-            )}
+            ))}
 
             {/* Dashed Add attachments block */}
             <View style={styles.dashedBox}>
@@ -415,7 +387,7 @@ export default function MeetingDetailsScreen() {
               <Text style={styles.dashedTitle}>No more attachments</Text>
               <Text style={styles.dashedSubtitle}>Upload files, images or docs relevant to this task.</Text>
               <TouchableOpacity style={styles.outlineBtn} onPress={handleAddAttachment} activeOpacity={0.8}>
-                <Text style={styles.outlineBtnText}>+ WRITE A NOTE</Text>
+                <Text style={styles.outlineBtnText}>+ ADD ATTACHMENT</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -607,8 +579,8 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Related/Details Tabs
   tabBarContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 14,
+    paddingHorizontal: 8,
+    paddingTop: 5,
     backgroundColor: COLORS.bgPage,
   },
   tabBar: {
@@ -626,7 +598,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   tabButtonActive: {
     backgroundColor: '#FFFFFF',
@@ -647,8 +619,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
 
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingHorizontal: 8,
+    paddingTop: 5,
   },
   tabContent: {
     gap: 5,
@@ -657,11 +629,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Dynamic Meeting Summary Card
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 10,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.02,
@@ -683,7 +655,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   statusDot: {
     width: 6,
@@ -746,7 +718,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 1,
   },
   sectionLabel: {
     fontSize: 12,
@@ -756,7 +728,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   plusIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 10,
     backgroundColor: '#EDF3F1',
     alignItems: 'center',
     justifyContent: 'center',
@@ -765,11 +737,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Note Card
   noteCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 12,
+    gap: 8,
   },
   noteText: {
     fontSize: 12.5,
@@ -791,8 +763,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Dashed boxes
   dashedBox: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 10,
+    padding: 10,
     alignItems: 'center',
     borderStyle: 'dashed',
     borderWidth: 1,

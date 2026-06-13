@@ -5,11 +5,23 @@ import { LeadRecord } from '@/types/leads';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+export const leadKeys = {
+  all: ['leads'] as const,
+  lists: () => [...leadKeys.all, 'list'] as const,
+  list: () => [...leadKeys.lists()] as const,
+  leadFilter: (params?: any) => [...leadKeys.lists(), params] as const,
+  details: (id: string) => [...leadKeys.all, 'details', id] as const,
+  statuses: () => [...leadKeys.all, 'statuses'] as const,
+  sources: () => [...leadKeys.all, 'sources'] as const,
+  users: () => [...leadKeys.all, 'users'] as const,
+  tags: () => [...leadKeys.all, 'tags'] as const,
+};
+
 export function useLeads(params?: any) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['leads', params],
+    queryKey: leadKeys.leadFilter(params),
     queryFn: async () => {
       // httpRequest interceptor unwraps response.data → res = JSON body
       // Backend returns: { total: N, data: [...leads] }
@@ -80,22 +92,22 @@ export function useLeads(params?: any) {
   const createMutation = useMutation({
     mutationFn: (newLeadData: any) => createLead(newLeadData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => updateLead(id, data),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leadDetails', variables.id] });
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteLead(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
   });
 
@@ -116,7 +128,7 @@ export function useLeads(params?: any) {
 
 export function useLeadDetails(id: string) {
   return useQuery({
-    queryKey: ['leadDetails', id],
+    queryKey: leadKeys.details(id),
     queryFn: async () => {
       if (!id) return null;
       // Backend: GET /leads/:id returns { total:1, data: [lead] }
@@ -153,7 +165,7 @@ export function useLeadDetails(id: string) {
 
 export function useLeadStatuses() {
   return useQuery({
-    queryKey: ['leadStatuses'],
+    queryKey: leadKeys.statuses(),
     queryFn: async () => {
       // Backend: { total, data: [...statuses] } — interceptor already unwraps to JSON body
       const res = await getLeadStatuses();
@@ -164,7 +176,7 @@ export function useLeadStatuses() {
 
 export function useLeadSources() {
   return useQuery({
-    queryKey: ['leadSources'],
+    queryKey: leadKeys.sources(),
     queryFn: async () => {
       // Backend: { total, data: [...sources] } — interceptor already unwraps to JSON body
       const res = await getLeadSources();
@@ -175,7 +187,7 @@ export function useLeadSources() {
 
 export function useUsers() {
   return useQuery({
-    queryKey: ['users'],
+    queryKey: leadKeys.users(),
     queryFn: async () => {
       // Backend: { total, data: [...users] } — interceptor already unwraps to JSON body
       const res = await getUsers();
@@ -186,7 +198,7 @@ export function useUsers() {
 
 export function useLeadTags() {
   return useQuery({
-    queryKey: ['leadTags'],
+    queryKey: leadKeys.tags(),
     queryFn: async () => {
       const res = await getLeadTags();
       return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];

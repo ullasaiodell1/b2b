@@ -4,6 +4,13 @@ import { fetchRawLeads, fetchRawCallLogs, addCallRaw, updateCall, deleteCall } f
 import { CallRecord, CallFilterState } from '@/types/call';
 import { updateCallsState, activeCallFilter, updateCallFilterState, subscribeToCalls } from '@/components/CallState';
 
+export const callKeys = {
+  all: ['calls'] as const,
+  lists: () => [...callKeys.all, 'list'] as const,
+  list: () => [...callKeys.lists()] as const,
+  callFilter: (params?: any) => [...callKeys.lists(), params] as const,
+};
+
 export function useCalls(params?: Partial<CallFilterState>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<CallFilterState>(activeCallFilter);
@@ -15,7 +22,7 @@ export function useCalls(params?: Partial<CallFilterState>) {
   }, []);
 
   const query = useQuery({
-    queryKey: ['calls', params],
+    queryKey: callKeys.callFilter(params),
     queryFn: async (): Promise<CallRecord[]> => {
       try {
         // 1. Fetch leads raw response
@@ -133,9 +140,7 @@ export function useCalls(params?: Partial<CallFilterState>) {
         }
       }
 
-      const { lead_id: _, ...rest } = data;
-
-      const payload = {
+      const payload: any = {
         lead_id: leadId,
         call_type,
         call_start_time: new Date().toISOString(),
@@ -143,13 +148,16 @@ export function useCalls(params?: Partial<CallFilterState>) {
         subject: data.name || 'Call log',
         remarks: data.remarks || '',
         is_auto_logged: false,
-        ...rest
       };
+
+      if (data.recordingUrl) {
+        payload.recording_url = data.recordingUrl;
+      }
 
       return addCallRaw(leadId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calls'] });
+      queryClient.invalidateQueries({ queryKey: callKeys.lists() });
     }
   });
 

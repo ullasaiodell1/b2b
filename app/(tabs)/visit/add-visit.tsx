@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -51,6 +52,7 @@ export default function AddVisitScreen() {
   const [scheduledDateTime, setScheduledDateTime] = useState<Date>(new Date());
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [description, setDescription] = useState('');
   const [locationAddress, setLocationAddress] = useState('');
   const [contactPersonName, setContactPersonName] = useState('');
@@ -69,6 +71,23 @@ export default function AddVisitScreen() {
   // Picker Visibility
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // Auto-fetch location on screen load
   useEffect(() => {
@@ -133,8 +152,7 @@ export default function AddVisitScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 1,
       });
 
@@ -231,7 +249,7 @@ export default function AddVisitScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* HEADER */}
@@ -257,8 +275,9 @@ export default function AddVisitScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 220 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 220 : 30 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
 
@@ -413,7 +432,9 @@ export default function AddVisitScreen() {
             <Text style={styles.inputLabel}>Visit Image</Text>
             {imageUri ? (
               <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                <TouchableOpacity onPress={() => setShowPreviewModal(true)} activeOpacity={0.8}>
+                  <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                </TouchableOpacity>
                 <View style={styles.imagePreviewDetails}>
                   <Text style={styles.imageNameText} numberOfLines={1}>
                     {photoName || 'visit-image.jpg'}
@@ -514,18 +535,43 @@ export default function AddVisitScreen() {
 
 
         </View>
+
+        {/* ── SAVE VISIT BUTTON ───────────────────────── */}
+        <View style={styles.nonStickySaveContainer}>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.saveBtnText}>SAVE VISIT</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      {/* Sticky Bottom Action */}
-      <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.saveBtnText}>SAVE VISIT</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Full Screen Image Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={styles.previewModalContainer}>
+          <TouchableOpacity
+            style={styles.previewModalCloseBtn}
+            onPress={() => setShowPreviewModal(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          {imageUri && (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -569,11 +615,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
   formContainer: {
-    marginTop: 18,
-    gap: 16,
+    marginTop: 5,
+    gap: 6,
   },
   inputGroup: {
     gap: 6,
@@ -830,6 +876,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
+  nonStickySaveContainer: {
+    marginTop: 16,
+    paddingHorizontal: 4,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 20,
+  },
   saveBtn: {
     backgroundColor: theme.primaryColor,
     borderRadius: 10,
@@ -882,5 +934,27 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
+  },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewModalCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });

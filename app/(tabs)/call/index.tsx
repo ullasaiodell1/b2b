@@ -50,8 +50,23 @@ export default function CallHistoryScreen() {
   const handleClearDateFilter = () => {
     updateFilter({
       ...filters,
-      dateRange: '28 Dec 22 - 10 Jan 23',
+      dateRange: '',
     });
+  };
+
+  const parseDate = (str: string): Date | null => {
+    try {
+      const parts = str.trim().split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+    } catch (e) {
+      console.log('Error parsing date:', e);
+    }
+    return null;
   };
 
   // Filter logs
@@ -64,11 +79,26 @@ export default function CallHistoryScreen() {
       matchesStatus = log.type === filters.status;
     }
 
+    // Date range filter from Call Filter screen (e.g. "DD/MM/YYYY - DD/MM/YYYY")
+    let matchesDate = true;
+    if (filters.dateRange && filters.dateRange.includes(' - ')) {
+      const parts = filters.dateRange.split(' - ');
+      const from = parseDate(parts[0]);
+      const to = parseDate(parts[1]);
+      if (from && to && log.call_start_time) {
+        const logDate = new Date(log.call_start_time);
+        const logTime = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate()).getTime();
+        const fromTime = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+        const toTime = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+        matchesDate = logTime >= fromTime && logTime <= toTime;
+      }
+    }
+
     const matchesSearch =
       log.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.phoneNumber.includes(searchQuery);
 
-    return matchesTab && matchesStatus && matchesSearch;
+    return matchesTab && matchesStatus && matchesDate && matchesSearch;
   });
 
   return (
@@ -147,7 +177,7 @@ export default function CallHistoryScreen() {
         </View>
 
         {/* Active Filter Bubbles */}
-        {(filters.status !== '' || (filters.dateRange && filters.dateRange !== '28 Dec 22 - 10 Jan 23')) && (
+        {(filters.status !== '' || (filters.dateRange && filters.dateRange !== '')) && (
           <View style={styles.bubbleRow}>
             {filters.status !== '' && (
               <View style={styles.bubble}>
@@ -158,7 +188,7 @@ export default function CallHistoryScreen() {
               </View>
             )}
 
-            {filters.dateRange && filters.dateRange !== '28 Dec 22 - 10 Jan 23' && (
+            {filters.dateRange && filters.dateRange !== '' && (
               <View style={styles.bubble}>
                 <Text style={styles.bubbleText}>{filters.dateRange}</Text>
                 <TouchableOpacity onPress={handleClearDateFilter}>
@@ -232,7 +262,19 @@ export default function CallHistoryScreen() {
       {/* Floating Action Button to Add Call */}
       <TouchableOpacity
         style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => router.push('/(tabs)/call/add-call' as any)}
+        onPress={() => {
+          if (params.leadId) {
+            router.push({
+              pathname: '/(tabs)/call/add-call',
+              params: {
+                leadId: params.leadId,
+                leadName: params.leadName,
+              }
+            } as any);
+          } else {
+            router.push('/(tabs)/call/add-call' as any);
+          }
+        }}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />

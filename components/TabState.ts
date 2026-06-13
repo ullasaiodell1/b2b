@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface TabModule {
   id: string;
@@ -27,6 +28,9 @@ export const ALL_TAB_MODULES: TabModule[] = [
 export let configuredTabs = ['index', 'leads', 'meeting'];
 export let dynamicTabId: string | null = null;
 
+const TABS_STORAGE_KEY = '@configured_tabs';
+const DYNAMIC_TAB_STORAGE_KEY = '@dynamic_tab_id';
+
 const tabListeners = new Set<() => void>();
 
 export function subscribeToTabs(listener: () => void) {
@@ -40,17 +44,40 @@ function notifyTabs() {
   tabListeners.forEach((l) => l());
 }
 
+// Load persisted state asynchronously
+AsyncStorage.getItem(TABS_STORAGE_KEY).then(val => {
+  if (val) {
+    try {
+      configuredTabs = JSON.parse(val);
+      notifyTabs();
+    } catch (e) {
+      console.error('Error parsing stored configured tabs:', e);
+    }
+  }
+}).catch(() => {});
+
+AsyncStorage.getItem(DYNAMIC_TAB_STORAGE_KEY).then(val => {
+  if (val !== null) {
+    dynamicTabId = val;
+    notifyTabs();
+  }
+}).catch(() => {});
+
 export function updateConfiguredTabs(newTabs: string[]) {
   configuredTabs = [...newTabs];
   dynamicTabId = null; // reset dynamic tab on reconfiguration
+  AsyncStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(configuredTabs)).catch(() => {});
+  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
   notifyTabs();
 }
 
 export function setDynamicTab(tabId: string | null) {
   if (tabId && !configuredTabs.includes(tabId)) {
     dynamicTabId = tabId;
+    AsyncStorage.setItem(DYNAMIC_TAB_STORAGE_KEY, tabId).catch(() => {});
   } else {
     dynamicTabId = null;
+    AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
   }
   notifyTabs();
 }
@@ -58,5 +85,7 @@ export function setDynamicTab(tabId: string | null) {
 export function resetTabs() {
   configuredTabs = ['index', 'leads', 'meeting', 'email'];
   dynamicTabId = null;
+  AsyncStorage.removeItem(TABS_STORAGE_KEY).catch(() => {});
+  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
   notifyTabs();
 }

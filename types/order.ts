@@ -21,6 +21,25 @@ export interface OrderRecord {
   paymentType: string;
   amount: string;
   items: OrderItem[];
+  internalRemarks?: string;
+  expectedDelivery?: string;
+  approvedBy?: string;
+  chargesGst?: string;
+  chargesType?: string;
+  chargesAmount?: string;
+  logisticsPartner?: string;
+  trackingAwb?: string;
+  shippingFreight?: string;
+  adjustmentType?: 'PERCENTAGE' | 'FLAT';
+  discountValue?: string;
+  isAdvanceAccount?: boolean;
+  payableAmount?: string;
+  advanceAccountId?: string;
+  advanceAccountName?: string;
+  advanceDate?: string;
+  advanceAmount?: string;
+  advanceRemark?: string;
+  advanceProof?: string;
 }
 
 export interface OrderFilterState {

@@ -160,9 +160,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
     borderRadius: 10,
-    marginHorizontal: 12,
-    marginVertical: 8,
-    paddingHorizontal: 10,
+    marginHorizontal: 8,
+    marginVertical: 5,
+    paddingHorizontal: 12,
     height: 40,
   },
   searchIcon: {
@@ -180,11 +180,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 12,
-    gap: 8,
+    padding: 10,
+    gap: 5,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -233,7 +233,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: COLORS.border,
   },
   cardBody: {
-    gap: 6,
+    gap: 5,
   },
   infoRow: {
     flexDirection: 'row',

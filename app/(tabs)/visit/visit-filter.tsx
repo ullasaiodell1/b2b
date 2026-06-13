@@ -288,14 +288,14 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
   filtersTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 18,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 1,
   },
   titleLeft: {
     flexDirection: 'row',
@@ -321,7 +321,7 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Sections
   sectionContainer: {
-    marginTop: 20,
+    marginTop: 5,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

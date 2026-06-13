@@ -1,25 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCityStateCountry } from '@/services/api/location';
 
-export function useCountries() {
+export const locationKeys = {
+  all: ['location'] as const,
+  countries: (search: string = '') => [...locationKeys.all, 'countries', search] as const,
+  states: (countryId?: string, search: string = '') => [...locationKeys.all, 'states', countryId, search] as const,
+  cities: (stateId?: string, search: string = '') => [...locationKeys.all, 'cities', stateId, search] as const,
+};
+
+export function useCountries(search: string = '') {
   return useQuery({
-    queryKey: ['countries'],
-    queryFn: () => getCityStateCountry() as Promise<any>,
+    queryKey: locationKeys.countries(search),
+    queryFn: async () => {
+      const res = await getCityStateCountry({ search, combobox: true, limit: 100 });
+      return (res && Array.isArray(res)) ? res : (res && Array.isArray((res as any).data)) ? (res as any).data : [];
+    }
   });
 }
 
-export function useStates(country?: string) {
+export function useStates(countryId?: string, search: string = '') {
   return useQuery({
-    queryKey: ['states', country],
-    queryFn: () => getCityStateCountry({ country }) as Promise<any>,
-    enabled: !!country,
+    queryKey: locationKeys.states(countryId, search),
+    queryFn: async () => {
+      const res = await getCityStateCountry({ search, combobox: true, limit: 100, country_id: countryId });
+      return (res && Array.isArray(res)) ? res : (res && Array.isArray((res as any).data)) ? (res as any).data : [];
+    },
+    enabled: !!countryId,
   });
 }
 
-export function useCities(stateName?: string) {
+export function useCities(stateId?: string, search: string = '') {
   return useQuery({
-    queryKey: ['cities', stateName],
-    queryFn: () => getCityStateCountry({ state: stateName }) as Promise<any>,
-    enabled: !!stateName,
+    queryKey: locationKeys.cities(stateId, search),
+    queryFn: async () => {
+      const res = await getCityStateCountry({ search, combobox: true, limit: 100, state_id: stateId });
+      return (res && Array.isArray(res)) ? res : (res && Array.isArray((res as any).data)) ? (res as any).data : [];
+    },
+    enabled: !!stateId,
   });
 }

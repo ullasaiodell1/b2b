@@ -2,12 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TaskRecord, TaskFilterState } from '@/types/task';
 import {
   getTasks,
+  getTaskById,
   createTask,
   updateTask,
   deleteTask,
 } from '@/services/api/task';
 
-const TASKS_QUERY_KEY = 'tasks';
+export const taskKeys = {
+  all: ['tasks'] as const,
+  lists: () => [...taskKeys.all, 'list'] as const,
+  list: () => [...taskKeys.lists()] as const,
+  taskFilter: (params?: any) => [...taskKeys.lists(), params] as const,
+  details: (id: string) => [...taskKeys.all, 'details', id] as const,
+};
 
 // Backend status & priority enums
 export const TASK_STATUS_MAP: Record<string, string> = {
@@ -45,6 +52,7 @@ export const mapToTaskRecord = (item: any): TaskRecord => ({
   due: item.due_date ? new Date(item.due_date).toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
   }) : '',
+  due_date: item.due_date || '',
   priority: (PRIORITY_FROM_BACKEND[item.priority] || item.priority || 'Normal') as any,
   status: (STATUS_FROM_BACKEND[item.status] || item.status || 'Not Started') as any,
   description: item.description || '',
@@ -54,19 +62,61 @@ export const mapToTaskRecord = (item: any): TaskRecord => ({
 });
 
 // ── GET all tasks ─────────────────────────────────────────────────
-export function useTasks(params?: Partial<TaskFilterState>) {
+export function useTasks(params?: Partial<TaskFilterState> & { lead_id?: string; limit?: number; offset?: number }) {
   const query = useQuery({
-    queryKey: [TASKS_QUERY_KEY, params],
+    queryKey: taskKeys.taskFilter(params),
     queryFn: async () => {
       const res = await getTasks(params) as any;
-      const list = res?.data || res || [];
-      return Array.isArray(list) ? list.map(mapToTaskRecord) : [];
+      console.log('[useTasks] Raw response keys:', res ? Object.keys(res) : 'null');
+      
+      let rawData: any[] = [];
+      if (Array.isArray(res)) {
+        rawData = res;
+      } else if (Array.isArray(res?.data)) {
+        rawData = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        rawData = res.data.data;
+      }
+      
+      console.log('[useTasks] extracted rawData length:', rawData.length);
+      return rawData.map(mapToTaskRecord);
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
   return {
     tasks: query.data || [],
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
+    error: query.error,
+  };
+}
+
+// ── GET single task details ────────────────────────────────────────
+export function useTask(id: string) {
+  const query = useQuery({
+    queryKey: taskKeys.details(id),
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await getTaskById(id) as any;
+      
+      let raw: any = null;
+      if (res) {
+        if (res.id) {
+          raw = res;
+        } else if (res.data) {
+          raw = Array.isArray(res.data) ? res.data[0] : (res.data.data || res.data);
+        }
+      }
+      return raw ? mapToTaskRecord(raw) : null;
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  return {
+    task: query.data,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     refetch: query.refetch,
@@ -112,7 +162,7 @@ export function useCreateTask() {
       return mapToTaskRecord(res?.data || res);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
     },
     onError: (err: any) => {
       console.error('[useCreateTask] error:', err);
@@ -146,7 +196,7 @@ export function useUpdateTask() {
       return mapToTaskRecord(res?.data || res);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
     },
     onError: (err: any) => {
       console.error('[useUpdateTask] error:', err);
@@ -160,7 +210,7 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => deleteTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
     },
     onError: (err: any) => {
       console.error('[useDeleteTask] error:', err);
