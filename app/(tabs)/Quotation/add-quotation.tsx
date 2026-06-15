@@ -2,7 +2,7 @@ import SelectImagesModal from '@/components/custom/SelectImagesModal';
 import SelectProductModal from '@/components/custom/SelectProductModal';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeads, useLeadSources, useLeadStatuses, useUsers } from '@/hooks/useLeads';
+import { useLeads, useCreateLead, useLeadSources, useLeadStatuses, useUsers } from '@/hooks/useLeads';
 import { useProducts } from '@/hooks/useProducts';
 import { useCreateQuotation } from '@/hooks/useQuotations';
 import { CreateQuotationPayload, QuotationItem } from '@/types/quotation';
@@ -114,7 +114,36 @@ export default function AddQuotationScreen() {
   const { primaryColor, primaryLight } = useTheme();
 
   // ── Leads list and references ──────────────────────────────────────────────
-  const { leads, isLoading: isLoadingLeads, createLead } = useLeads();
+  const { data: rawLeads = [], isLoading: isLoadingLeads } = useLeads();
+  const { mutateAsync: createLead } = useCreateLead();
+
+  const leads = React.useMemo(() => {
+    return rawLeads.map((item: any) => {
+      let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+      const rawPriority = (item.priority || '').toUpperCase();
+      if (rawPriority === 'HOT' || rawPriority === 'HIGH') priority = 'High';
+      else if (rawPriority === 'WARM' || rawPriority === 'NORMAL') priority = 'Normal';
+      else if (rawPriority === 'COLD' || rawPriority === 'LOW') priority = 'Low';
+
+      const tag = (item.tags && Array.isArray(item.tags) && item.tags[0]?.name)
+        || item.tag
+        || '';
+
+      return {
+        id: String(item.id),
+        name: item.name || '',
+        company: item.company_name || item.company || '',
+        email: item.email || '',
+        phone: item.phone || '',
+        tag: tag,
+        priority: priority,
+        owner: item.assigned_to_name || item.owner || '',
+        status: item.status_name || item.status || '',
+        source: item.source_name || item.source || '',
+        ...item,
+      } as any;
+    });
+  }, [rawLeads]);
   const { data: statusesData } = useLeadStatuses();
   const { data: sourcesData } = useLeadSources();
   const { data: usersData } = useUsers();
@@ -127,7 +156,7 @@ export default function AddQuotationScreen() {
   const [leadSearchQuery, setLeadSearchQuery] = useState('');
 
   // Product Picker Modal State
-  const { products } = useProducts();
+  const { data: products = [] } = useProducts();
 
   // Quick Create Lead Form State
   const [newLeadName, setNewLeadName] = useState('');

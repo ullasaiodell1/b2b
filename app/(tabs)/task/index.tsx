@@ -42,20 +42,43 @@ export default function TaskScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
 
-  const { tasks, isLoading, isFetching, refetch } = useTasks(params.leadId ? { lead_id: params.leadId } : undefined);
+  const { data: responseData, isLoading, isFetching, refetch } = useTasks(params.leadId ? { lead_id: params.leadId } : undefined) as any;
+  const tasks = Array.isArray(responseData)
+    ? responseData
+    : (Array.isArray(responseData?.data)
+        ? responseData.data
+        : (Array.isArray(responseData?.data?.data)
+            ? responseData.data.data
+            : []));
   const updateTaskMutation = useUpdateTask();
 
-  const toggleTaskCompletion = async (task: Task) => {
-    const nextStatus: TaskStatus = task.status === 'Completed' ? 'Not Started' : 'Completed';
-    try {
-      await updateTaskMutation.mutateAsync({ id: task.id, data: { status: nextStatus } });
-    } catch (err) {
-      console.error('[TaskScreen] toggle completion error:', err);
+  const getDisplayStatus = (status: string) => {
+    const s = String(status || '').toUpperCase();
+    if (s === 'COMPLETED') return 'Completed';
+    if (s === 'IN_PROGRESS') return 'in progress';
+    if (s === 'IN_REVIEW') return 'waiting for input';
+    return 'Not Started';
+  };
+
+  const getBackendStatus = (displayStatus: string) => {
+    switch (displayStatus) {
+      case 'Completed': return 'COMPLETED';
+      case 'in progress': return 'IN_PROGRESS';
+      case 'waiting for input': return 'IN_REVIEW';
+      default: return 'TODO';
     }
   };
 
-  const getStatusStyle = (status: TaskStatus) => {
-    switch (status) {
+  const getDisplayPriority = (priority: string) => {
+    const p = String(priority || '').toUpperCase();
+    if (p === 'LOW') return 'Lowest';
+    if (p === 'HIGH') return 'High';
+    return 'Normal';
+  };
+
+  const getStatusStyle = (status: string) => {
+    const displayStatus = getDisplayStatus(status);
+    switch (displayStatus) {
       case 'Completed':
         return { color: '#10B981' };
       case 'Not Started':
@@ -69,8 +92,9 @@ export default function TaskScreen() {
     }
   };
 
-  const getPriorityStyle = (priority: PriorityType) => {
-    switch (priority) {
+  const getPriorityStyle = (priority: string) => {
+    const displayPriority = getDisplayPriority(priority);
+    switch (displayPriority) {
       case 'High':
         return { color: '#EF4444' };
       case 'Normal':
@@ -82,19 +106,41 @@ export default function TaskScreen() {
     }
   };
 
+  const formatDate = (dateStr: any) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      });
+    } catch {
+      return String(dateStr);
+    }
+  };
+
+  const toggleTaskCompletion = async (task: Task) => {
+    const currentDisplay = getDisplayStatus(task.status);
+    const nextDisplay = currentDisplay === 'Completed' ? 'Not Started' : 'Completed';
+    const nextBackend = getBackendStatus(nextDisplay);
+    try {
+      await updateTaskMutation.mutateAsync({ id: task.id, data: { status: nextBackend } });
+    } catch (err) {
+      console.error('[TaskScreen] toggle completion error:', err);
+    }
+  };
+
   const leadTasks = params.leadId
-    ? tasks.filter(task => task.lead_id === params.leadId)
+    ? tasks.filter((task: any) => task.lead_id === params.leadId)
     : tasks;
 
-  const filteredTasks = leadTasks.filter(task => {
+  const filteredTasks = leadTasks.filter((task: any) => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'All' || task.status === selectedFilter;
+    const matchesFilter = selectedFilter === 'All' || getDisplayStatus(task.status) === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
   const totalCount = leadTasks.length;
-  const completedCount = leadTasks.filter(t => t.status === 'Completed').length;
-  const notStartedCount = leadTasks.filter(t => t.status === 'Not Started').length;
+  const completedCount = leadTasks.filter((t: any) => getDisplayStatus(t.status) === 'Completed').length;
+  const notStartedCount = leadTasks.filter((t: any) => getDisplayStatus(t.status) === 'Not Started').length;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -196,10 +242,12 @@ export default function TaskScreen() {
                   <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>No tasks found</Text>
                 </View>
               ) : (
-                filteredTasks.map(task => {
-                  const isCompleted = task.status === 'Completed';
-                  const statusConfig = getStatusStyle(task.status as TaskStatus);
-                  const priorityConfig = getPriorityStyle(task.priority as PriorityType);
+                filteredTasks.map((task: any) => {
+                  const displayStatus = getDisplayStatus(task.status);
+                  const isCompleted = displayStatus === 'Completed';
+                  const statusConfig = getStatusStyle(task.status);
+                  const priorityConfig = getPriorityStyle(task.priority);
+                  const formattedDue = formatDate(task.due_date);
 
                   return (
                     <TouchableOpacity
@@ -211,12 +259,13 @@ export default function TaskScreen() {
                         params: {
                           id: task.id,
                           title: task.title,
-                          due: task.due,
-                          priority: task.priority,
-                          status: task.status,
+                          due: formattedDue,
+                          due_date: task.due_date,
+                          priority: getDisplayPriority(task.priority),
+                          status: displayStatus,
                           description: task.description || '',
                           assigned_to: task.assigned_to || '',
-                          assigned_to_name: task.assigned_to_name || '',
+                          assigned_to_name: task.assigned_to_fullname || task.assigned_to_name || '',
                           lead_id: task.lead_id || '',
                         }
                       } as any)}
@@ -242,7 +291,7 @@ export default function TaskScreen() {
                         <View style={styles.statusLabelContainer}>
                           <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
                           <Text style={[styles.statusLabelText, { color: statusConfig.color }]}>
-                            {task.status}
+                            {displayStatus}
                           </Text>
                         </View>
                       </View>
@@ -251,12 +300,12 @@ export default function TaskScreen() {
                       <View style={styles.cardMeta}>
                         <View style={styles.metaRow}>
                           <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
-                          <Text style={styles.metaText}>{task.due}</Text>
+                          <Text style={styles.metaText}>{formattedDue}</Text>
                         </View>
                         <View style={[styles.metaRow, { marginTop: 4 }]}>
                           <Ionicons name="close-circle-outline" size={15} color={priorityConfig.color} />
                           <Text style={[styles.metaText, { color: priorityConfig.color }]}>
-                            {task.priority}
+                            {getDisplayPriority(task.priority)}
                           </Text>
                         </View>
                       </View>

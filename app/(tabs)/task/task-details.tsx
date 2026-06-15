@@ -39,15 +39,48 @@ export default function TaskDetailsScreen() {
   const [activeTab, setActiveTab] = useState<'RELATED' | 'DETAILS'>('RELATED');
   const [showAllFields, setShowAllFields] = useState(false);
 
-  const { task } = useTask(params.id as string);
+  const { data: responseData } = useTask(params.id as string) as any;
+  const task = responseData?.id
+    ? responseData
+    : (responseData?.data
+        ? (Array.isArray(responseData.data)
+            ? responseData.data[0]
+            : (responseData.data.data || responseData.data))
+        : responseData);
+
+  const getDisplayStatus = (status: string) => {
+    const s = String(status || '').toUpperCase();
+    if (s === 'COMPLETED') return 'Completed';
+    if (s === 'IN_PROGRESS') return 'in progress';
+    if (s === 'IN_REVIEW') return 'waiting for input';
+    return 'Not Started';
+  };
+
+  const getDisplayPriority = (priority: string) => {
+    const p = String(priority || '').toUpperCase();
+    if (p === 'LOW') return 'Lowest';
+    if (p === 'HIGH') return 'High';
+    return 'Normal';
+  };
+
+  const formatDate = (dateStr: any) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      });
+    } catch {
+      return String(dateStr);
+    }
+  };
 
   // Retrieve task info from route params or fallback to mock data
   const taskTitle = task?.title || (params.title as string) || '';
-  const taskDue = task?.due || (params.due as string) || '';
-  const taskPriority = task?.priority || (params.priority as string) || '';
-  const taskStatus = task?.status || (params.status as string) || '';
+  const taskDue = formatDate(task?.due_date) || (params.due as string) || '';
+  const taskPriority = getDisplayPriority(task?.priority || (params.priority as string));
+  const taskStatus = getDisplayStatus(task?.status || (params.status as string));
   const taskDescription = task?.description || (params.description as string) || '';
-  const taskAssignedToName = task?.assigned_to_name || (params.assigned_to_name as string) || '';
+  const taskAssignedToName = task?.assigned_to_fullname || task?.assigned_to_name || (params.assigned_to_name as string) || '';
 
   // Dynamic Notes State
   const [notes, setNotes] = useState<string[]>([]);
@@ -93,12 +126,12 @@ export default function TaskDetailsScreen() {
       params: {
         id: (params.id as string) || task?.id || '',
         title: taskTitle,
-        description: task?.description || (params.description as string) || '',
-        due: task?.due || (params.due as string) || '',
-        priority: taskPriority,
-        status: taskStatus,
+        description: taskDescription,
+        due_date: task?.due_date || (params.due_date as string) || '',
+        priority: task?.priority || (params.priority as string) || '',
+        status: task?.status || (params.status as string) || '',
         assignedTo: task?.assigned_to || (params.assigned_to as string) || '',
-        assignedToName: task?.assigned_to_name || (params.assigned_to_name as string) || '',
+        assignedToName: taskAssignedToName,
         leadId: task?.lead_id || (params.lead_id as string) || '',
       }
     } as any);

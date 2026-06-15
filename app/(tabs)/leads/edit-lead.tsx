@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeadDetails, useLeads, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
+import { useLeadDetails, useUpdateLead, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,13 +37,37 @@ export default function EditLeadScreen() {
   const isFocused = useIsFocused();
   const { primaryColor, primaryLight } = useTheme();
 
-  const { data: dbLead, isLoading: isDetailsLoading } = useLeadDetails(id || '');
-  const { updateLead, isUpdating } = useLeads();
+  const { data: rawLead, isLoading: isDetailsLoading } = useLeadDetails(id || '');
+
+  const dbLead = React.useMemo(() => {
+    if (!rawLead) return null;
+    let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+    if (rawLead.priority === 'HOT') priority = 'High';
+    else if (rawLead.priority === 'WARM') priority = 'Normal';
+    else if (rawLead.priority === 'COLD') priority = 'Low';
+
+    const tag = (rawLead.tags && rawLead.tags[0]?.name) || rawLead.tag || '';
+
+    return {
+      id: String(rawLead.id),
+      name: rawLead.name || '',
+      company: rawLead.company_name || rawLead.company || '',
+      email: rawLead.email || '',
+      phone: rawLead.phone || '',
+      tag: tag,
+      priority: priority,
+      owner: rawLead.assigned_to_name || rawLead.owner || '',
+      status: rawLead.status_name || rawLead.status || '',
+      source: rawLead.source_name || rawLead.source || '',
+      ...rawLead
+    } as any;
+  }, [rawLead]);
+  const { mutateAsync: updateLead, isPending: isUpdating } = useUpdateLead();
   const { data: statusesData } = useLeadStatuses();
   const { data: sourcesData } = useLeadSources();
   const { data: usersData } = useUsers();
   const { data: apiTagsData } = useLeadTags();
-  const { products } = useProducts();
+  const { data: products = [] } = useProducts();
 
   const categoriesList = React.useMemo(() => {
     const rawCats = products.map((p: any) => p.category_name).filter(Boolean);

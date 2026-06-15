@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Dimensions,
   StyleSheet,
   Text,
@@ -179,6 +180,25 @@ export default function QuickBall() {
       }
     });
   };
+
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (isOpen) {
+        closeMenu();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isOpen]);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">

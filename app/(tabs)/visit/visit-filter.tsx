@@ -15,9 +15,32 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
 const STATUSES = ['Complete', 'Draft', 'Pending', 'Bounce'];
+
+const formatDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const parseDate = (str: string): Date | null => {
+  try {
+    const parts = str.trim().split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+  } catch (e) {
+    console.log('Error parsing date:', e);
+  }
+  return null;
+};
 
 export default function VisitFilterScreen() {
   const theme = useTheme();
@@ -28,27 +51,48 @@ export default function VisitFilterScreen() {
   const insets = useSafeAreaInsets();
 
   // State values initialized from route params
-  const [selectedDateRange, setSelectedDateRange] = useState(params.dateRange || '28 Dec 22 – 10 Jan 23');
+  const [fromDate, setFromDate] = useState<Date | null>(() => {
+    if (params.dateRange && params.dateRange.includes(' - ')) {
+      const parts = params.dateRange.split(' - ');
+      return parseDate(parts[0]);
+    }
+    return null;
+  });
+
+  const [toDate, setToDate] = useState<Date | null>(() => {
+    if (params.dateRange && params.dateRange.includes(' - ')) {
+      const parts = params.dateRange.split(' - ');
+      return parseDate(parts[1]);
+    }
+    return null;
+  });
+
   const [selectedStatus, setSelectedStatus] = useState<string | null>(params.status || null);
   const [selectedCompany, setSelectedCompany] = useState<string>(params.company || 'Select Company');
 
   // Modals for Pickers
   const [companyModalVisible, setCompanyModalVisible] = useState(false);
-  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
 
   const handleResetAll = () => {
-    setSelectedDateRange('28 Dec 22 – 10 Jan 23');
+    setFromDate(null);
+    setToDate(null);
     setSelectedStatus(null);
     setSelectedCompany('Select Company');
   };
 
   const handleApplyFilter = () => {
+    let finalRange = '';
+    if (fromDate && toDate) {
+      finalRange = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
+    }
     router.push({
       pathname: '/(tabs)/visit',
       params: {
         status: selectedStatus || '',
         company: selectedCompany !== 'Select Company' ? selectedCompany : '',
-        dateRange: selectedDateRange,
+        dateRange: finalRange,
       },
     });
   };
@@ -94,28 +138,51 @@ export default function VisitFilterScreen() {
         {/* DATE SECTION */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Date</Text>
+            <Text style={styles.sectionTitle}>Date Range</Text>
             <View style={styles.separatorLine} />
           </View>
 
           <View style={styles.dateSelectorRow}>
             <TouchableOpacity
-              style={styles.datePickerTrigger}
-              onPress={() => setDateModalVisible(true)}
+              style={[styles.datePickerTrigger, { flex: 1, paddingVertical: 4, height: 46 }]}
+              onPress={() => setShowFromPicker(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.datePickerValue}>{selectedDateRange}</Text>
-              <Ionicons name="chevron-down" size={16} color={COLORS.textDark} />
+              <View>
+                <Text style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: '700' }}>FROM</Text>
+                <Text style={styles.datePickerValue}>
+                  {fromDate ? formatDate(fromDate) : 'Select Date'}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.dateResetBtn}
-              onPress={() => setSelectedDateRange('28 Dec 22 – 10 Jan 23')}
-              activeOpacity={0.8}
+              style={[styles.datePickerTrigger, { flex: 1, paddingVertical: 4, height: 46 }]}
+              onPress={() => setShowToPicker(true)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.dateResetText}>Reset</Text>
-              <Ionicons name="refresh" size={13} color={COLORS.textDark} style={{ marginLeft: 4 }} />
+              <View>
+                <Text style={{ fontSize: 9, color: COLORS.textMuted, fontWeight: '700' }}>TO</Text>
+                <Text style={styles.datePickerValue}>
+                  {toDate ? formatDate(toDate) : 'Select Date'}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
+
+            {(fromDate || toDate) && (
+              <TouchableOpacity
+                style={[styles.dateResetBtn, { width: 44, paddingHorizontal: 0, height: 46 }]}
+                onPress={() => {
+                  setFromDate(null);
+                  setToDate(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh-outline" size={18} color={COLORS.textDark} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -221,39 +288,34 @@ export default function VisitFilterScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* DATE SELECTION MODAL */}
-      <Modal transparent animationType="fade" visible={dateModalVisible}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setDateModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Date Range</Text>
-              <TouchableOpacity onPress={() => setDateModalVisible(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {['28 Dec 22 – 10 Jan 23', '01 Jan 23 – 31 Jan 23', '01 Feb 23 – 28 Feb 23', '01 Mar 23 – 31 Mar 23'].map((rng) => (
-                <TouchableOpacity
-                  key={rng}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setSelectedDateRange(rng);
-                    setDateModalVisible(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{rng}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {showFromPicker && (
+        <DateTimePicker
+          value={fromDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowFromPicker(false);
+            if (selectedDate) {
+              setFromDate(selectedDate);
+            }
+          }}
+        />
+      )}
+
+      {showToPicker && (
+        <DateTimePicker
+          value={toDate || new Date()}
+          mode="date"
+          display="default"
+          minimumDate={fromDate || undefined}
+          onChange={(event, selectedDate) => {
+            setShowToPicker(false);
+            if (selectedDate) {
+              setToDate(selectedDate);
+            }
+          }}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

@@ -4,7 +4,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useCalls } from '@/hooks/useCalls';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { CallRecord } from '@/types/call';
+import { activeCallFilter, updateCallFilterState, subscribeToCalls, CallFilterState } from '@/components/CallState';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -22,6 +24,47 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
+function formatCallLog(item: any, leadInfo: { name: string; phone: string }): CallRecord {
+  let type: 'Incoming' | 'Outgoing' | 'Missed' = 'Incoming';
+  if (item.call_type === 'INBOUND') type = 'Incoming';
+  else if (item.call_type === 'OUTBOUND') type = 'Outgoing';
+  else if (item.call_type === 'MISSED') type = 'Missed';
+
+  let duration = '00:00 min';
+  if (item.duration_seconds !== undefined && item.duration_seconds !== null) {
+    const mins = Math.floor(item.duration_seconds / 60);
+    const secs = item.duration_seconds % 60;
+    duration = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} min`;
+  }
+
+  let dateTime = '';
+  if (item.call_start_time) {
+    const date = new Date(item.call_start_time);
+    const options: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+    dateTime = date.toLocaleDateString('en-IN', options).replace(' pm', 'pm').replace(' am', 'am');
+  }
+
+  return {
+    ...item,
+    id: String(item.id),
+    name: leadInfo.name,
+    phoneNumber: leadInfo.phone,
+    dateTime: dateTime || 'Unknown',
+    duration,
+    type,
+    lead_id: item.lead_id,
+    remarks: item.remarks || '',
+    recordingUrl: item.recording_url || item.recordingUrl,
+  };
+}
+
 export default function CallHistoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -36,7 +79,50 @@ export default function CallHistoryScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const { calls, filter: filters, updateFilter, isLoading, isFetching, refetch } = useCalls();
+  const query = useCalls();
+  const rawData = query.data;
+  const isLoading = query.isLoading;
+  const isFetching = query.isFetching;
+  const refetch = query.refetch;
+
+  const [filters, setFilters] = useState<CallFilterState>(activeCallFilter);
+
+  useEffect(() => {
+    return subscribeToCalls(() => {
+      setFilters({ ...activeCallFilter });
+    });
+  }, []);
+
+  const updateFilter = (newFilter: CallFilterState) => {
+    updateCallFilterState(newFilter);
+  };
+
+  const calls = useMemo(() => {
+    if (!rawData) return [];
+    const { leads, allLogs } = rawData;
+    const leadMap: Record<string, { name: string; phone: string }> = {};
+    leads.forEach((l: any) => {
+      leadMap[String(l.id)] = {
+        name: l.name || 'Unknown',
+        phone: l.phone || l.mobile || '',
+      };
+    });
+
+    const mapped: CallRecord[] = allLogs.map((item: any) => {
+      const leadInfo = leadMap[String(item.lead_id)] || { name: 'Unknown', phone: '' };
+      return formatCallLog(item, leadInfo);
+    });
+
+    // Sort by call_start_time DESC
+    mapped.sort((a: any, b: any) => {
+      const dateA = a.call_start_time ? new Date(a.call_start_time).getTime() : 0;
+      const dateB = b.call_start_time ? new Date(b.call_start_time).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return mapped;
+  }, [rawData]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<CallType>('All');
 

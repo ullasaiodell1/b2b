@@ -1,22 +1,21 @@
 export interface VisitRecord {
   id: string;
-  name: string;      // Title of the visit
-  visitType: string; // Type of visit e.g. Site Visit
-  scheduledDateTime: string; // Format: DD-MM-YYYY HH:mm
-  imageUri?: string; // Selected/uploaded image URI
+  title: string;
   description?: string;
-  locationAddress: string;
-  lat: string;       // Latitude (e.g. 18.4729° N)
-  lng: string;       // Longitude (e.g. 73.8567° E)
-  status: 'Pending' | 'Complete' | 'Draft' | 'Bounce';
-  avatar?: any;
-  contactPersonName?: string;
-  designation?: string;
-  phone?: string;
-  outcomeSummary?: string;
-  nextSteps?: string;
+  visit_type: string;
+  status: string;
+  scheduled_time: string;
+  location_address?: string;
+  location_latitude?: number;
+  location_longitude?: number;
+  outcome_summary?: string;
+  next_steps?: string;
+  contact_person_name?: string;
+  contact_person_designation?: string;
+  contact_person_phone?: string;
+  image_url?: string;
   company?: string;
-  location?: string;
+  lead_company_name?: string;
 }
 
 export const INITIAL_VISITS: VisitRecord[] = [];

@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeadDetails, useLeads } from '@/hooks/useLeads';
+import { useLeadDetails, useDeleteLead } from '@/hooks/useLeads';
 import { useMeetings } from '@/hooks/useMeetings';
 import { useQuotations } from '@/hooks/useQuotations';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,10 +91,34 @@ export default function LeadDetailsScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const { data: dbLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
-  const { deleteLead } = useLeads();
-  const { quotations: dbQuotations, isLoading: isQuotationsLoading, isFetching: isQuotationsFetching, refetch: refetchQuotations } = useQuotations({ lead_id: params.id || '' });
-  const { meetings: dbMeetings, refetch: refetchMeetings } = useMeetings(undefined, params.id || '');
+  const { data: rawLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
+
+  const dbLead = React.useMemo(() => {
+    if (!rawLead) return null;
+    let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+    if (rawLead.priority === 'HOT') priority = 'High';
+    else if (rawLead.priority === 'WARM') priority = 'Normal';
+    else if (rawLead.priority === 'COLD') priority = 'Low';
+
+    const tag = (rawLead.tags && rawLead.tags[0]?.name) || rawLead.tag || '';
+
+    return {
+      id: String(rawLead.id),
+      name: rawLead.name || '',
+      company: rawLead.company_name || rawLead.company || '',
+      email: rawLead.email || '',
+      phone: rawLead.phone || '',
+      tag: tag,
+      priority: priority,
+      owner: rawLead.assigned_to_name || rawLead.owner || '',
+      status: rawLead.status_name || rawLead.status || '',
+      source: rawLead.source_name || rawLead.source || '',
+      ...rawLead
+    } as any;
+  }, [rawLead]);
+  const { mutateAsync: deleteLead } = useDeleteLead();
+  const { data: dbQuotations = [], isLoading: isQuotationsLoading, isFetching: isQuotationsFetching, refetch: refetchQuotations } = useQuotations({ lead_id: params.id || '' });
+  const { data: dbMeetings = [], refetch: refetchMeetings } = useMeetings({ lead_id: params.id || '' });
 
   const handleRefresh = () => {
     refetch();

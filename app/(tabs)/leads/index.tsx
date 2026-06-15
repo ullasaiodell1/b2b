@@ -28,8 +28,36 @@ export default function LeadsScreen() {
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const { leads, isLoading, isFetching, refetch } = useLeads();
+  const { data: rawLeads = [], isLoading, isFetching, refetch } = useLeads();
   const { primaryColor, primaryLight } = useTheme();
+
+  const leads = React.useMemo(() => {
+    return rawLeads.map((item: any) => {
+      let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+      const rawPriority = (item.priority || '').toUpperCase();
+      if (rawPriority === 'HOT' || rawPriority === 'HIGH') priority = 'High';
+      else if (rawPriority === 'WARM' || rawPriority === 'NORMAL') priority = 'Normal';
+      else if (rawPriority === 'COLD' || rawPriority === 'LOW') priority = 'Low';
+
+      const tag = (item.tags && Array.isArray(item.tags) && item.tags[0]?.name)
+        || item.tag
+        || '';
+
+      return {
+        id: String(item.id),
+        name: item.name || '',
+        company: item.company_name || item.company || '',
+        email: item.email || '',
+        phone: item.phone || '',
+        tag: tag,
+        priority: priority,
+        owner: item.assigned_to_name || item.owner || '',
+        status: item.status_name || item.status || '',
+        source: item.source_name || item.source || '',
+        ...item,
+      } as any;
+    });
+  }, [rawLeads]);
   useEffect(() => {
     if (leads) {
       console.log('[LeadsScreen] Rendered leads data:', leads);

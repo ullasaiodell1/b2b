@@ -27,17 +27,17 @@ export default function SelectCategoryScreen() {
   const params = useLocalSearchParams<{ currentCategory?: string }>();
   const insets = useSafeAreaInsets();
 
-  const { products, isLoading } = useProducts();
+  const { data: products = [], isLoading } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(params.currentCategory || '');
 
-  const categoriesList = React.useMemo(() => {
-    const rawCats = products.map((p: any) => p.category_name).filter(Boolean);
-    const uniqueCats = Array.from(new Set(rawCats));
+  const categoriesList = React.useMemo<string[]>(() => {
+    const rawCats = (products as any[]).map((p: any) => p.category_name).filter(Boolean);
+    const uniqueCats = Array.from(new Set(rawCats)) as string[];
     return uniqueCats.length > 0 ? uniqueCats : ['AYURVEDA', 'BASALT ELECTRONIC AMENITIES', 'BASALT ROOM AMENITIES', 'TOILETRIES'];
   }, [products]);
 
-  const filteredCategories = React.useMemo(() => {
+  const filteredCategories = React.useMemo<string[]>(() => {
     return categoriesList.filter((cat: string) =>
       cat.toLowerCase().includes(searchQuery.toLowerCase())
     );

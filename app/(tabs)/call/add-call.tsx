@@ -1,18 +1,19 @@
-import { CallRecord } from '@/components/CallState';
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useUpload } from '@/hooks/useUpload';
-import { useCalls } from '@/hooks/useCalls';
+import { useCreateCall } from '@/hooks/useCalls';
 import { useLeads } from '@/hooks/useLeads';
+import { useUpload } from '@/hooks/useUpload';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import React, { useState, useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -22,8 +23,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  KeyboardAvoidingView,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,8 +38,36 @@ export default function AddCallScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const { addCall, isAdding } = useCalls();
-  const { leads, isLoading: isLeadsLoading } = useLeads();
+  const { mutateAsync: addCall, isPending: isAdding } = useCreateCall();
+  const { data: rawLeads = [], isLoading: isLeadsLoading } = useLeads();
+
+  const leads = React.useMemo(() => {
+    return rawLeads.map((item: any) => {
+      let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+      const rawPriority = (item.priority || '').toUpperCase();
+      if (rawPriority === 'HOT' || rawPriority === 'HIGH') priority = 'High';
+      else if (rawPriority === 'WARM' || rawPriority === 'NORMAL') priority = 'Normal';
+      else if (rawPriority === 'COLD' || rawPriority === 'LOW') priority = 'Low';
+
+      const tag = (item.tags && Array.isArray(item.tags) && item.tags[0]?.name)
+        || item.tag
+        || '';
+
+      return {
+        id: String(item.id),
+        name: item.name || '',
+        company: item.company_name || item.company || '',
+        email: item.email || '',
+        phone: item.phone || '',
+        tag: tag,
+        priority: priority,
+        owner: item.assigned_to_name || item.owner || '',
+        status: item.status_name || item.status || '',
+        source: item.source_name || item.source || '',
+        ...item,
+      } as any;
+    });
+  }, [rawLeads]);
 
   const uploadMutation = useUpload();
   const [isUploading, setIsUploading] = useState(false);
@@ -444,7 +471,7 @@ export default function AddCallScreen() {
                 <Ionicons name="close" size={20} color={COLORS.textDark} />
               </TouchableOpacity>
             </View>
-            
+
             {/* Search Input for Leads inside Modal */}
             <View style={styles.modalSearchContainer}>
               <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={{ marginRight: 8 }} />

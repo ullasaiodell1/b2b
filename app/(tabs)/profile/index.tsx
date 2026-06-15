@@ -32,14 +32,31 @@ export default function ProfileScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, isLoading, isFetching, refetch } = useProfile();
+  const { profile: backendProfile, isLoading, isFetching, refetch } = useProfile();
   const logoutMutation = useLogout();
 
+  const profile = React.useMemo(() => {
+    const user = backendProfile || {};
+    return {
+      fullName: user.name || '',
+      mobile: user.phone_number || '',
+      dob: user.date_of_birth || '',
+      email: user.personal_email || user.email || '',
+      gender: user.gender
+        ? (user.gender.charAt(0).toUpperCase() + user.gender.slice(1)) as 'Male' | 'Female'
+        : 'Male',
+      gstNo: user.gst_number || '',
+      panNo: user.pan_number || '',
+      address: user.address || '',
+      photoUri: user.image_url || null,
+    };
+  }, [backendProfile]);
+
   React.useEffect(() => {
-    if (profile) {
+    if (backendProfile) {
       console.log('[ProfileScreen] Rendered profile data:', profile);
     }
-  }, [profile]);
+  }, [backendProfile]);
 
   if (isLoading && !profile.fullName) {
     return (

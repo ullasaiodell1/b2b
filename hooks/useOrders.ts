@@ -15,7 +15,6 @@ export function useOrders() {
   return {
     orders,
     filter,
-    updateOrders: updateOrdersState,
     updateFilter: updateOrderFilterState,
   };
 }

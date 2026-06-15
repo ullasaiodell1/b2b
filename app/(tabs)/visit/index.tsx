@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { useTheme } from '@/hooks/use-theme';
 import { useVisits } from '@/hooks/useVisits';
+import { serverDetails } from '@/config';
 
 export default function VisitScreen() {
   const theme = useTheme();
@@ -35,47 +36,129 @@ export default function VisitScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const { visits } = useVisits();
+  const { data: responseData } = useVisits() as any;
+  const visits = Array.isArray(responseData)
+    ? responseData
+    : (Array.isArray(responseData?.data)
+      ? responseData.data
+      : (Array.isArray(responseData?.data?.data)
+        ? responseData.data.data
+        : []));
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'All' | 'Complete' | 'Pending' | 'Bounce'>('All');
 
+  const getDisplayStatus = (status: string) => {
+    const s = String(status || '').toUpperCase();
+    if (s === 'COMPLETED' || s === 'COMPLETE') return 'Complete';
+    if (s === 'DRAFT') return 'Draft';
+    if (s === 'BOUNCE') return 'Bounce';
+    return 'Pending';
+  };
+
+  const formatLatitude = (lat: any) => {
+    const val = Number(lat);
+    if (isNaN(val) || val === 0) return '18.4729° N';
+    const dir = val >= 0 ? 'N' : 'S';
+    return `${Math.abs(val).toFixed(4)}° ${dir}`;
+  };
+
+  const formatLongitude = (lng: any) => {
+    const val = Number(lng);
+    if (isNaN(val) || val === 0) return '73.8567° E';
+    const dir = val >= 0 ? 'E' : 'W';
+    return `${Math.abs(val).toFixed(4)}° ${dir}`;
+  };
+
+  const getImageUri = (imageUrl: any) => {
+    if (!imageUrl) return '';
+    try {
+      const parsed = JSON.parse(imageUrl);
+      const candidate = parsed?.url || parsed?.thumb || parsed?.src || parsed?.key || parsed?.path || parsed;
+      if (typeof candidate === 'string' && candidate.length > 0) {
+        if (candidate.startsWith('http')) return candidate;
+        const cleaned = candidate.startsWith('/') ? candidate.slice(1) : candidate;
+        return `${serverDetails.s3BucketURL}/${cleaned}`;
+      }
+    } catch {
+      if (typeof imageUrl === 'string' && imageUrl.length > 0) {
+        if (imageUrl.startsWith('http')) return imageUrl;
+        const cleaned = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+        return `${serverDetails.s3BucketURL}/${cleaned}`;
+      }
+    }
+    return '';
+  };
+
   // Filter calculations for top counts
   const totalCount = visits.length;
-  const completeCount = visits.filter(v => v.status === 'Complete').length;
-  const pendingCount = visits.filter(v => v.status === 'Pending').length;
-  const bounceCount = visits.filter(v => v.status === 'Bounce').length;
+  const completeCount = visits.filter((v: any) => getDisplayStatus(v.status) === 'Complete').length;
+  const pendingCount = visits.filter((v: any) => getDisplayStatus(v.status) === 'Pending').length;
+  const bounceCount = visits.filter((v: any) => getDisplayStatus(v.status) === 'Bounce').length;
+
+  const parseDate = (str: string): Date | null => {
+    try {
+      const parts = str.trim().split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+    } catch (e) {
+      console.log('Error parsing date:', e);
+    }
+    return null;
+  };
 
   // Filtering Logic
-  const filteredVisits = visits.filter((v) => {
+  const filteredVisits = visits.filter((v: any) => {
     // Search Query
+    const titleVal = v.title || '';
+    const companyVal = v.company || v.lead_company_name || '';
+    const visitTypeVal = v.visit_type || 'Site Visit';
+    const locationVal = v.location_address || '';
+
     const matchesSearch =
-      v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.company && v.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (v.visitType && v.visitType.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (v.location && v.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (v.locationAddress && v.locationAddress.toLowerCase().includes(searchQuery.toLowerCase()));
+      titleVal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      companyVal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      visitTypeVal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      locationVal.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Top Pill filter
     let matchesPill = true;
     if (selectedStatusTab !== 'All') {
-      matchesPill = v.status === selectedStatusTab;
+      matchesPill = getDisplayStatus(v.status) === selectedStatusTab;
     }
 
     // Filter Param (from Filter Screen)
     let matchesParamStatus = true;
     if (params.status) {
-      matchesParamStatus = v.status === params.status;
+      matchesParamStatus = getDisplayStatus(v.status) === params.status;
     }
 
     let matchesParamCompany = true;
     if (params.company && params.company !== 'Select Company') {
-      matchesParamCompany = v.company === params.company;
+      matchesParamCompany = (v.company === params.company || v.lead_company_name === params.company);
     }
 
-    return matchesSearch && matchesPill && matchesParamStatus && matchesParamCompany;
+    let matchesDate = true;
+    if (params.dateRange && params.dateRange.includes(' - ')) {
+      const parts = params.dateRange.split(' - ');
+      const from = parseDate(parts[0]);
+      const to = parseDate(parts[1]);
+      if (from && to && v.scheduled_time) {
+        const logDate = new Date(v.scheduled_time);
+        const logTime = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate()).getTime();
+        const fromTime = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+        const toTime = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+        matchesDate = logTime >= fromTime && logTime <= toTime;
+      }
+    }
+
+    return matchesSearch && matchesPill && matchesParamStatus && matchesParamCompany && matchesDate;
   });
 
-  const hasActiveFilters = !!(params.status || params.company);
+  const hasActiveFilters = !!(params.status || params.company || params.dateRange);
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -209,6 +292,11 @@ export default function VisitScreen() {
                 <Text style={styles.filterBadgeText}>Company: {params.company}</Text>
               </View>
             )}
+            {params.dateRange && (
+              <View style={styles.filterBadgeChip}>
+                <Text style={styles.filterBadgeText}>Date: {params.dateRange}</Text>
+              </View>
+            )}
           </ScrollView>
           <TouchableOpacity
             style={styles.clearBtn}
@@ -226,31 +314,48 @@ export default function VisitScreen() {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {filteredVisits.map((visit) => {
-          const isPending = visit.status === 'Pending';
-          const isComplete = visit.status === 'Complete';
+        {filteredVisits.map((visit: any) => {
+          const displayStatus = getDisplayStatus(visit.status);
+          const isPending = displayStatus === 'Pending';
+          const isComplete = displayStatus === 'Complete';
           const statusColor = isPending ? COLORS.orange : isComplete ? COLORS.green : COLORS.red;
+          const imgUri = getImageUri(visit.image_url);
 
           return (
-            <View key={visit.id} style={styles.card}>
-              {visit.imageUri && visit.imageUri.startsWith('http') && (
+            <TouchableOpacity
+              key={visit.id}
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => router.push({
+                pathname: '/(tabs)/visit/visit-details',
+                params: {
+                  id: visit.id,
+                  leadId: visit.lead_id || params.leadId || '',
+                }
+              })}
+            >
+              {imgUri ? (
                 <Image
-                  source={{ uri: visit.imageUri }}
+                  source={{ uri: imgUri }}
                   style={styles.cardAvatar}
                 />
-              )}
+              ) : null}
 
               <View style={styles.cardInfo}>
-                <Text style={styles.cardName}>{visit.name}</Text>
+                <Text style={styles.cardName}>{visit.title || ''}</Text>
 
                 <View style={styles.cardRow}>
                   <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>{visit.company || visit.visitType || 'Site Visit'}</Text>
+                  <Text style={styles.cardText} numberOfLines={1}>
+                    {visit.company || visit.lead_company_name || visit.visit_type || 'Site Visit'}
+                  </Text>
                 </View>
 
                 <View style={styles.cardRow}>
                   <Ionicons name="location-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>{visit.location || visit.locationAddress || 'Address Not Provided'}</Text>
+                  <Text style={styles.cardText} numberOfLines={1}>
+                    {visit.location_address || 'Address Not Provided'}
+                  </Text>
                 </View>
 
                 {/* Status Row with outline circle */}
@@ -258,22 +363,22 @@ export default function VisitScreen() {
                   <View style={[styles.statusCircleOutline, { borderColor: statusColor }]}>
                     <View style={[styles.statusCircleDot, { backgroundColor: statusColor }]} />
                   </View>
-                  <Text style={[styles.statusText, { color: statusColor }]}>{visit.status}</Text>
+                  <Text style={[styles.statusText, { color: statusColor }]}>{displayStatus}</Text>
                 </View>
 
                 {/* Geo Coordinates */}
                 <View style={styles.coordinatesContainer}>
                   <View style={styles.coordinateItem}>
                     <Ionicons name="globe-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                    <Text style={styles.coordinateText}>{visit.lat}</Text>
+                    <Text style={styles.coordinateText}>{formatLatitude(visit.location_latitude)}</Text>
                   </View>
                   <View style={styles.coordinateItem}>
                     <Ionicons name="globe-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                    <Text style={styles.coordinateText}>{visit.lng}</Text>
+                    <Text style={styles.coordinateText}>{formatLongitude(visit.location_longitude)}</Text>
                   </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 

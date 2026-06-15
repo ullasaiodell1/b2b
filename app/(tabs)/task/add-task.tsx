@@ -3,8 +3,6 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadDetails, useUsers } from '@/hooks/useLeads';
 import {
-  TASK_PRIORITY_MAP,
-  TASK_STATUS_MAP,
   useCreateTask,
   useTask,
   useUpdateTask
@@ -69,7 +67,14 @@ export default function AddTaskScreen() {
   const leadId = params.leadId as string;
   const leadName = params.leadName as string;
 
-  const { task } = useTask(id);
+  const { data: responseData } = useTask(id) as any;
+  const task = responseData?.id
+    ? responseData
+    : (responseData?.data
+        ? (Array.isArray(responseData.data)
+            ? responseData.data[0]
+            : (responseData.data.data || responseData.data))
+        : responseData);
   const effectiveLeadId = leadId || task?.lead_id || '';
   const { data: dbLead } = useLeadDetails(effectiveLeadId);
   const resolvedLeadName = leadName || dbLead?.name || '';
@@ -78,19 +83,37 @@ export default function AddTaskScreen() {
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
 
+  const getBackendStatus = (s: string) => {
+    const statusVal = String(s || '').toUpperCase();
+    if (statusVal === 'COMPLETED') return 'COMPLETED';
+    if (statusVal === 'IN PROGRESS' || statusVal === 'IN_PROGRESS') return 'IN_PROGRESS';
+    if (statusVal === 'WAITING FOR INPUT' || statusVal === 'IN_REVIEW') return 'IN_REVIEW';
+    if (statusVal === 'CANCELLED') return 'CANCELLED';
+    return 'TODO';
+  };
+
+  const getBackendPriority = (p: string) => {
+    const priorityVal = String(p || '').toUpperCase();
+    if (priorityVal === 'LOWEST' || priorityVal === 'LOW') return 'LOW';
+    if (priorityVal === 'NORMAL' || priorityVal === 'MEDIUM') return 'MEDIUM';
+    if (priorityVal === 'HIGH') return 'HIGH';
+    if (priorityVal === 'URGENT') return 'URGENT';
+    return 'MEDIUM';
+  };
+
   const [title, setTitle] = useState((params.title as string) || '');
   const [description, setDescription] = useState((params.description as string) || '');
   const [status, setStatus] = useState<StatusType | null>(() => {
     const pStatus = params.status as string;
     if (pStatus) {
-      return (TASK_STATUS_MAP[pStatus] || pStatus) as StatusType;
+      return getBackendStatus(pStatus) as StatusType;
     }
     return null;
   });
   const [priority, setPriority] = useState<PriorityType | null>(() => {
     const pPriority = params.priority as string;
     if (pPriority) {
-      return (TASK_PRIORITY_MAP[pPriority] || pPriority) as PriorityType;
+      return getBackendPriority(pPriority) as PriorityType;
     }
     return null;
   });
@@ -105,7 +128,12 @@ export default function AddTaskScreen() {
     return null;
   });
   const [dueDateObj, setDueDateObj] = useState<Date>(() => {
-    if (params.due) {
+    if (params.due_date) {
+      const parsedDate = new Date(params.due_date as string);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    } else if (params.due) {
       const parsedDate = new Date(params.due as string);
       if (!isNaN(parsedDate.getTime())) {
         return parsedDate;
@@ -158,35 +186,24 @@ export default function AddTaskScreen() {
       setTitle(task.title || '');
       setDescription(task.description || '');
 
-      // status mapping
       if (task.status) {
-        const mappedStatus = TASK_STATUS_MAP[task.status] || task.status;
-        setStatus(mappedStatus as StatusType);
+        setStatus(getBackendStatus(task.status) as StatusType);
       }
 
-      // priority mapping
       if (task.priority) {
-        const mappedPriority = TASK_PRIORITY_MAP[task.priority] || task.priority;
-        setPriority(mappedPriority as PriorityType);
+        setPriority(getBackendPriority(task.priority) as PriorityType);
       }
 
-      // assigned user mapping
       if (task.assigned_to) {
         setAssignedUser({
           id: String(task.assigned_to),
-          name: task.assigned_to_name || '',
+          name: task.assigned_to_fullname || task.assigned_to_name || '',
           email: '',
         });
       }
 
-      // due date mapping
       if (task.due_date) {
         setDueDateObj(new Date(task.due_date));
-      } else if (task.due) {
-        const parsedDate = new Date(task.due);
-        if (!isNaN(parsedDate.getTime())) {
-          setDueDateObj(parsedDate);
-        }
       }
     }
   }, [task]);
@@ -313,7 +330,7 @@ export default function AddTaskScreen() {
           data: {
             title: title.trim(),
             description: description.trim(),
-            due: dueDateObj.toISOString(),
+            due_date: dueDateObj.toISOString(),
             priority: priority!,
             status: status!,
             assigned_to: assignedUser!.id,
@@ -324,7 +341,7 @@ export default function AddTaskScreen() {
         await createTaskMutation.mutateAsync({
           title: title.trim(),
           description: description.trim(),
-          due: dueDateObj.toISOString(),
+          due_date: dueDateObj.toISOString(),
           priority: priority!,
           status: status!,
           assigned_to: assignedUser!.id,

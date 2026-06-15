@@ -69,7 +69,7 @@ export default function QuotationScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { quotations, isLoading, isFetching, refetch } = useQuotations();
+  const { data: quotations = [], isLoading, isFetching, refetch } = useQuotations();
 
   // Filter by tab + search
   const filtered = quotations.filter((q) => {

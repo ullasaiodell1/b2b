@@ -5,11 +5,10 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/config/reactQuery';
 import Toast from 'react-native-toast-message';
 import { ThemeProvider as AppThemeProvider } from '@/context/ThemeContext';
-
-const queryClient = new QueryClient();
 
 export const unstable_settings = {
   anchor: '(tabs)',

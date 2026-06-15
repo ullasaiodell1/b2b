@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -110,6 +111,25 @@ export default function CalendarScreen() {
       tension: 60,
       friction: 8,
     }).start();
+  }, [isSpeedDialOpen]);
+
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (isSpeedDialOpen) {
+        setIsSpeedDialOpen(false);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    return () => {
+      subscription.remove();
+    };
   }, [isSpeedDialOpen]);
 
   // Compute weekly date strip selector starting from Sunday

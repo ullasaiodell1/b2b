@@ -242,7 +242,35 @@ export default function AddOrderScreen() {
     }, [referrer, params.leadId])
   );
 
-  const { leads } = useLeads();
+  const { data: rawLeads = [] } = useLeads();
+
+  const leads = React.useMemo(() => {
+    return rawLeads.map((item: any) => {
+      let priority: 'High' | 'Normal' | 'Low' = 'Normal';
+      const rawPriority = (item.priority || '').toUpperCase();
+      if (rawPriority === 'HOT' || rawPriority === 'HIGH') priority = 'High';
+      else if (rawPriority === 'WARM' || rawPriority === 'NORMAL') priority = 'Normal';
+      else if (rawPriority === 'COLD' || rawPriority === 'LOW') priority = 'Low';
+
+      const tag = (item.tags && Array.isArray(item.tags) && item.tags[0]?.name)
+        || item.tag
+        || '';
+
+      return {
+        id: String(item.id),
+        name: item.name || '',
+        company: item.company_name || item.company || '',
+        email: item.email || '',
+        phone: item.phone || '',
+        tag: tag,
+        priority: priority,
+        owner: item.assigned_to_name || item.owner || '',
+        status: item.status_name || item.status || '',
+        source: item.source_name || item.source || '',
+        ...item,
+      } as any;
+    });
+  }, [rawLeads]);
   const [customerType, setCustomerType] = useState<'DEALER' | 'LEAD'>('DEALER');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);

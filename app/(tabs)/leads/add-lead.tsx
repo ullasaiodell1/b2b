@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeads, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
+import { useCreateLead, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,12 +36,12 @@ export default function AddLeadScreen() {
   const isFocused = useIsFocused();
   const { primaryColor, primaryLight } = useTheme();
 
-  const { createLead, isCreating } = useLeads();
+  const { mutateAsync: createLead, isPending: isCreating } = useCreateLead();
   const { data: statusesData } = useLeadStatuses();
   const { data: sourcesData } = useLeadSources();
   const { data: usersData } = useUsers();
   const { data: apiTagsData } = useLeadTags();
-  const { products } = useProducts();
+  const { data: products = [] } = useProducts();
   const categoriesList = React.useMemo(() => {
     const rawCats = products.map((p: any) => p.category_name).filter(Boolean);
     const uniqueCats = Array.from(new Set(rawCats));

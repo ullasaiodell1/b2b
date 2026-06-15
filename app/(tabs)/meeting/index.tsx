@@ -1,6 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useMeetings } from '@/hooks/useMeetings';
-import { MeetingRecord } from '@/types/meeting';
+import { updateMeetingsState } from '@/components/MeetingState';
+import { MeetingRecord, MeetingStatus } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -43,7 +44,66 @@ export default function MeetingScreen() {
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(initialDate);
 
   // 1. Dynamic Meeting State — filtered by selectedDate via the hook
-  const { meetings, isLoading, isFetching, refetch } = useMeetings(selectedDate, params.leadId);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateParam = selectedDate
+    ? `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`
+    : undefined;
+
+  const query = useMeetings({
+    startDate: dateParam,
+    lead_id: params.leadId,
+  });
+
+  const { isLoading, isFetching, refetch } = query;
+  const rawMeetings: any[] = Array.isArray(query.data) 
+    ? query.data 
+    : (query.data?.data || query.data?.followups || query.data?.results || []);
+
+  const meetings = rawMeetings.map((item: any): MeetingRecord => {
+    const dateObj = item.scheduled_at ? new Date(item.scheduled_at) : new Date();
+    const fromTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const toDateObj = new Date(dateObj);
+    toDateObj.setHours(toDateObj.getHours() + 1);
+    const toTime = toDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const scheduledAt = item.scheduled_at
+      ? dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) +
+        ' · ' +
+        dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      : '';
+    const scheduledDateStr = item.scheduled_at
+      ? `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`
+      : '';
+    let status: MeetingStatus = 'Pending';
+    if (item.status === 'COMPLETED') status = 'Complete';
+    else if (item.status === 'IN_PROGRESS' || item.status === 'RESCHEDULED') status = 'In-Process';
+
+    return {
+      id: String(item.id || ''),
+      title: item.purpose || item.follow_up_method || 'Follow-up',
+      venue: item.remarks || '',
+      location: item.follow_up_method || 'Hybrid',
+      isAllDay: false,
+      fromTime,
+      toTime,
+      host: item.assigned_to_name || item.lead_name || '',
+      status,
+      notes: item.remarks ? [item.remarks] : [],
+      attachments: [],
+      createdTime: item.created_at || '',
+      modifiedTime: item.updated_at || '',
+      purpose: item.purpose || '',
+      method: item.follow_up_method || '',
+      scheduledAt,
+      scheduledDate: scheduledDateStr,
+      leadId: item.lead_id ? String(item.lead_id) : undefined,
+    };
+  });
+
+  useEffect(() => {
+    if (query.data) {
+      updateMeetingsState(meetings);
+    }
+  }, [query.data]);
 
   // 3. Tab Filter State
   const [activeTab, setActiveTab] = useState<'All' | 'Upcoming' | 'In Process' | 'Complete' | 'Pending'>('All');

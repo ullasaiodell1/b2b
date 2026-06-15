@@ -56,7 +56,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'add-order', 'order-details', 'order-filter',
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
-    'add-visit', 'visit-filter',
+    'add-visit', 'visit-details', 'visit-filter',
     'add-call', 'call-filter', 'call-history',
     'edit-profile', 'change-password',
     'theme-settings', 'notification-settings', 'help-support'
@@ -121,14 +121,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               activeOpacity={0.7}
             >
               {isFocused ? (
-                /* ── RAISED WHITE CIRCLE (active) ── */
-                <View style={styles.raisedCircle}>
-                  <Ionicons
-                    name={mod.icon}
-                    size={22}
-                    color={COLORS.activeIcon}
-                  />
-                </View>
+                /* ── Active icon (white, not raised) ── */
+                <Ionicons
+                  name={mod.icon}
+                  size={24}
+                  color="#FFFFFF"
+                />
               ) : (
                 /* ── Regular inactive icon ── */
                 <Ionicons

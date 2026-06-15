@@ -1,10 +1,10 @@
 import {
-    createQuotation,
-    deleteQuotation,
-    getQuotationDetails,
-    listQuotation,
-    updateQuotation,
-    updateQuotationStatus,
+  createQuotation,
+  deleteQuotation,
+  getQuotationDetails,
+  listQuotation,
+  updateQuotation,
+  updateQuotationStatus,
 } from '@/services/api/quotation';
 import { CreateQuotationPayload, QuotationFilterState, QuotationRecord } from '@/types/quotation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,60 +18,32 @@ export const quotationKeys = {
 };
 
 // ─── List Quotations ───────────────────────────────────────────────────────────
-export function useQuotations(params?: Partial<QuotationFilterState>) {
-  const query = useQuery({
+export const useQuotations = (params?: Partial<QuotationFilterState>) => {
+  return useQuery({
     queryKey: quotationKeys.quotationFilter(params),
     queryFn: async (): Promise<QuotationRecord[]> => {
       const res = await listQuotation(params) as any;
-      console.log('[useQuotations] raw response keys:', res ? Object.keys(res) : 'null');
-
-      // Backend returns { total, data: [...] }
-      // After axios interceptor: res = { total, data: [...] }
-      let rawData: any[] = [];
-      if (Array.isArray(res)) {
-        rawData = res;
-      } else if (Array.isArray(res?.data)) {
-        rawData = res.data;
-      } else if (Array.isArray(res?.data?.data)) {
-        rawData = res.data.data;
-      }
-
-      console.log('[useQuotations] data count:', rawData.length);
-      return rawData as QuotationRecord[];
+      return (res?.data || res) as QuotationRecord[];
     },
   });
-
-  return {
-    quotations: query.data ?? [],
-    total: (query.data ?? []).length,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
-  };
-}
+};
 
 // ─── Single Quotation Details ──────────────────────────────────────────────────
-export function useQuotationDetails(id: string) {
+export const useQuotationDetails = (id: string) => {
   return useQuery({
     queryKey: quotationKeys.details(id),
     queryFn: async (): Promise<QuotationRecord | null> => {
       if (!id) return null;
       const res = await getQuotationDetails(id) as any;
-      console.log('[useQuotationDetails] raw response:', JSON.stringify(res)?.slice(0, 200));
-
-      // Backend returns: { data: { ...quotation, items: [] } }
-      // After axios interceptor: res = { data: {...} }
       const detail = res?.data || res || null;
       return detail as QuotationRecord;
     },
     enabled: !!id,
   });
-}
+};
 
 // ─── Create Quotation ──────────────────────────────────────────────────────────
-export function useCreateQuotation() {
+export const useCreateQuotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateQuotationPayload) => createQuotation(data),
@@ -79,10 +51,10 @@ export function useCreateQuotation() {
       queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
     },
   });
-}
+};
 
 // ─── Update Quotation ──────────────────────────────────────────────────────────
-export function useUpdateQuotation() {
+export const useUpdateQuotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateQuotationPayload> & { status: string } }) =>
@@ -92,10 +64,10 @@ export function useUpdateQuotation() {
       queryClient.invalidateQueries({ queryKey: quotationKeys.details(variables.id) });
     },
   });
-}
+};
 
 // ─── Update Status Only ────────────────────────────────────────────────────────
-export function useUpdateQuotationStatus() {
+export const useUpdateQuotationStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status, reject_remarks }: { id: string; status: string; reject_remarks?: string }) =>
@@ -105,10 +77,10 @@ export function useUpdateQuotationStatus() {
       queryClient.invalidateQueries({ queryKey: quotationKeys.details(variables.id) });
     },
   });
-}
+};
 
 // ─── Delete Quotation ──────────────────────────────────────────────────────────
-export function useDeleteQuotation() {
+export const useDeleteQuotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteQuotation(id),
@@ -116,4 +88,4 @@ export function useDeleteQuotation() {
       queryClient.invalidateQueries({ queryKey: quotationKeys.lists() });
     },
   });
-}
+};

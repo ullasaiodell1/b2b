@@ -1,5 +1,5 @@
 import { updateLeadsState } from '@/components/LeadState';
-import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, updateLead, getLeadTags } from '@/services/api/leads';
+import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, getLeadTags, updateLead } from '@/services/api/leads';
 import { getUsers } from '@/services/api/users';
 import { LeadRecord } from '@/types/leads';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,8 +18,6 @@ export const leadKeys = {
 };
 
 export function useLeads(params?: any) {
-  const queryClient = useQueryClient();
-
   const query = useQuery({
     queryKey: leadKeys.leadFilter(params),
     queryFn: async () => {
@@ -44,37 +42,9 @@ export function useLeads(params?: any) {
 
       console.log('[useLeads] rawData length:', rawData.length);
 
-      const mapped: LeadRecord[] = rawData.map((item: any) => {
-        let priority: 'High' | 'Normal' | 'Low' = 'Normal';
-        const rawPriority = (item.priority || '').toUpperCase();
-        if (rawPriority === 'HOT' || rawPriority === 'HIGH') priority = 'High';
-        else if (rawPriority === 'WARM' || rawPriority === 'NORMAL') priority = 'Normal';
-        else if (rawPriority === 'COLD' || rawPriority === 'LOW') priority = 'Low';
-
-        const tag = (item.tags && Array.isArray(item.tags) && item.tags[0]?.name)
-          || item.tag
-          || '';
-
-        return {
-          id: String(item.id),
-          name: item.name || '',
-          company: item.company_name || item.company || '',
-          email: item.email || '',
-          phone: item.phone || '',
-          tag: tag,
-          priority: priority,
-          owner: item.assigned_to_name || item.owner || '',
-          status: item.status_name || item.status || '',
-          source: item.source_name || item.source || '',
-          ...item,
-        } as any;
-      });
-
-      return mapped;
+      return rawData;
     },
   });
-
-  const leads = query.data || [];
 
   useEffect(() => {
     if (query.data) {
@@ -89,41 +59,38 @@ export function useLeads(params?: any) {
     }
   }, [query.isError, query.error]);
 
-  const createMutation = useMutation({
+  return query;
+}
+
+export function useCreateLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (newLeadData: any) => createLead(newLeadData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
   });
+}
 
-  const updateMutation = useMutation({
+export function useUpdateLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => updateLead(id, data),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
       queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
     }
   });
+}
 
-  const deleteMutation = useMutation({
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => deleteLead(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
   });
-
-  return {
-    leads,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    refetch: query.refetch,
-    createLead: createMutation.mutateAsync,
-    isCreating: createMutation.isPending,
-    updateLead: updateMutation.mutateAsync,
-    isUpdating: updateMutation.isPending,
-    deleteLead: deleteMutation.mutateAsync,
-    isDeleting: deleteMutation.isPending,
-  };
 }
 
 export function useLeadDetails(id: string) {
@@ -135,29 +102,7 @@ export function useLeadDetails(id: string) {
       // httpRequest interceptor returns the JSON body, so res = { total, data: [lead] }
       const res = await getLeadDetails(id);
       const raw = Array.isArray(res?.data) ? res.data[0] : res?.data || null;
-      if (raw) {
-        let priority: 'High' | 'Normal' | 'Low' = 'Normal';
-        if (raw.priority === 'HOT') priority = 'High';
-        else if (raw.priority === 'WARM') priority = 'Normal';
-        else if (raw.priority === 'COLD') priority = 'Low';
-
-        const tag = (raw.tags && raw.tags[0]?.name) || raw.tag || '';
-
-        return {
-          id: String(raw.id),
-          name: raw.name || '',
-          company: raw.company_name || raw.company || '',
-          email: raw.email || '',
-          phone: raw.phone || '',
-          tag: tag,
-          priority: priority,
-          owner: raw.assigned_to_name || raw.owner || '',
-          status: raw.status_name || raw.status || '',
-          source: raw.source_name || raw.source || '',
-          ...raw
-        } as any;
-      }
-      return null;
+      return raw;
     },
     enabled: !!id
   });

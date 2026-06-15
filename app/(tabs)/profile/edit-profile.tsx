@@ -34,7 +34,24 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { profile, updateProfile: mutateProfile, isLoading } = useProfile();
+  const { profile: backendProfile, updateProfile: mutateProfile, isLoading } = useProfile();
+
+  const profile = React.useMemo(() => {
+    const user = backendProfile || {};
+    return {
+      fullName: user.name || '',
+      mobile: user.phone_number || '',
+      dob: user.date_of_birth || '',
+      email: user.personal_email || user.email || '',
+      gender: user.gender
+        ? (user.gender.charAt(0).toUpperCase() + user.gender.slice(1)) as 'Male' | 'Female'
+        : 'Male',
+      gstNo: user.gst_number || '',
+      panNo: user.pan_number || '',
+      address: user.address || '',
+      photoUri: user.image_url || null,
+    };
+  }, [backendProfile]);
 
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState<Date>(new Date(2005, 3, 10));
@@ -51,7 +68,7 @@ export default function EditProfileScreen() {
 
   // Sync state values when profile loads
   React.useEffect(() => {
-    if (profile) {
+    if (backendProfile) {
       setFullName(profile.fullName || '');
       setGstNo(profile.gstNo || '');
       setPanNo(profile.panNo || '');
@@ -199,18 +216,21 @@ export default function EditProfileScreen() {
       const cleanedGst = gstNo.trim().toUpperCase() || null;
       const cleanedPan = panNo.trim().toUpperCase() || null;
 
+      const backendData = {
+        name: fullName.trim(),
+        phone_number: mobile.trim(),
+        date_of_birth: formattedDob,
+        personal_email: email.trim(),
+        email: email.trim(),
+        gender: gender.toLowerCase(),
+        gst_number: cleanedGst || '',
+        pan_number: cleanedPan || '',
+        address: address.trim(),
+        image_url: finalPhotoUri,
+      };
+
       mutateProfile(
-        {
-          fullName: fullName.trim(),
-          dob: formattedDob,
-          gstNo: cleanedGst || '',
-          panNo: cleanedPan || '',
-          email: email.trim(),
-          mobile: mobile.trim(),
-          gender,
-          address: address.trim(),
-          photoUri: finalPhotoUri,
-        },
+        backendData,
         {
           onSuccess: () => {
             setUpdating(false);

@@ -7,6 +7,7 @@ export default function VisitLayout() {
       <Stack.Screen name="index" options={{ title: 'Visit' }} />
       <Stack.Screen name="add-visit" options={{ title: 'Add Visit' }} />
       <Stack.Screen name="visit-filter" options={{ title: 'Visit Filter' }} />
+      <Stack.Screen name="visit-details" options={{ title: 'Visit Details' }} />
     </Stack>
   );
 }

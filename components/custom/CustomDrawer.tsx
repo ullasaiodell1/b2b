@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  BackHandler,
   Dimensions,
   Modal,
   Platform,
@@ -86,6 +87,25 @@ export default function CustomDrawer() {
       });
     }
   }, [open]);
+
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (open) {
+        closeDrawer();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [open, closeDrawer]);
 
   useEffect(() => {
     if (editNavigationVisible) {

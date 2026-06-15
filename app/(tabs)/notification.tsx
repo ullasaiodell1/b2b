@@ -114,6 +114,18 @@ export default function NotificationScreen() {
     Alert.alert('App Update v3.2.1', 'Changelog:\n- Bulk Invoice Download\n- E-Way Bill Integration\n- Offline Order Entry Mode');
   };
 
+  const handleLeadAssign = () => {
+    Alert.alert('Lead Details', 'Navigating to Lead Details...');
+  };
+
+  const handleMeetingDetail = () => {
+    Alert.alert('Meeting Details', 'Navigating to Meeting Details...');
+  };
+
+  const handleViewQuotation = () => {
+    Alert.alert('Quotation Details', 'Opening Quotation QT-2026-011...');
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
@@ -137,7 +149,7 @@ export default function NotificationScreen() {
 
         <NotificationItem
           title="Order Dispatched Successfully"
-          time="30 Minute"
+          time="30 min ago"
           body="Order #ORD-2026-00908 for Mehta Industries has been dispatched via Safexpress. LR No: SFX884421."
           type="download-bill"
           buttonLabel="Download E-Way Bill"
@@ -146,15 +158,24 @@ export default function NotificationScreen() {
 
         <NotificationItem
           title="Payment Successful"
-          time="30 Minute"
+          time="1 hour ago"
           body="₹4,299 paid to Netflix India. Subscription renewed for 12 months."
           type="payment-badge"
           buttonLabel="Paid - HDFC-4521"
         />
 
         <NotificationItem
+          title="New Lead Assigned"
+          time="3 hours ago"
+          body="A new lead, 'Apex Chemicals Ltd.' (Rajkot) has been assigned to you by manager."
+          type="confirm-order"
+          buttonLabel="View Lead"
+          onPressButton={handleLeadAssign}
+        />
+
+        <NotificationItem
           title="Your package is nearby"
-          time="2 Hour ago"
+          time="4 hours ago"
           body="Order #52841 from Flipkart — out for delivery. Arriving by 6:00 PM."
           type="track"
           buttonLabel="Track"
@@ -170,7 +191,7 @@ export default function NotificationScreen() {
 
         <NotificationItem
           title="Urgent — New Order Received"
-          time="30 Minute"
+          time="Yesterday 2:15 PM"
           body="Ambica Steels Pvt. Ltd. placed a new order #ORD-2026-01042 worth ₹3,24,800."
           type="confirm-order"
           buttonLabel="Confirm Order"
@@ -178,11 +199,20 @@ export default function NotificationScreen() {
         />
 
         <NotificationItem
-          title="Payment Successful"
-          time="30 Minute"
-          body="₹4,299 paid to Netflix India. Subscription renewed for 12 months."
+          title="Payment Received"
+          time="Yesterday 11:30 AM"
+          body="₹1,50,000 received from Zenon Traders for invoice #INV-2026-009."
           type="payment-badge"
-          buttonLabel="Paid - HDFC-4521"
+          buttonLabel="Paid - HDFC-8812"
+        />
+
+        <NotificationItem
+          title="Meeting Scheduled with Arjun Gohil"
+          time="Yesterday 9:00 AM"
+          body="Your meeting has been scheduled with Arjun Gohil at The Grand Thakor Hotel, Rajkot."
+          type="track"
+          buttonLabel="View Meeting"
+          onPressButton={handleMeetingDetail}
         />
 
         {/* SATURDAY SECTION */}
@@ -194,18 +224,60 @@ export default function NotificationScreen() {
 
         <NotificationItem
           title="App Updated to v3.2.1"
-          time="30 Minute"
+          time="Saturday 6:30 PM"
           body="New features: Bulk invoice download, Improved E-Way Bill integration, offline mode for order entry."
           type="app-update"
           onPressButton={handleUpdateNotes}
         />
 
         <NotificationItem
+          title="Quotation Rejected"
+          time="Saturday 2:00 PM"
+          body="Quotation #QT-2026-011 for Parth Solanki has been rejected due to pricing requirements."
+          type="download-bill"
+          buttonLabel="View Details"
+          onPressButton={handleViewQuotation}
+        />
+
+        <NotificationItem
           title="Payment Successful"
-          time="30 Minute"
+          time="Saturday 11:00 AM"
           body="₹4,299 paid to Netflix India. Subscription renewed for 12 months."
           type="payment-badge"
           buttonLabel="Paid - HDFC-4521"
+        />
+
+        {/* EARLIER THIS WEEK */}
+        <View style={styles.sectionDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>EARLIER THIS WEEK</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <NotificationItem
+          title="Task Overdue: Submit Sales Report"
+          time="3 days ago"
+          body="Task 'Submit Q1 Sales Report' was due on March 4. Please update the status immediately."
+          type="confirm-order"
+          buttonLabel="Open Task"
+          onPressButton={() => Alert.alert('Task Overdue', 'Please navigate to Tasks page to update this task.')}
+        />
+
+        <NotificationItem
+          title="Order #ORD-2026-00890 Completed"
+          time="4 days ago"
+          body="All shipments delivered and payments verified for order #ORD-2026-00890."
+          type="payment-badge"
+          buttonLabel="Completed"
+        />
+
+        <NotificationItem
+          title="New Client Onboarded"
+          time="5 days ago"
+          body="Client 'NanoTech Solutions Pvt. Ltd.' has successfully onboarded on the portal."
+          type="track"
+          buttonLabel="View Client"
+          onPressButton={() => Alert.alert('Client Onboarded', 'Opening Client profile page...')}
         />
 
       </ScrollView>
@@ -235,7 +307,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 10,
     paddingTop: 10,
-    paddingBottom: 40,
+    paddingBottom: 130,
   },
 
   // Centered section dividers

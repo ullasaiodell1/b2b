@@ -17,8 +17,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-, KeyboardAvoidingView, Platform} from 'react-native';
+  View,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
 import {
   BarChart,
   LineChart,
@@ -45,6 +47,51 @@ const LEAD_DATA_MOCK = {
     datasets: [{ data: [0, 0, 0, 0, 0, 0] }],
   },
 };
+
+function formatAnalysisData(raw: any) {
+  if (!raw) return null;
+  const { dashboardData, orderData, visitsData } = raw;
+
+  const dash = (dashboardData as any)?.data || {};
+  const order = (orderData as any)?.data || orderData || {};
+  const visits = (visitsData as any)?.data || [];
+  const totalVisits = (visitsData as any)?.total ?? visits.length ?? 0;
+
+  // Parse Monthly lead creation/revenue trends
+  const monthlyRevenue = dash.monthlyRevenue || [];
+  const labels = monthlyRevenue.map((r: any) => r.month) || [];
+  const data = monthlyRevenue.map((r: any) => r.revenue) || [];
+
+  // Format to fit LEAD_DATA_MOCK structure
+  const monthlyData = labels.length > 0 ? {
+    labels,
+    datasets: [{ data }],
+    total: data.reduce((sum: number, val: number) => sum + val, 0)
+  } : null;
+
+  // Format return object to conform to HomeScreen expectations
+  return {
+    total_visits: totalVisits,
+    revenue_generated: `₹${(dash.counters?.totalRevenue || 0).toLocaleString('en-IN')}`,
+    assigned_target: `₹${(dash.counters?.pipelineValue || 0).toLocaleString('en-IN')}`,
+    lead_data: {
+      Daily: null, // will fall back to mock
+      Weekly: null, // will fall back to mock
+      Monthly: monthlyData
+    },
+    lead_conversion_ratio: {
+      leads: dash.counters?.totalLeads || 0,
+      quotations: dash.counters?.activeDeals || 0,
+      orders: order.summary?.total_orders || 0,
+      average_ratio: `${dash.counters?.conversionRate || 0}%`
+    },
+    order_status_summary: {
+      pending: order.summary?.pending_orders || 0,
+      confirmed: Math.max(0, (order.summary?.total_orders || 0) - (order.summary?.pending_orders || 0) - (order.summary?.completed_orders || 0)),
+      completed: order.summary?.completed_orders || 0
+    }
+  };
+}
 
 // ── Main Screen ────────────────────────────────────────
 
@@ -105,11 +152,15 @@ export default function HomeScreen() {
   }, []);
 
   // Fetch analysis data from API using hook
-  const { data: apiData, isLoading, isFetching, refetch } = useAnalysis();
+  const { data: rawData, isLoading, isFetching, refetch } = useAnalysis();
+
+  const apiData = React.useMemo(() => {
+    return formatAnalysisData(rawData);
+  }, [rawData]);
 
   if (isLoading) {
     return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
         <CustomHeader title="Home" showSearch={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -119,8 +170,8 @@ export default function HomeScreen() {
           </Text>
         </View>
       </KeyboardAvoidingView>
-  );
-}
+    );
+  }
 
   // ── Parsed API Data / Fallbacks ────────────────────────
   const totalVisits = apiData?.total_visits ?? 0;

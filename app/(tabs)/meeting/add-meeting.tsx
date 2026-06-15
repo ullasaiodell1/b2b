@@ -2,6 +2,7 @@ import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCreateMeeting } from '@/hooks/useMeetings';
+import { getLeads } from '@/services/api/leads';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
@@ -122,25 +123,32 @@ export default function AddMeetingScreen() {
     }
 
     try {
+      let targetLeadId = params.leadId;
+      if (!targetLeadId) {
+        try {
+          const leadsRes = await getLeads({ limit: 1 });
+          const firstLead = Array.isArray(leadsRes) ? leadsRes[0] : (leadsRes?.data?.[0] || leadsRes?.data?.data?.[0]);
+          if (firstLead) {
+            targetLeadId = firstLead.id;
+          }
+        } catch (err) {
+          console.error('Failed to get fallback lead:', err);
+        }
+      }
+
+      if (!targetLeadId) {
+        Alert.alert('Error', 'A valid Lead ID is required to create a meeting.');
+        return;
+      }
+
       await createMeetingMutation.mutateAsync({
-        leadId: params.leadId,
-        title: purpose,
-        venue: '',
-        location: method,
-        isAllDay: false,
-        fromTime: formatTime(scheduledTime),
-        toTime: formatTime(scheduledTime),
-        host: params.leadName || '',
-        status: 'Pending',
-        notes: [],
-        attachments: [],
-        // Pass extra backend fields via hook
-        _scheduledAt: combined.toISOString(),
-        _status: status ?? 'SCHEDULED',
-        _followUpMethod: method ?? 'Online',
-        _purpose: purpose,
-        _remarks: '',
-      } as any);
+        leadId: targetLeadId,
+        scheduled_at: combined.toISOString(),
+        status: status ?? 'SCHEDULED',
+        follow_up_method: method ?? 'Online',
+        purpose: purpose,
+        remarks: '',
+      });
       router.back();
     } catch (err: any) {
       console.error('[AddMeeting] save error:', err);

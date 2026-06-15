@@ -3,6 +3,8 @@ import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCreateVisit } from '@/hooks/useVisits';
+import { useUpload } from '@/hooks/useUpload';
+import { getLeads } from '@/services/api/leads';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
@@ -11,6 +13,7 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -44,9 +47,11 @@ export default function AddVisitScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const createVisitMutation = useCreateVisit();
+  const uploadMutation = useUpload();
   const { primaryColor, primaryLight } = useTheme();
 
   // Form States
+  const [isSaving, setIsSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [visitType, setVisitType] = useState('Site Visit');
   const [scheduledDateTime, setScheduledDateTime] = useState<Date>(new Date());
@@ -216,27 +221,79 @@ export default function AddVisitScreen() {
       return;
     }
 
-    const scheduledStr = formatDateTime(scheduledDateTime);
-    const latStr = latitude !== null ? formatLatitude(latitude) : '0.0000° N';
-    const lngStr = longitude !== null ? formatLongitude(longitude) : '0.0000° E';
-
+    setIsSaving(true);
     try {
+      let targetLeadId = params.leadId;
+      if (!targetLeadId) {
+        try {
+          const leadsRes = await getLeads({ limit: 1 });
+          const firstLead = Array.isArray(leadsRes) ? leadsRes[0] : (leadsRes?.data?.[0] || leadsRes?.data?.data?.[0]);
+          if (firstLead) {
+            targetLeadId = firstLead.id;
+          }
+        } catch (err) {
+          console.error('Failed to get fallback lead:', err);
+        }
+      }
+
+      if (!targetLeadId) {
+        Alert.alert('Error', 'A valid Lead ID is required to create a visit.');
+        setIsSaving(false);
+        return;
+      }
+
+      let finalPhotoUri = imageUri;
+      if (imageUri && !imageUri.startsWith('http')) {
+        let uploadResult: any;
+        try {
+          uploadResult = await uploadMutation.mutateAsync(imageUri);
+        } catch (uploadErr: any) {
+          console.error('[AddVisit] uploadFile threw:', JSON.stringify(uploadErr));
+          Alert.alert(
+            'Upload Failed',
+            uploadErr?.message || 'Could not upload visit image. Please try again.'
+          );
+          setIsSaving(false);
+          return;
+        }
+
+        console.log('[AddVisit] uploadFile result:', JSON.stringify(uploadResult));
+
+        finalPhotoUri =
+          (typeof uploadResult === 'string' ? uploadResult : null) ||
+          uploadResult?.url ||
+          uploadResult?.file_url ||
+          uploadResult?.location ||
+          uploadResult?.path ||
+          uploadResult?.key ||
+          uploadResult?.data?.url ||
+          uploadResult?.data?.file_url ||
+          uploadResult?.data?.location ||
+          uploadResult?.data?.path ||
+          uploadResult?.data?.key ||
+          null;
+
+        console.log('[AddVisit] resolved finalPhotoUri:', finalPhotoUri);
+      }
+
       await createVisitMutation.mutateAsync({
-        leadId: params.leadId || undefined,
-        name: title,
-        visitType: visitType,
-        scheduledDateTime: scheduledStr,
-        imageUri: imageUri || undefined,
-        description: description,
-        locationAddress: locationAddress,
-        lat: latStr,
-        lng: lngStr,
-        status: 'Pending',
-        contactPersonName: contactPersonName,
-        designation: designation,
-        phone: phone,
-        outcomeSummary: outcomeSummary,
-        nextSteps: nextSteps,
+        leadId: targetLeadId,
+        apiPayload: {
+          title: title,
+          visit_type: visitType,
+          scheduled_time: scheduledDateTime.toISOString(),
+          image_url: finalPhotoUri || undefined,
+          description: description,
+          location_address: locationAddress,
+          location_latitude: latitude || 0,
+          location_longitude: longitude || 0,
+          status: 'SCHEDULED',
+          contact_person_name: contactPersonName,
+          contact_person_designation: designation,
+          contact_person_phone: phone,
+          outcome_summary: outcomeSummary,
+          next_steps: nextSteps,
+        },
       });
 
       Alert.alert('Success', 'Visit detail saved successfully!', [
@@ -245,6 +302,8 @@ export default function AddVisitScreen() {
     } catch (err: any) {
       console.error('[AddVisit] save error:', err);
       Alert.alert('Error', err?.message || 'Failed to save visit.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -542,8 +601,13 @@ export default function AddVisitScreen() {
             style={styles.saveBtn}
             onPress={handleSave}
             activeOpacity={0.85}
+            disabled={isSaving || createVisitMutation.isPending}
           >
-            <Text style={styles.saveBtnText}>SAVE VISIT</Text>
+            {isSaving || createVisitMutation.isPending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>SAVE VISIT</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

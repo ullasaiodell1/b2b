@@ -34,7 +34,7 @@ export default function SelectProductModal({
 
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { products, isLoading: isLoadingProducts } = useProducts({ search: productSearchQuery });
+  const { data: products = [], isLoading: isLoadingProducts } = useProducts({ search: productSearchQuery });
 
   const handleSelectProduct = (product: any) => {
     onSelectProduct(product);
