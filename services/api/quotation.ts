@@ -4,9 +4,36 @@ import axios from './httpRequest';
 // GET /quotation — list all quotations
 // Backend returns: { total: N, data: [...] }
 export const listQuotation = (params?: Partial<QuotationFilterState>) => {
-  console.log(`[API listQuotation] params:`, params);
+  console.log(`[API listQuotation] raw params:`, params);
+  const cleanedParams: any = {};
+  if (params) {
+    const allowedParams = [
+      'company_id',
+      'lead_id',
+      'dealer_id',
+      'user_id',
+      'status',
+      'search',
+      'offset',
+      'limit',
+      'startDate',
+      'endDate',
+      'exclude_dealer',
+      'dealer_only',
+      'sort_by',
+      'sort_direction'
+    ];
+
+    allowedParams.forEach((key) => {
+      const value = params[key as keyof QuotationFilterState];
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        cleanedParams[key] = value;
+      }
+    });
+  }
+  console.log(`[API listQuotation] cleaned params sent to axios:`, cleanedParams);
   const url = `quotation`;
-  return axios({ method: "GET", url, params });
+  return axios({ method: "GET", url, params: cleanedParams });
 };
 
 // GET /quotation/:id — single quotation with items

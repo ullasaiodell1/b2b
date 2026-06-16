@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { scheduleTaskNotification } from '@/utils/notifications';
 import {
   ActivityIndicator,
   Alert,
@@ -324,6 +325,8 @@ export default function AddTaskScreen() {
     }
 
     try {
+      const targetLeadId = effectiveLeadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
+
       if (id) {
         await updateTaskMutation.mutateAsync({
           id,
@@ -334,7 +337,7 @@ export default function AddTaskScreen() {
             priority: priority!,
             status: status!,
             assigned_to: assignedUser!.id,
-            lead_id: effectiveLeadId || undefined,
+            lead_id: targetLeadId,
           },
         });
       } else {
@@ -345,8 +348,15 @@ export default function AddTaskScreen() {
           priority: priority!,
           status: status!,
           assigned_to: assignedUser!.id,
-          lead_id: effectiveLeadId || undefined,
+          lead_id: targetLeadId,
         });
+      }
+
+      // Schedule local notification for the task
+      try {
+        await scheduleTaskNotification(title.trim(), dueDateObj);
+      } catch (notiErr) {
+        console.warn('Failed to schedule task notification:', notiErr);
       }
 
       if (syncToCalendar) {

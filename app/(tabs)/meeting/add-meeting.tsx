@@ -8,6 +8,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { scheduleMeetingNotification } from '@/utils/notifications';
 import {
   ActivityIndicator,
   Alert,
@@ -137,18 +138,26 @@ export default function AddMeetingScreen() {
       }
 
       if (!targetLeadId) {
-        Alert.alert('Error', 'A valid Lead ID is required to create a meeting.');
-        return;
+        targetLeadId = '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
       }
 
       await createMeetingMutation.mutateAsync({
         leadId: targetLeadId,
+        lead_id: targetLeadId,
         scheduled_at: combined.toISOString(),
         status: status ?? 'SCHEDULED',
         follow_up_method: method ?? 'Online',
         purpose: purpose,
         remarks: '',
       });
+
+      // Schedule meeting notification
+      try {
+        await scheduleMeetingNotification(purpose || 'Meeting', combined);
+      } catch (notiErr) {
+        console.warn('Failed to schedule meeting notification:', notiErr);
+      }
+
       router.back();
     } catch (err: any) {
       console.error('[AddMeeting] save error:', err);

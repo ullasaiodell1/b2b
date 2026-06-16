@@ -1,8 +1,10 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useDrawer } from '@/hooks/useDrawer';
 import { useTabs } from '@/hooks/useTabs';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { usePathname } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -11,8 +13,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/hooks/use-theme';
-import { usePathname } from 'expo-router';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme();
@@ -57,7 +57,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
     'add-visit', 'visit-details', 'visit-filter',
-    'add-call', 'call-filter', 'call-history',
+    'call-filter', 'call-history',
     'edit-profile', 'change-password',
     'theme-settings', 'notification-settings', 'help-support'
   ];
@@ -83,87 +83,96 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   return (
     <Animated.View
       style={[
-        styles.outerRow,
+        styles.bottomBarContainer,
         {
           transform: [{ translateY: slideAnim }],
           opacity: opacityAnim,
-          bottom: Math.max(insets.bottom + 12, 22),
+          paddingBottom: Math.max(insets.bottom, 12),
         },
       ]}
     >
-      {/* ── LEFT DARK PILL (4 tabs) ── */}
-      <View style={styles.pill}>
-        {visibleTabs.map((tabId) => {
-          const mod = ALL_TAB_MODULES.find((m) => m.id === tabId);
-          if (!mod) return null;
+      <View style={styles.outerRow}>
+        {/* ── LEFT DARK PILL (4 tabs) ── */}
+        <View style={styles.pill}>
+          {visibleTabs.map((tabId) => {
+            const mod = ALL_TAB_MODULES.find((m) => m.id === tabId);
+            if (!mod) return null;
 
-          const route = state.routes.find((r) => r.name === tabId);
-          if (!route) return null;
+            const route = state.routes.find((r) => r.name === tabId);
+            if (!route) return null;
 
-          const isFocused = activeRouteName === tabId;
+            const isFocused = activeRouteName === tabId;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabItem}
-              activeOpacity={0.7}
-            >
-              {isFocused ? (
-                /* ── Active icon (white, not raised) ── */
-                <Ionicons
-                  name={mod.icon}
-                  size={24}
-                  color="#FFFFFF"
-                />
-              ) : (
-                /* ── Regular inactive icon ── */
-                <Ionicons
-                  name={mod.iconOutline}
-                  size={22}
-                  color={COLORS.inactiveIcon}
-                />
-              )}
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={styles.tabItem}
+                activeOpacity={0.7}
+              >
+                {isFocused ? (
+                  /* ── Active icon (white, not raised) ── */
+                  <Ionicons
+                    name={mod.icon}
+                    size={24}
+                    color="#FFFFFF"
+                  />
+                ) : (
+                  /* ── Regular inactive icon ── */
+                  <Ionicons
+                    name={mod.iconOutline}
+                    size={22}
+                    color={COLORS.inactiveIcon}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── GAP ── */}
+        <View style={styles.gap} />
+
+        {/* ── RIGHT MORE BUTTON (separate pill) ── */}
+        <TouchableOpacity
+          onPress={openDrawer}
+          style={styles.moreBtn}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="reorder-three-outline" size={24} color={COLORS.moreIcon} />
+        </TouchableOpacity>
       </View>
-
-      {/* ── GAP ── */}
-      <View style={styles.gap} />
-
-      {/* ── RIGHT MORE BUTTON (separate pill) ── */}
-      <TouchableOpacity
-        onPress={openDrawer}
-        style={styles.moreBtn}
-        activeOpacity={0.75}
-      >
-        <Ionicons name="reorder-three-outline" size={24} color={COLORS.moreIcon} />
-      </TouchableOpacity>
-
     </Animated.View>
   );
 }
 
 const getStyles = (theme: any) => StyleSheet.create({
+  bottomBarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.bgPage,
+    paddingTop: 1,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
   // Outer row — positions the two elements side by side
   outerRow: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
     flexDirection: 'row',
-    alignItems: 'flex-end',   // align to bottom so pill + more sit level
+    alignItems: 'center',
+    paddingHorizontal: 14,
   },
 
   // ── LEFT PILL ───────────────────────────────────────

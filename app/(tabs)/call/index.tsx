@@ -1,12 +1,13 @@
+import { activeCallFilter, CallFilterState, subscribeToCalls, updateCallFilterState } from '@/components/CallState';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCalls } from '@/hooks/useCalls';
+import { CallRecord } from '@/types/call';
+import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState, useMemo, useEffect } from 'react';
-import { CallRecord } from '@/types/call';
-import { activeCallFilter, updateCallFilterState, subscribeToCalls, CallFilterState } from '@/components/CallState';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -85,6 +86,20 @@ export default function CallHistoryScreen() {
   const isFetching = query.isFetching;
   const refetch = query.refetch;
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await syncDeviceCallLogs();
+    } catch (e) {
+      console.error('[CallHistoryScreen] Error syncing call logs during refresh:', e);
+    } finally {
+      await refetch();
+      setRefreshing(false);
+    }
+  };
+
   const [filters, setFilters] = useState<CallFilterState>(activeCallFilter);
 
   useEffect(() => {
@@ -157,6 +172,10 @@ export default function CallHistoryScreen() {
 
   // Filter logs
   const filteredLogs = calls.filter((log) => {
+    if (params.leadId && String(log.lead_id) !== String(params.leadId)) {
+      return false;
+    }
+
     const matchesTab = activeTab === 'All' || log.type === activeTab;
 
     // Status filter from Call Filter screen
@@ -192,7 +211,7 @@ export default function CallHistoryScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       <CustomHeader
-        title="Call"
+        title={params.leadName ? `Calls - ${params.leadName}` : 'Call'}
         showSearch={false}
         showBack={!!params.leadId}
         onBackPress={() => {
@@ -291,7 +310,7 @@ export default function CallHistoryScreen() {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
+          <RefreshControl refreshing={refreshing || isFetching} onRefresh={handleRefresh} colors={[theme.primaryColor]} />
         }
       >
         {isLoading && calls.length === 0 ? (
@@ -344,27 +363,6 @@ export default function CallHistoryScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Floating Action Button to Add Call */}
-      <TouchableOpacity
-        style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => {
-          if (params.leadId) {
-            router.push({
-              pathname: '/(tabs)/call/add-call',
-              params: {
-                leadId: params.leadId,
-                leadName: params.leadName,
-              }
-            } as any);
-          } else {
-            router.push('/(tabs)/call/add-call' as any);
-          }
-        }}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }

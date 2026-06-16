@@ -1,9 +1,10 @@
-import { activeOrderFilter, OrderRecord, ordersState, subscribeToOrders, updateOrderFilterState } from '@/components/OrderState';
+import { OrderRecord, updateOrderFilterState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useOrders } from '@/hooks/useOrders';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -21,16 +22,8 @@ export default function OrderListScreen() {
   const styles = getStyles(theme);
 
   const navigation = useNavigation<any>();
-  const [orders, setOrders] = useState<OrderRecord[]>(ordersState);
-  const [filters, setFilters] = useState(activeOrderFilter);
+  const { orders, filter: filters, isLoading, refetch } = useOrders();
   const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    return subscribeToOrders(() => {
-      setOrders([...ordersState]);
-      setFilters({ ...activeOrderFilter });
-    });
-  }, []);
 
   const handleClearStatusFilter = () => {
     updateOrderFilterState({
@@ -39,12 +32,12 @@ export default function OrderListScreen() {
     });
   };
 
-  const filteredOrders = orders.filter((item) => {
+  const filteredOrders = (orders as any[]).filter((item: any) => {
     const matchesStatus = !filters.status || item.status.toLowerCase() === filters.status.toLowerCase();
     const matchesSearch =
-      item.orderNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.contactPerson.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.orderNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.contactPerson || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -167,6 +160,8 @@ export default function OrderListScreen() {
         renderItem={renderOrderCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshing={isLoading}
+        onRefresh={refetch}
         ListEmptyComponent={
           <View style={styles.emptyArea}>
             <Ionicons name="bag-handle-outline" size={48} color="#C2D3CC" />

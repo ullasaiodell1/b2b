@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
+import { useRouter } from 'expo-router';
 
 interface NotificationItemProps {
   title: string;
@@ -95,6 +96,7 @@ function NotificationItem({
 export default function NotificationScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const router = useRouter();
 
   const insets = useSafeAreaInsets();
 
@@ -103,11 +105,11 @@ export default function NotificationScreen() {
   };
 
   const handleTrack = () => {
-    Alert.alert('Track Order', 'Flipkart package tracker opened.');
+    Alert.alert('Track Order', 'Safexpress Package tracker opened.');
   };
 
   const handleConfirm = () => {
-    Alert.alert('Confirm Order', 'Order confirmed successfully!');
+    router.push('/(tabs)/Order' as any);
   };
 
   const handleUpdateNotes = () => {
@@ -115,15 +117,23 @@ export default function NotificationScreen() {
   };
 
   const handleLeadAssign = () => {
-    Alert.alert('Lead Details', 'Navigating to Lead Details...');
+    router.push('/(tabs)/leads' as any);
   };
 
   const handleMeetingDetail = () => {
-    Alert.alert('Meeting Details', 'Navigating to Meeting Details...');
+    router.push('/(tabs)/meeting' as any);
   };
 
   const handleViewQuotation = () => {
-    Alert.alert('Quotation Details', 'Opening Quotation QT-2026-011...');
+    router.push('/(tabs)/Quotation' as any);
+  };
+
+  const handleOpenTask = () => {
+    router.push('/(tabs)/task' as any);
+  };
+
+  const handleViewClient = () => {
+    router.push('/(tabs)/company' as any);
   };
 
   return (
@@ -260,7 +270,7 @@ export default function NotificationScreen() {
           body="Task 'Submit Q1 Sales Report' was due on March 4. Please update the status immediately."
           type="confirm-order"
           buttonLabel="Open Task"
-          onPressButton={() => Alert.alert('Task Overdue', 'Please navigate to Tasks page to update this task.')}
+          onPressButton={handleOpenTask}
         />
 
         <NotificationItem
@@ -277,7 +287,7 @@ export default function NotificationScreen() {
           body="Client 'NanoTech Solutions Pvt. Ltd.' has successfully onboarded on the portal."
           type="track"
           buttonLabel="View Client"
-          onPressButton={() => Alert.alert('Client Onboarded', 'Opening Client profile page...')}
+          onPressButton={handleViewClient}
         />
 
       </ScrollView>

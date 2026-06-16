@@ -1,12 +1,13 @@
-import { OrderRecord, ordersState } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useOrderDetails } from '@/hooks/useOrders';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,14 +20,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-
-const TERMS_CHECKLIST = [
-  'Payment due within 30 days. Late payments attract 2% monthly interest.',
-  'Returns only for transit damage, reported within 48 hours of delivery.',
-  'All prices ex-factory, Rajkot. Freight & insurance on buyer\'s account.',
-  'GST charged as applicable. Rate changes passed on at invoicing.',
-  'Disputes subject to exclusive jurisdiction of Rajkot, Gujarat courts.',
-];
 
 const DOCUMENTS = [
   { label: 'SHELL BILL', desc: 'Main Sales Tax Invoice', icon: 'document-text-outline' },
@@ -43,18 +36,10 @@ export default function OrderDetailsScreen() {
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
-  const id = params.id;
-  const [order, setOrder] = useState<OrderRecord | null>(null);
+  const id = params.id as string;
+  const { data: order, isLoading } = useOrderDetails(id);
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-
-  useEffect(() => {
-    // Safety fallback: if no id or invalid id is passed, default to first order
-    const found = ordersState.find((o) => o.id === id) || ordersState[0];
-    if (found) {
-      setOrder(found);
-    }
-  }, [id]);
 
   const handleDownload = () => {
     setDownloading(true);
@@ -65,7 +50,7 @@ export default function OrderDetailsScreen() {
     }, 1200);
   };
 
-  if (!order) {
+  if (isLoading || !order) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.primaryColor} />
@@ -122,41 +107,164 @@ export default function OrderDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Section: Customer & Shipping Details */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>CUSTOMER & SHIPPING DETAILS</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <View style={styles.detailsCard}>
+          <View style={styles.detailsGrid}>
+
+            {/* Customer Name */}
+            <View style={styles.detailsRow}>
+              <Ionicons name="person-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
+              <View style={styles.detailsCol}>
+                <Text style={styles.detailsLabel}>CUSTOMER NAME</Text>
+                <Text style={styles.detailsValue}>{order.contactPerson || order.clientName || 'Katrina Kaif'}</Text>
+              </View>
+            </View>
+
+            {/* Created Date */}
+            <View style={styles.detailsRow}>
+              <Ionicons name="calendar-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
+              <View style={styles.detailsCol}>
+                <Text style={styles.detailsLabel}>CREATED DATE</Text>
+                <Text style={styles.detailsValue}>{order.date || '08/06/2026'}</Text>
+              </View>
+            </View>
+
+            {/* Sales Representative */}
+            <View style={styles.detailsRow}>
+              <Ionicons name="briefcase-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
+              <View style={styles.detailsCol}>
+                <Text style={styles.detailsLabel}>SALES REPRESENTATIVE</Text>
+                <Text style={styles.detailsValue}>{(order.sales_representative || order.approvedBy || 'UTSAV').toUpperCase()}</Text>
+              </View>
+            </View>
+
+            {/* Current Status */}
+            <View style={styles.detailsRow}>
+              <Ionicons name="ribbon-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
+              <View style={styles.detailsCol}>
+                <Text style={styles.detailsLabel}>CURRENT STATUS</Text>
+                <View style={[styles.statusBadge, { alignSelf: 'flex-start', marginTop: 2 },
+                (order.status || 'DRAFT').toUpperCase() === 'COMPLETED' || (order.status || 'DRAFT').toUpperCase() === 'DELIVERED'
+                  ? styles.scannedBadge
+                  : (order.status || 'DRAFT').toUpperCase() === 'CANCELLED'
+                    ? styles.releaseBadge
+                    : styles.pendingBadge
+                ]}>
+                  <Text style={[styles.statusBadgeText, {
+                    color: (order.status || 'DRAFT').toUpperCase() === 'COMPLETED' || (order.status || 'DRAFT').toUpperCase() === 'DELIVERED'
+                      ? '#03543F'
+                      : (order.status || 'DRAFT').toUpperCase() === 'CANCELLED'
+                        ? '#991B1B'
+                        : '#92400E'
+                  }]}>
+                    {(order.status || 'DRAFT').toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Shipping Address */}
+            <View style={[styles.detailsRow, { width: '100%', borderBottomWidth: 0, paddingBottom: 0 }]}>
+              <Ionicons name="location-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
+              <View style={styles.detailsCol}>
+                <Text style={styles.detailsLabel}>SHIPPING ADDRESS</Text>
+                <Text style={[styles.detailsValue, { lineHeight: 18 }]}>
+                  {order.hotelLocation || 'Clock Tower Road\nJodhpur, Rajasthan, 342001\nIndia'}
+                </Text>
+              </View>
+            </View>
+
+          </View>
+        </View>
+
+        {/* Section: Items Ordered */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>ITEMS ORDERED</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
         {/* Dynamic Items Ordered */}
-        {order.items.map((item, index) => {
-          // Format name nicely to match screen title: e.g. "Conditioner" / "Shampoo"
-          const displayTitle = item.name.toUpperCase();
-          const displaySize = displayTitle === 'CONDITIONER' ? 'Green Apple | 20 ML' : 'Green Apple | 20 ML';
-          const rateVal = 100.00;
-          const displayPrice = item.price;
+        {((order as any).items || []).map((item: any, index: number) => {
+          const displayTitle = (item.item_name || item.name || 'Item').toUpperCase();
+          const displayCode = item.item_code || item.code || '';
+          const displayDesc = item.item_description || item.description || '';
+
+          const getCleanNumber = (val: any) => {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+              const cleaned = val.replace(/[^0-9.]/g, '');
+              return parseFloat(cleaned) || 0;
+            }
+            return 0;
+          };
+
+          const rateVal = getCleanNumber(item.unit_price || item.price || item.rate) || 0.00;
+          const qtyVal = getCleanNumber(item.quantity || item.qty) || 0;
+          const gstVal = getCleanNumber(item.gst_percentage || item.gst) || 0;
+          const discountVal = getCleanNumber(item.discount_percentage || item.discount || item.item_discount) || 0;
+
+          // Taxable Amount (Price - Discount) * Qty
+          const discountAmount = rateVal * (discountVal / 100);
+          const taxableAmount = (rateVal - discountAmount) * qtyVal;
+          const taxAmount = taxableAmount * (gstVal / 100);
+          const lineTotal = taxableAmount + taxAmount;
+
+          const displayQty = String(qtyVal);
+          const displayGst = gstVal > 0 ? `${gstVal}%` : '0%';
+          const displayRate = '₹ ' + rateVal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+          const displayTotal = '₹ ' + lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+          const imageUrl = (Array.isArray(item.images) && item.images.length > 0)
+            ? item.images[0]
+            : (typeof item.images === 'string' && item.images
+              ? item.images
+              : (item.image_url || item.image || null));
 
           return (
             <View key={index} style={styles.itemCard}>
               <View style={styles.itemHeader}>
-                {renderProductMock()}
+                {imageUrl ? (
+                  <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
+                ) : (
+                  renderProductMock()
+                )}
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{displayTitle}</Text>
-                  <Text style={styles.itemSize}>{displaySize}</Text>
-                  <Text style={styles.itemDescription}>Lorem Ipsum is Simply</Text>
+                  {displayCode ? (
+                    <Text style={styles.itemSize}>SKU / Code: {displayCode}</Text>
+                  ) : null}
+                  {displayDesc ? (
+                    <Text style={styles.itemDescription} numberOfLines={2}>{displayDesc}</Text>
+                  ) : (
+                    <Text style={styles.itemDescription}>No description provided</Text>
+                  )}
                 </View>
               </View>
 
               <View style={styles.pricingGrid}>
                 <View style={styles.pricingRow}>
                   <View style={styles.pricingCell}>
-                    <Text style={styles.priceLabel}>Pcs : <Text style={styles.priceValue}>{item.qty}</Text></Text>
+                    <Text style={styles.priceLabel}>Qty : <Text style={styles.priceValue}>{displayQty} Pcs</Text></Text>
                   </View>
                   <View style={styles.pricingCellAlignRight}>
-                    <Text style={styles.priceLabel}>Rate : <Text style={styles.priceValue}>₹ {rateVal.toFixed(2)}</Text></Text>
+                    <Text style={styles.priceLabel}>Rate : <Text style={styles.priceValue}>{displayRate}</Text></Text>
                   </View>
                 </View>
 
                 <View style={styles.pricingRow}>
                   <View style={styles.pricingCell}>
-                    <Text style={styles.priceLabel}>GST (%) : <Text style={styles.priceValue}>{item.gst}</Text></Text>
+                    <Text style={styles.priceLabel}>
+                      GST : <Text style={styles.priceValue}>{displayGst}</Text>
+                      {discountVal > 0 ? ` (Disc: ${discountVal}%)` : ''}
+                    </Text>
                   </View>
                   <View style={styles.pricingCellAlignRight}>
-                    <Text style={styles.priceLabel}>Price : <Text style={styles.priceValue}>{displayPrice}</Text></Text>
+                    <Text style={styles.priceLabel}>Price : <Text style={[styles.priceValue, { color: theme.primaryColor }]}>{displayTotal}</Text></Text>
                   </View>
                 </View>
               </View>
@@ -186,22 +294,87 @@ export default function OrderDetailsScreen() {
           </View>
         </View>
 
-        {/* Section: Terms & Conditions */}
+
+
+        {/* Section: Barcodes */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>TERMS & CONDITIONS</Text>
+          <Text style={styles.sectionLabel}>ORDER BARCODES</Text>
           <View style={styles.sectionLine} />
         </View>
 
-        <View style={styles.termsList}>
-          {TERMS_CHECKLIST.map((term, idx) => (
-            <View key={idx} style={styles.termCard}>
-              <View style={styles.termIndexContainer}>
-                <Text style={styles.termIndexText}>{idx + 1}</Text>
+        {(!order.barcodes || order.barcodes.length === 0) ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="barcode-outline" size={22} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No barcodes associated with this order</Text>
+          </View>
+        ) : (
+          <View style={styles.barcodeList}>
+            {order.barcodes.map((bc: any, idx: number) => (
+              <View key={idx} style={styles.barcodeCard}>
+                <Ionicons name="barcode-outline" size={20} color={theme.primaryColor} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.barcodeText}>{bc.barcode || bc.code || 'N/A'}</Text>
+                  <Text style={styles.barcodeSubtext}>
+                    {bc.item_name || bc.name || 'Product Barcode'} {bc.qty ? `| Qty: ${bc.qty}` : ''}
+                  </Text>
+                </View>
+                {bc.status && (
+                  <View style={[styles.statusBadge, bc.status.toLowerCase() === 'scanned' ? styles.scannedBadge : styles.pendingBadge]}>
+                    <Text style={[styles.statusBadgeText, { color: bc.status.toLowerCase() === 'scanned' ? '#03543F' : '#92400E' }]}>{bc.status.toUpperCase()}</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.termText}>{term}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
+        )}
+
+        {/* Section: Inventory Reservations */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>INVENTORY RESERVATIONS</Text>
+          <View style={styles.sectionLine} />
         </View>
+
+        {(!order.reservations || order.reservations.length === 0) ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="bookmark-outline" size={20} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No reservations found for this order</Text>
+          </View>
+        ) : (
+          <View style={styles.reservationList}>
+            {order.reservations.map((res: any, idx: number) => {
+              const isReserved = (res.status || 'Active').toLowerCase() === 'active' || (res.status || 'Active').toLowerCase() === 'reserved';
+              return (
+                <View key={idx} style={styles.reservationCard}>
+                  <View style={styles.reservationHeader}>
+                    <Ionicons name="calendar-outline" size={14} color={theme.primaryColor} />
+                    <Text style={styles.reservationTitle}>Reservation {res.reservation_no || res.id?.slice(0, 8).toUpperCase() || idx + 1}</Text>
+                    <View style={[styles.statusBadge, isReserved ? styles.reservedBadge : styles.releaseBadge]}>
+                      <Text style={[styles.statusBadgeText, { color: isReserved ? '#1E40AF' : '#991B1B' }]}>{(res.status || 'Active').toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.reservationDetails}>
+                    <Text style={styles.resDetailText}>
+                      Item: <Text style={styles.resDetailValue}>{res.item_name || res.product_name || 'N/A'}</Text>
+                    </Text>
+                    <Text style={styles.resDetailText}>
+                      Reserved Qty: <Text style={styles.resDetailValue}>{res.reserved_qty || res.quantity || '0'} Pcs</Text>
+                    </Text>
+                    {res.warehouse_name && (
+                      <Text style={styles.resDetailText}>
+                        Warehouse: <Text style={styles.resDetailValue}>{res.warehouse_name}</Text>
+                      </Text>
+                    )}
+                    {res.expires_at && (
+                      <Text style={styles.resDetailText}>
+                        Expires: <Text style={styles.resDetailValue}>{new Date(res.expires_at).toLocaleDateString()}</Text>
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Total Amount Green Box */}
         <View style={styles.totalBox}>
@@ -297,7 +470,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingTop: 5,
     gap: 5,
     paddingBottom: 150,
   },
@@ -308,7 +481,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 10,
+    padding: 5,
     gap: 5,
   },
   itemHeader: {
@@ -326,6 +499,13 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
     paddingBottom: 5,
+    borderWidth: 1,
+    borderColor: '#D8E2DD',
+  },
+  productImage: {
+    width: 76,
+    height: 52,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#D8E2DD',
   },
@@ -449,40 +629,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Terms Cards
-  termsList: {
-    gap: 5,
-  },
-  termCard: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  termIndexContainer: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  termIndexText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0284C7',
-  },
-  termText: {
-    flex: 1,
-    fontSize: 11,
-    color: COLORS.textDark,
-    fontWeight: '600',
-    lineHeight: 15,
-  },
+
 
   // Total Box
   totalBox: {
@@ -585,5 +732,146 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '800',
     color: theme.primaryColor,
+  },
+  emptyCard: {
+    backgroundColor: '#F9FAF9',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  barcodeList: {
+    gap: 8,
+    marginVertical: 4,
+  },
+  barcodeCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  barcodeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  barcodeSubtext: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 5,
+  },
+  scannedBadge: {
+    backgroundColor: '#DEF7EC',
+  },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+  },
+  reservedBadge: {
+    backgroundColor: '#E0F2FE',
+  },
+  releaseBadge: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  reservationList: {
+    gap: 8,
+    marginVertical: 4,
+  },
+  reservationCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    gap: 8,
+  },
+  reservationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2EF',
+    paddingBottom: 6,
+  },
+  reservationTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  reservationDetails: {
+    gap: 4,
+  },
+  resDetailText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  resDetailValue: {
+    color: COLORS.textDark,
+    fontWeight: '700',
+  },
+  detailsCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    marginVertical: 4,
+  },
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  detailsRow: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2EF',
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  detailsIcon: {
+    marginTop: 2,
+  },
+  detailsCol: {
+    flex: 1,
+  },
+  detailsLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.5,
+  },
+  detailsValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginTop: 2,
   },
 });

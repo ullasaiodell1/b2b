@@ -104,7 +104,7 @@ export const INITIAL_ORDERS: OrderRecord[] = [
 export let ordersState: OrderRecord[] = [...INITIAL_ORDERS];
 export let activeOrderFilter: OrderFilterState = {
   status: '',
-  dateRange: '20 Dec 25 - 10 Jan 26',
+  dateRange: '',
 };
 
 const listeners = new Set<() => void>();

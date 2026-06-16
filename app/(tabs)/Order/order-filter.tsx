@@ -103,7 +103,20 @@ export default function OrderFilterScreen() {
       status: backendStatus,
       dateRange: rangeStr,
     });
-    handleBack();
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          id: leadId,
+          oStatus: backendStatus || '',
+          oStartDate: startDate ? startDate.toISOString() : '',
+          oEndDate: endDate ? endDate.toISOString() : '',
+          oFilterApplied: 'true'
+        }
+      });
+    } else {
+      handleBack();
+    }
   };
 
   const handleResetAll = () => {

@@ -301,7 +301,7 @@ export default function QuickBall() {
 const getStyles = (theme: any) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent', // Fully transparent to show the home screen background clearly
+    backgroundColor: COLORS.backdrop || 'rgba(0, 0, 0, 0.4)', // Semi-transparent backdrop overlay
   },
   handle: {
     position: 'absolute',
@@ -331,8 +331,18 @@ const getStyles = (theme: any) => StyleSheet.create({
     position: 'absolute',
     right: 0,
     width: 170,
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.bgWhite,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRightWidth: 0,
     paddingVertical: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 10,
   },
   sidebarHeader: {
     flexDirection: 'row',
@@ -375,9 +385,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   itemLabel: {
     fontSize: 12.5,
     fontWeight: '700',
-    color: '#0D0F0E', // COLORS.textDark
+    color: COLORS.textDark,
   },
   separator: {
-    height: 0,
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 12,
   },
 });

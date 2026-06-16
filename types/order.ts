@@ -11,6 +11,7 @@ export interface OrderItem {
 
 export interface OrderRecord {
   id: string;
+  company_id?: string;
   orderNo: string;
   date: string;
   clientName: string;
@@ -40,6 +41,8 @@ export interface OrderRecord {
   advanceAmount?: string;
   advanceRemark?: string;
   advanceProof?: string;
+  barcodes?: any[];
+  reservations?: any[];
 }
 
 export interface OrderFilterState {

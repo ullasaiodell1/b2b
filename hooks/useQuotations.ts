@@ -23,7 +23,14 @@ export const useQuotations = (params?: Partial<QuotationFilterState>) => {
     queryKey: quotationKeys.quotationFilter(params),
     queryFn: async (): Promise<QuotationRecord[]> => {
       const res = await listQuotation(params) as any;
-      return (res?.data || res) as QuotationRecord[];
+      const raw = Array.isArray(res)
+        ? res
+        : (Array.isArray(res?.data)
+          ? res.data
+          : (Array.isArray(res?.data?.data)
+            ? res.data.data
+            : []));
+      return raw as QuotationRecord[];
     },
   });
 };

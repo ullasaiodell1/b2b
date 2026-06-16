@@ -3,7 +3,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useQuotations } from '@/hooks/useQuotations';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type TabType = 'ALL' | 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED';
+
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: '#6B7280',
@@ -55,26 +55,33 @@ export default function QuotationScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const STATUS_TABS: { key: TabType; label: string; color: string }[] = [
-    { key: 'ALL', label: 'All', color: theme.primaryColor },
-    { key: 'DRAFT', label: 'Draft', color: '#6B7280' },
-    { key: 'SENT', label: 'Sent', color: '#F59E0B' },
-    { key: 'ACCEPTED', label: 'Accepted', color: '#10B981' },
-    { key: 'REJECTED', label: 'Rejected', color: '#EF4444' },
-  ];
+
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    qStartDate?: string;
+    qEndDate?: string;
+    qFilterApplied?: string;
+  }>();
+  const qFilterActive = !!(params.qStartDate || params.qEndDate);
 
-  const [activeTab, setActiveTab] = useState<TabType>('ALL');
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: quotations = [], isLoading, isFetching, refetch } = useQuotations();
 
+  const handleClearFilters = () => {
+    router.setParams({
+      qStartDate: '',
+      qEndDate: '',
+      qFilterApplied: ''
+    });
+  };
+
   // Filter by tab + search
   const filtered = quotations.filter((q) => {
-    const matchesTab =
-      activeTab === 'ALL' || q.status === activeTab;
+
 
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
@@ -85,14 +92,26 @@ export default function QuotationScreen() {
       (q.company_name || '').toLowerCase().includes(searchLower) ||
       (q.dealer_company_name || '').toLowerCase().includes(searchLower);
 
-    return matchesTab && matchesSearch;
+    let matchesDate = true;
+    if (params.qStartDate && params.qEndDate) {
+      const start = new Date(params.qStartDate);
+      const end = new Date(params.qEndDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      const qDateStr = q.quotation_date || q.date;
+      if (qDateStr) {
+        const qDate = new Date(qDateStr);
+        matchesDate = qDate >= start && qDate <= end;
+      } else {
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesDate;
   });
 
-  // Count per tab
-  const countFor = (tab: TabType) =>
-    tab === 'ALL'
-      ? quotations.length
-      : quotations.filter((q) => q.status === tab).length;
+
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -118,40 +137,48 @@ export default function QuotationScreen() {
         </View>
         <TouchableOpacity
           style={styles.filterBtn}
-          onPress={() => router.push('/(tabs)/Quotation/quotation-filter')}
+          onPress={() => router.push({
+            pathname: '/(tabs)/Quotation/quotation-filter',
+            params: {
+              referrer: 'quotations-index',
+              qStartDate: params.qStartDate || '',
+              qEndDate: params.qEndDate || '',
+            }
+          })}
           activeOpacity={0.8}
         >
-          <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} style={{ marginRight: 4 }} />
-          <Text style={styles.filterBtnText}>Filters</Text>
+          <Ionicons name="funnel-outline" size={16} color={qFilterActive ? theme.primaryColor : COLORS.textDark} style={{ marginRight: 4 }} />
+          <Text style={[styles.filterBtnText, qFilterActive && { color: theme.primaryColor }]}>
+            {qFilterActive ? 'Filters (Active)' : 'Filters'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* STATUS TABS */}
-      <View style={styles.tabsRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsScrollContent}
-        >
-          {STATUS_TABS.map((tab) => {
-            const isSelected = activeTab === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tabChip, isSelected && styles.tabChipActive]}
-                onPress={() => setActiveTab(tab.key)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.bullet, { backgroundColor: tab.color }]} />
-                <Text style={[styles.tabChipText, isSelected && styles.tabChipTextActive]}>
-                  {tab.label}{' '}
-                  <Text style={styles.tabChipCount}>{countFor(tab.key)}</Text>
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {qFilterActive && (
+        <View style={styles.activeFiltersRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6 }}>
+            <TouchableOpacity
+              style={styles.filterChip}
+              onPress={handleClearFilters}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="calendar" size={12} color="#0369A1" style={{ marginRight: 6 }} />
+              <Text style={styles.filterChipText}>Date: {formatDate(params.qStartDate)} - {formatDate(params.qEndDate)}</Text>
+              <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </ScrollView>
+          <TouchableOpacity
+            style={styles.clearAllBtn}
+            onPress={handleClearFilters}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close-circle" size={14} color={COLORS.danger} style={{ marginRight: 4 }} />
+            <Text style={styles.clearAllBtnText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+
 
       {/* LIST */}
       {isLoading ? (
@@ -319,7 +346,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  tabsScrollContent: { paddingHorizontal: 5, gap: 4, paddingTop: 5 },
+  tabsScrollContent: { paddingHorizontal: 12, gap: 6, paddingTop: 5 },
   tabChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -338,41 +365,116 @@ const getStyles = (theme: any) => StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
   loaderText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
 
-  listContent: { paddingHorizontal: 4, paddingTop: 8, paddingBottom: 120, gap: 5 },
+  listContent: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 120, gap: 10 },
 
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 10,
+    padding: 14,
     gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  typeBullet: { width: 6, height: 6, borderRadius: 3 },
-  cardTypeText: { fontSize: 12.5, fontWeight: '800', color: COLORS.blue },
-  statusBadgeText: { fontSize: 11, fontWeight: '800' },
-  cardId: { fontSize: 15, fontWeight: '800', color: COLORS.textDark, marginTop: 2 },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  cardTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  typeBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  cardTypeText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.blue
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  cardId: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textDark,
+    marginTop: 2
+  },
 
-  metaSection: { gap: 6 },
+  metaSection: {
+    gap: 6
+  },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   metaIcon: { marginRight: 8 },
-  metaText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, flex: 1 },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    flex: 1
+  },
 
-  separator: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
+  separator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 4
+  },
 
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  bottomStatsLeft: { gap: 2 },
-  statsRowSub: { flexDirection: 'row', alignItems: 'center' },
-  bottomStatsText: { fontSize: 11.5, fontWeight: '700', color: COLORS.textMuted },
-  bottomAmountRight: { alignItems: 'flex-end' },
-  amountLabel: { fontSize: 10.5, fontWeight: '700', color: COLORS.textMuted, marginBottom: 2 },
-  amountValue: { fontSize: 14.5, fontWeight: '800', color: COLORS.textDark },
+  cardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  bottomStatsLeft: {
+    gap: 2
+  },
+  statsRowSub: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  bottomStatsText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: COLORS.textMuted
+  },
+  bottomAmountRight: {
+    alignItems: 'flex-end'
+  },
+  amountLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginBottom: 2
+  },
+  amountValue: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: COLORS.textDark
+  },
 
-  emptyArea: { alignItems: 'center', justifyContent: 'center', paddingVertical: 120, gap: 8 },
-  emptyTitle: { fontSize: 15, fontWeight: '800', color: COLORS.textDark },
-  emptySub: { fontSize: 12.5, color: COLORS.textMuted, fontWeight: '600', textAlign: 'center' },
+  emptyArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 120,
+    gap: 8
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textDark
+  },
+  emptySub: {
+    fontSize: 12.5, color: COLORS.textMuted, fontWeight: '600', textAlign: 'center'
+  },
 
   fab: {
     position: 'absolute',
@@ -389,5 +491,47 @@ const getStyles = (theme: any) => StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
     zIndex: 100,
+  },
+  activeFiltersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.bgWhite,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  filterChipText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  clearAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 28,
+  },
+  clearAllBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: COLORS.danger,
   },
 });

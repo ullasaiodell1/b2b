@@ -46,6 +46,7 @@ export interface QuotationRecord {
   dealer_contact_name?: string | null;
   company_name?: string | null;
   quotation_date?: string;
+  date?: string;
   status: QuotationStatus;
   subtotal?: number;
   tax_total?: number;
@@ -73,6 +74,15 @@ export interface QuotationFilterState {
   startDate?: string;
   endDate?: string;
   lead_id?: string;
+  exclude_dealer?: boolean;
+  dealer_only?: boolean;
+  company_id?: string;
+  dealer_id?: string;
+  user_id?: string;
+  offset?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_direction?: string;
 }
 
 export interface CreateQuotationPayload {
@@ -93,7 +103,8 @@ export interface CreateQuotationPayload {
   discount_percentage?: number;
   discount_amount?: number;
   additional_charges?: { name: string; amount: number }[] | null;
-  sub_total: number;
+  subtotal: number;
+  sub_total?: number;
   tax_total?: number;
   grand_total: number;
   items: QuotationItem[];

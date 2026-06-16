@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,13 +12,15 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useQuery } from '@tanstack/react-query';
+import { getCompanies } from '@/services/api/company';
 
-const COMPANIES = ['Luis Pvt. Ltd.', 'Sherry Pvt. Ltd.', 'Jigar Pvt. Ltd.', 'Parth Pvt. Ltd.'];
 const STATUSES = ['Complete', 'Draft', 'Pending', 'Bounce'];
 
 const formatDate = (date: Date) => {
@@ -69,17 +72,45 @@ export default function VisitFilterScreen() {
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(params.status || null);
   const [selectedCompany, setSelectedCompany] = useState<string>(params.company || 'Select Company');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
 
   // Modals for Pickers
   const [companyModalVisible, setCompanyModalVisible] = useState(false);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
 
+  const { data: companiesData, isLoading: isCompaniesLoading } = useQuery({
+    queryKey: ['companies', companySearchQuery],
+    queryFn: async () => {
+      const res = await getCompanies({ search: companySearchQuery });
+      return res;
+    },
+  });
+
+  // Extract companies list
+  let companiesList: any[] = [];
+  if (Array.isArray(companiesData)) {
+    companiesList = companiesData;
+  } else if (Array.isArray(companiesData?.data)) {
+    companiesList = companiesData.data;
+  } else if (Array.isArray(companiesData?.data?.data)) {
+    companiesList = companiesData.data.data;
+  }
+
+  const formattedCompanies = companiesList.map((item: any) => {
+    const name = item.display_name || item.name || 'N/A';
+    return {
+      id: String(item.id),
+      name,
+    };
+  });
+
   const handleResetAll = () => {
     setFromDate(null);
     setToDate(null);
     setSelectedStatus(null);
     setSelectedCompany('Select Company');
+    setCompanySearchQuery('');
   };
 
   const handleApplyFilter = () => {
@@ -268,21 +299,61 @@ export default function VisitFilterScreen() {
                 <Ionicons name="close" size={20} color={COLORS.textDark} />
               </TouchableOpacity>
             </View>
+
+            {/* Modal Search Container */}
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search Company Name..."
+                placeholderTextColor="#9CA3AF"
+                value={companySearchQuery}
+                onChangeText={setCompanySearchQuery}
+              />
+              {companySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCompanySearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
             <ScrollView style={{ paddingHorizontal: 20 }}>
-              {COMPANIES.map((comp) => (
+              <TouchableOpacity
+                style={styles.modalRowItem}
+                onPress={() => {
+                  setSelectedCompany('Select Company');
+                  setCompanyModalVisible(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalRowText, { color: COLORS.textMuted }]}>Clear Selection</Text>
+                <Ionicons name="close-circle-outline" size={16} color={COLORS.textMuted} />
+              </TouchableOpacity>
+
+              {isCompaniesLoading && formattedCompanies.length === 0 ? (
+                <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginVertical: 20 }} />
+              ) : null}
+
+              {formattedCompanies.map((comp) => (
                 <TouchableOpacity
-                  key={comp}
+                  key={comp.id}
                   style={styles.modalRowItem}
                   onPress={() => {
-                    setSelectedCompany(comp);
+                    setSelectedCompany(comp.name);
                     setCompanyModalVisible(false);
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.modalRowText}>{comp}</Text>
+                  <Text style={styles.modalRowText}>{comp.name}</Text>
                   <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
                 </TouchableOpacity>
               ))}
+
+              {!isCompaniesLoading && formattedCompanies.length === 0 && (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20, fontSize: 13 }}>
+                  No companies found
+                </Text>
+              )}
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -552,8 +623,26 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '40%',
+    maxHeight: '60%',
     paddingBottom: 24,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    marginHorizontal: 20,
+    marginBottom: 10,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
   },
   modalHeader: {
     flexDirection: 'row',

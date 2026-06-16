@@ -23,7 +23,9 @@
       "permissions": [
         "android.permission.READ_CALL_LOG",
         "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR"
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -56,6 +58,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0f38a402-67ca-4151-8ae4-a6c413b8029d"
+      }
+    },
+    "owner": "s_k_c"
   }
 }

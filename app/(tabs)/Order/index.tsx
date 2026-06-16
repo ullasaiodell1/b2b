@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -28,18 +30,18 @@ export default function OrderScreen() {
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const { orders, filter: filterState, updateFilter } = useOrders();
+  const { orders, filter: filterState, updateFilter, isLoading, refetch } = useOrders();
 
   // Search & Filter Logic
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = (orders as any[]).filter((order: any) => {
     // A. Filter by Search Query
     const query = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !query ||
-      order.orderNo.toLowerCase().includes(query) ||
-      order.clientName.toLowerCase().includes(query) ||
-      order.contactPerson.toLowerCase().includes(query) ||
-      order.hotelLocation.toLowerCase().includes(query);
+      (order.orderNo || '').toLowerCase().includes(query) ||
+      (order.clientName || '').toLowerCase().includes(query) ||
+      (order.contactPerson || '').toLowerCase().includes(query) ||
+      (order.hotelLocation || '').toLowerCase().includes(query);
 
     // B. Filter by Global Status Filter
     const matchesStatus =
@@ -49,16 +51,16 @@ export default function OrderScreen() {
     let matchesDate = true;
     if (filterState.dateRange) {
       const dateRangeLower = filterState.dateRange.toLowerCase();
-      if (dateRangeLower.includes('28 dec') || dateRangeLower.includes('10 jan')) {
+      if (dateRangeLower.includes('') || dateRangeLower.includes('') || dateRangeLower.includes('') || dateRangeLower.includes('')) {
         matchesDate = true;
       } else {
         const orderDateLower = order.date.toLowerCase();
-        if (dateRangeLower.includes('mar') && orderDateLower.includes('mar')) {
-          matchesDate = orderDateLower.includes('22') || orderDateLower.includes('23') || orderDateLower.includes('24');
-        } else if (dateRangeLower.includes('apr') && orderDateLower.includes('apr')) {
-          matchesDate = orderDateLower.includes('10') || orderDateLower.includes('11') || orderDateLower.includes('12');
-        } else if (dateRangeLower.includes('may') && orderDateLower.includes('may')) {
-          matchesDate = orderDateLower.includes('20');
+        if (dateRangeLower.includes('') && orderDateLower.includes('')) {
+          matchesDate = orderDateLower.includes('') || orderDateLower.includes('') || orderDateLower.includes('');
+        } else if (dateRangeLower.includes('') && orderDateLower.includes('')) {
+          matchesDate = orderDateLower.includes('') || orderDateLower.includes('') || orderDateLower.includes('');
+        } else if (dateRangeLower.includes('') && orderDateLower.includes('')) {
+          matchesDate = orderDateLower.includes('');
         } else {
           matchesDate = false;
         }
@@ -108,7 +110,7 @@ export default function OrderScreen() {
       </View>
 
       {/* ── 3. ACTIVE FILTERS CHIPS ────────────────── */}
-      {(!!filterState.status || (!!filterState.dateRange && filterState.dateRange !== '28 Dec 22 – 10 Jan 23')) && (
+      {(!!filterState.status || (!!filterState.dateRange && filterState.dateRange !== '' && filterState.dateRange !== '')) && (
         <View style={s.chipsContainer}>
           {!!filterState.status && (
             <TouchableOpacity
@@ -128,13 +130,13 @@ export default function OrderScreen() {
             </TouchableOpacity>
           )}
 
-          {!!filterState.dateRange && filterState.dateRange !== '28 Dec 22 – 10 Jan 23' && (
+          {!!filterState.dateRange && filterState.dateRange !== '' && filterState.dateRange !== '' && (
             <TouchableOpacity
               style={s.activeChip}
               onPress={() => {
                 updateFilter({
                   ...filterState,
-                  dateRange: '28 Dec 22 – 10 Jan 23', // Reset to default
+                  dateRange: '', // Reset to default
                 });
               }}
               activeOpacity={0.8}
@@ -150,9 +152,16 @@ export default function OrderScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={COLORS.primary} />
+        }
       >
-        {filteredOrders.length > 0 ? (
-          filteredOrders.map((order, idx) => {
+        {isLoading && filteredOrders.length === 0 ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : filteredOrders.length > 0 ? (
+          filteredOrders.map((order: any, idx: number) => {
             const isCompleted = order.status === 'Complete';
             return (
               <TouchableOpacity
@@ -353,7 +362,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 10,
-    marginBottom: 10,
+    marginBottom: 1,
     gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

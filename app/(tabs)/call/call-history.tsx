@@ -1,13 +1,16 @@
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useCalls } from '@/hooks/useCalls';
+import { CallRecord } from '@/types/call';
+import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
-  PermissionsAndroid,
   Platform,
   StatusBar,
   StyleSheet,
@@ -17,171 +20,125 @@ import {
   View
 } from 'react-native';
 
-// Fallback to dynamic import to prevent bundling crashes on unsupported platforms
-let CallLogs: any = null;
-try {
-  CallLogs = require('react-native-call-log').default;
-} catch (e) {
-  console.log('react-native-call-log not loaded or unavailable in this environment');
-}
-
 type CallType = 'All' | 'Incoming' | 'Outgoing' | 'Missed';
 
-interface CallRecord {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  dateTime: string;
-  duration: string;
-  type: 'Incoming' | 'Outgoing' | 'Missed';
-}
 
-const MOCK_CALL_LOGS: CallRecord[] = [
-  {
-    id: '1',
-    name: 'Khushal Nadiyapara',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 12:02pm',
-    duration: '18.00 min',
-    type: 'Incoming',
-  },
-  {
-    id: '2',
-    name: 'Parth Solanki',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 12:03pm',
-    duration: '10.50 min',
-    type: 'Outgoing',
-  },
-  {
-    id: '3',
-    name: 'Jigar Kalariya',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 12:30pm',
-    duration: '00.00 min',
-    type: 'Missed',
-  },
-  {
-    id: '4',
-    name: 'Khushal Nadiyapara',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '19 Jan 2026, 03:45pm',
-    duration: '12.00 min',
-    type: 'Incoming',
-  },
-  {
-    id: '5',
-    name: 'Parth Solanki',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '18 Jan 2026, 06:10pm',
-    duration: '05.20 min',
-    type: 'Outgoing',
-  },
-  {
-    id: '6',
-    name: 'Khushal Nadiyapara',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '18 Jan 2026, 10:30am',
-    duration: '15.40 min',
-    type: 'Incoming',
-  },
-  {
-    id: '7',
-    name: 'Parth Solanki',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '17 Jan 2026, 02:22pm',
-    duration: '08.10 min',
-    type: 'Outgoing',
-  },
-  {
-    id: '8',
-    name: 'Jigar Kalariya',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '17 Jan 2026, 11:15am',
-    duration: '00.00 min',
-    type: 'Missed',
-  },
-  {
-    id: '9',
-    name: 'Anjon Patel',
-    phoneNumber: '+91 99988 77766',
-    dateTime: '16 Jan 2026, 09:30am',
-    duration: '00.00 min',
-    type: 'Missed',
-  },
-];
+function formatCallLog(item: any, leadInfo: { name: string; phone: string }): CallRecord {
+  let type: 'Incoming' | 'Outgoing' | 'Missed' = 'Incoming';
+  if (item.call_type === 'INBOUND') type = 'Incoming';
+  else if (item.call_type === 'OUTBOUND') type = 'Outgoing';
+  else if (item.call_type === 'MISSED') type = 'Missed';
+
+  let duration = '00:00 min';
+  if (item.duration_seconds !== undefined && item.duration_seconds !== null) {
+    const mins = Math.floor(item.duration_seconds / 60);
+    const secs = item.duration_seconds % 60;
+    duration = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} min`;
+  }
+
+  let dateTime = '';
+  if (item.call_start_time) {
+    const date = new Date(item.call_start_time);
+    const options: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+    dateTime = date.toLocaleDateString('en-IN', options).replace(' pm', 'pm').replace(' am', 'am');
+  }
+
+  return {
+    id: String(item.id),
+    name: leadInfo.name,
+    phoneNumber: leadInfo.phone,
+    dateTime: dateTime || 'Unknown',
+    duration,
+    type,
+    lead_id: String(item.lead_id),
+  };
+}
 
 export default function CallHistoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ leadId?: string; leadName?: string }>();
 
   const [activeTab, setActiveTab] = useState<CallType>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [callLogs, setCallLogs] = useState<CallRecord[]>(MOCK_CALL_LOGS);
-  const [dateRange, setDateRange] = useState('20 Dec 25 - 20 Jan 26');
+  const [dateRange, setDateRange] = useState('All Dates');
 
-  useEffect(() => {
-    fetchRealCallLogs();
-  }, []);
+  const query = useCalls();
+  const rawData = query.data;
+  const loading = query.isLoading;
+  const isFetching = query.isFetching;
+  const refetch = query.refetch;
 
-  const fetchRealCallLogs = async () => {
-    if (Platform.OS !== 'android' || !CallLogs) {
-      return; // Gracefully rely on high-fidelity mock list on iOS or Simulators
-    }
+  const [refreshing, setRefreshing] = useState(false);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
     try {
-      setLoading(true);
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-        {
-          title: 'Call Log Permission',
-          message: 'Basalt App needs access to your call logs to sync call histories.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        const logs = await CallLogs.loadAll();
-        if (logs && logs.length > 0) {
-          // Format Android native call logs to match our interface
-          const formatted: CallRecord[] = logs.map((log: any, index: number) => {
-            let type: 'Incoming' | 'Outgoing' | 'Missed' = 'Incoming';
-            if (log.type === 'OUTGOING') type = 'Outgoing';
-            if (log.type === 'MISSED') type = 'Missed';
-
-            const durationSec = parseInt(log.duration || '0', 10);
-            const durationMin = (durationSec / 60).toFixed(2) + ' min';
-
-            return {
-              id: log.timestamp + '-' + index,
-              name: log.name || 'Unknown Contact',
-              phoneNumber: log.phoneNumber || 'Private Number',
-              dateTime: new Date(parseInt(log.timestamp)).toLocaleString(),
-              duration: durationMin,
-              type,
-            };
-          });
-          setCallLogs(formatted);
-        }
-      }
+      await syncDeviceCallLogs();
     } catch (e) {
-      console.log('Error loading native call logs:', e);
+      console.error('[CallHistoryScreen] Error syncing call logs during refresh:', e);
     } finally {
-      setLoading(false);
+      await refetch();
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    syncDeviceCallLogs();
+  }, []);
+
   const handleResetDate = () => {
-    setDateRange('20 Dec 25 - 20 Jan 26');
     setSearchQuery('');
     setActiveTab('All');
   };
 
+  const callLogs = useMemo(() => {
+    if (!rawData) return [];
+    const { leads, allLogs } = rawData;
+    const leadMap: Record<string, { name: string; phone: string }> = {};
+    leads.forEach((l: any) => {
+      leadMap[String(l.id)] = {
+        name: l.name || 'Unknown',
+        phone: l.phone || l.mobile || '',
+      };
+    });
+
+    const mapped: CallRecord[] = allLogs.map((item: any) => {
+      const leadInfo = leadMap[String(item.lead_id)] || { name: 'Unknown', phone: '' };
+      return formatCallLog(item, leadInfo);
+    });
+
+    // Extract call_start_time to allow sorting
+    allLogs.forEach((item: any, idx: number) => {
+      if (mapped[idx]) {
+        (mapped[idx] as any).call_start_time = item.call_start_time;
+      }
+    });
+
+    // Sort by call_start_time DESC
+    mapped.sort((a: any, b: any) => {
+      const dateA = a.call_start_time ? new Date(a.call_start_time).getTime() : 0;
+      const dateB = b.call_start_time ? new Date(b.call_start_time).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return mapped;
+  }, [rawData]);
+
   // Filter call logs based on active tab and search query
   const filteredLogs = callLogs.filter((log) => {
+    if (params.leadId && String(log.lead_id) !== String(params.leadId)) {
+      return false;
+    }
+
     const matchesTab = activeTab === 'All' || log.type === activeTab;
     const matchesSearch =
       log.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -226,7 +183,11 @@ export default function CallHistoryScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-      <CustomHeader title="Call History" showSearch={false} />
+      <CustomHeader
+        title={params.leadName ? `History - ${params.leadName}` : 'Call History'}
+        showSearch={false}
+        showBack={true}
+      />
 
       {/* ── FILTERS & SEARCH ROW ───────────────────── */}
       <View style={styles.searchSection}>
@@ -284,7 +245,7 @@ export default function CallHistoryScreen() {
       {loading ? (
         <View style={styles.loadingArea}>
           <ActivityIndicator size="large" color={theme.primaryColor} />
-          <Text style={styles.loadingText}>Syncing Android Call Logs...</Text>
+          <Text style={styles.loadingText}>Syncing CRM Call Logs...</Text>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
@@ -294,6 +255,8 @@ export default function CallHistoryScreen() {
             renderItem={renderCallItem}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            refreshing={refreshing || isFetching}
+            onRefresh={handleRefresh}
             ListEmptyComponent={
               <View style={styles.emptyArea}>
                 <Ionicons name="call-outline" size={48} color="#C2D3CC" />
@@ -302,31 +265,6 @@ export default function CallHistoryScreen() {
               </View>
             }
           />
-
-          {/* Call Simulation Float Action Button */}
-          <TouchableOpacity
-            style={styles.simFab}
-            activeOpacity={0.85}
-            onPress={() => {
-              const names = ['Anjon Patel', 'Dharmesh Vala', 'Vijay Rathod', 'Nirav Chawda', 'Harshil Shah'];
-              const numbers = ['+91 99887 76655', '+91 98765 43210', '+91 91234 56789', '+91 88877 66655'];
-              const types: ('Incoming' | 'Outgoing' | 'Missed')[] = ['Incoming', 'Outgoing', 'Missed'];
-
-              const newCall: CallRecord = {
-                id: Date.now().toString(),
-                name: names[Math.floor(Math.random() * names.length)],
-                phoneNumber: numbers[Math.floor(Math.random() * numbers.length)],
-                dateTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ', Today',
-                duration: Math.floor(Math.random() * 20) + '.00 min',
-                type: types[Math.floor(Math.random() * types.length)],
-              };
-
-              setCallLogs([newCall, ...callLogs]);
-            }}
-          >
-            <Ionicons name="flash-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.simFabText}>Simulate Call</Text>
-          </TouchableOpacity>
         </View>
       )}
     </KeyboardAvoidingView>

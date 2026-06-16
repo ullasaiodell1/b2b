@@ -11,7 +11,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,7 +38,15 @@ export default function VisitScreen() {
   }>();
   const insets = useSafeAreaInsets();
 
-  const { data: responseData } = useVisits() as any;
+  const apiFilterParams = React.useMemo(() => {
+    const p: any = {};
+    if (params.status) p.status = params.status;
+    if (params.company && params.company !== 'Select Company') p.company = params.company;
+    if (params.dateRange) p.dateRange = params.dateRange;
+    return p;
+  }, [params.status, params.company, params.dateRange]);
+
+  const { data: responseData, isLoading, refetch } = useVisits(apiFilterParams) as any;
   const visits = Array.isArray(responseData)
     ? responseData
     : (Array.isArray(responseData?.data)
@@ -71,19 +81,32 @@ export default function VisitScreen() {
 
   const getImageUri = (imageUrl: any) => {
     if (!imageUrl) return '';
-    try {
-      const parsed = JSON.parse(imageUrl);
-      const candidate = parsed?.url || parsed?.thumb || parsed?.src || parsed?.key || parsed?.path || parsed;
+    const getFullUrl = (candidate: string) => {
+      if (candidate.startsWith('http')) return candidate;
+      const cleaned = candidate.startsWith('/') ? candidate.slice(1) : candidate;
+      return `${serverDetails.s3BucketURL}/${cleaned}`;
+    };
+
+    if (typeof imageUrl === 'object' && imageUrl !== null) {
+      const candidate = imageUrl.url || imageUrl.thumb || imageUrl.src || imageUrl.key || imageUrl.path;
       if (typeof candidate === 'string' && candidate.length > 0) {
-        if (candidate.startsWith('http')) return candidate;
-        const cleaned = candidate.startsWith('/') ? candidate.slice(1) : candidate;
-        return `${serverDetails.s3BucketURL}/${cleaned}`;
+        return getFullUrl(candidate);
       }
-    } catch {
-      if (typeof imageUrl === 'string' && imageUrl.length > 0) {
-        if (imageUrl.startsWith('http')) return imageUrl;
-        const cleaned = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
-        return `${serverDetails.s3BucketURL}/${cleaned}`;
+    }
+
+    if (typeof imageUrl === 'string' && imageUrl.length > 0) {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        if (parsed && typeof parsed === 'object') {
+          const candidate = parsed.url || parsed.thumb || parsed.src || parsed.key || parsed.path;
+          if (typeof candidate === 'string' && candidate.length > 0) {
+            return getFullUrl(candidate);
+          }
+        } else if (typeof parsed === 'string' && parsed.length > 0) {
+          return getFullUrl(parsed);
+        }
+      } catch {
+        return getFullUrl(imageUrl);
       }
     }
     return '';
@@ -313,7 +336,15 @@ export default function VisitScreen() {
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.primaryColor} />
+        }
       >
+        {isLoading && filteredVisits.length === 0 ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={theme.primaryColor} />
+          </View>
+        ) : null}
         {filteredVisits.map((visit: any) => {
           const displayStatus = getDisplayStatus(visit.status);
           const isPending = displayStatus === 'Pending';

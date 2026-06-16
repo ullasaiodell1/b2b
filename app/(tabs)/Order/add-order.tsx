@@ -1,23 +1,31 @@
 import { AdvanceAccountCard } from '@/components/custom/AdvanceAccountCard';
+import BulkItemActionsCard from '@/components/custom/BulkItemActionsCard';
 import { FinancialAdjustmentsCard, LogisticsCard } from '@/components/custom/LogisticsAndAdjustmentsCards';
 import { AdditionalChargesCard, OperationalInsightsCard } from '@/components/custom/OperationalAndChargesCards';
 import SelectImagesModal from '@/components/custom/SelectImagesModal';
 import SelectProductModal from '@/components/custom/SelectProductModal';
-import { OrderRecord, ordersState, updateOrdersState } from '@/components/OrderState';
+import { OrderRecord } from '@/components/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useCompanyAccounts } from '@/hooks/useCompany';
+import { useCompanyAccounts, useCompanies } from '@/hooks/useCompany';
 import { useCouriers, useCreateCourier } from '@/hooks/useCourier';
+import { useDealers } from '@/hooks/useDealers';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useLeads } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
+import { useCreateOrder } from '@/hooks/useOrders';
+import { useProducts } from '@/hooks/useProducts';
+import { useProfile } from '@/hooks/useProfile';
 import { useUsersCombobox } from '@/hooks/useUsers';
+import { getCompanyDetails } from '@/services/api/company';
 import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   BackHandler,
   Image,
@@ -89,6 +97,9 @@ interface ItemLine {
   images?: string[] | null;
   availableImages?: string[] | null;
   isCollapsed?: boolean;
+  source?: string;
+  barcodes?: string[];
+  isSelected?: boolean;
 }
 
 function makeEmptyItem(): ItemLine {
@@ -105,6 +116,9 @@ function makeEmptyItem(): ItemLine {
     images: [],
     availableImages: [],
     isCollapsed: false,
+    source: 'MANUAL',
+    barcodes: [],
+    isSelected: true,
   };
 }
 
@@ -138,61 +152,58 @@ function formatDate(d: Date) {
   return `${day}/${month}/${year}`;
 }
 
-function numberToWords(num: number): string {
-  if (num === 0) return 'Zero Only';
-  const a = [
-    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
-  ];
-  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+function numberToWords(amount: number): string {
+  const num = Math.floor(amount);
+  if (num === 0) return 'Zero Rupees Only';
 
-  const formatLessThanThousand = (n: number) => {
-    let temp = '';
-    if (n >= 100) {
-      temp += a[Math.floor(n / 100)] + ' Hundred ';
+  const single = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const double = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const formatTens = (n: number) => {
+    if (n < 10) return single[n];
+    if (n < 20) return double[n - 10];
+    return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + single[n % 10] : '');
+  };
+
+  const convert = (n: number, suffix: string) => {
+    if (n === 0) return '';
+    let res = '';
+    if (n > 99) {
+      res += single[Math.floor(n / 100)] + ' Hundred ';
       n %= 100;
     }
     if (n > 0) {
-      if (n < 20) temp += a[n] + ' ';
-      else {
-        temp += b[Math.floor(n / 10)] + ' ';
-        if (n % 10 > 0) temp += a[n % 10] + ' ';
-      }
+      res += formatTens(n) + ' ';
     }
-    return temp;
+    return res + suffix + ' ';
   };
 
-  let integerPart = Math.floor(num);
-  if (integerPart === 0) return 'Zero Only';
-
-  const crore = Math.floor(integerPart / 10000000);
-  integerPart %= 10000000;
-  const lakh = Math.floor(integerPart / 100000);
-  integerPart %= 100000;
-  const thousand = Math.floor(integerPart / 1000);
-  integerPart %= 1000;
-  const remaining = integerPart;
-
   let words = '';
-  if (crore > 0) {
-    words += formatLessThanThousand(crore) + 'Crore ';
-  }
-  if (lakh > 0) {
-    words += formatLessThanThousand(lakh) + 'Lakh ';
-  }
-  if (thousand > 0) {
-    words += formatLessThanThousand(thousand) + 'Thousand ';
-  }
-  if (remaining > 0) {
-    words += formatLessThanThousand(remaining);
+  words += convert(Math.floor(num / 10000000) % 100, 'Crore');
+  words += convert(Math.floor(num / 100000) % 100, 'Lakh');
+  words += convert(Math.floor(num / 1000) % 100, 'Thousand');
+  words += convert(num % 1000, '');
+
+  words = words.trim().replace(/\s+/g, ' ');
+  if (!words) return 'Zero Rupees Only';
+
+  const paise = Math.round((amount - num) * 100);
+  let paiseWords = '';
+  if (paise > 0) {
+    paiseWords = ' and ' + formatTens(paise) + ' Paise';
   }
 
-  return words.trim() + ' Only';
+  return words + ' Rupees' + paiseWords + ' Only';
 }
 
 export default function AddOrderScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const createOrderMutation = useCreateOrder();
+  const { data: products = [] } = useProducts();
+  const { profile: userProfile } = useProfile();
+  const [orderType, setOrderType] = useState<'WITHOUT_BRANDING' | 'CUSTOM_BRANDING'>('WITHOUT_BRANDING');
 
   const toggleCollapse = (idx: number) => {
     setItems((prev) => {
@@ -278,9 +289,130 @@ export default function AddOrderScreen() {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  // Company selection states
+  const [companyId, setCompanyId] = useState<string>('');
+  const [companyName, setCompanyName] = useState<string>(params.companyName || '');
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+
+  const { data: companies = [], isLoading: isLoadingCompanies } = useCompanies({ search: companySearchQuery, limit: 100 });
+
+  const selectedCompany = React.useMemo(() => {
+    return companies.find((c: any) => String(c.id) === String(companyId));
+  }, [companies, companyId]);
+
   React.useEffect(() => {
-    if (params.leadId && leads.length > 0) {
-      const match = leads.find(l => String(l.id) === String(params.leadId));
+    if (selectedCustomer && companies.length > 0) {
+      if (selectedCustomer.company_id) {
+        setCompanyId(String(selectedCustomer.company_id));
+        const match = companies.find((c: any) => String(c.id) === String(selectedCustomer.company_id));
+        if (match) {
+          setCompanyName(match.display_name || match.name || '');
+        }
+      } else {
+        const cName = selectedCustomer.company || selectedCustomer.company_name || '';
+        if (cName.trim()) {
+          const match = companies.find(
+            (c: any) =>
+              c.display_name?.toLowerCase().trim() === cName.trim().toLowerCase() ||
+              c.name?.toLowerCase().trim() === cName.trim().toLowerCase()
+          );
+          if (match) {
+            setCompanyId(String(match.id));
+            setCompanyName(match.display_name || match.name || '');
+          }
+        }
+      }
+    }
+  }, [selectedCustomer, companies]);
+
+  // Delivery address states
+  const [billingAddress, setBillingAddress] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [sameAsBilling, setSameAsBilling] = useState(true);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+
+  const [tempBillingAddress, setTempBillingAddress] = useState('');
+  const [tempShippingAddress, setTempShippingAddress] = useState('');
+  const [tempSameAsBilling, setTempSameAsBilling] = useState(true);
+
+  const [isLocatingBilling, setIsLocatingBilling] = useState(false);
+  const [isLocatingShipping, setIsLocatingShipping] = useState(false);
+
+  const handleGetLocation = async (target: 'billing' | 'shipping') => {
+    const setLocating = target === 'billing' ? setIsLocatingBilling : setIsLocatingShipping;
+    setLocating(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = location.coords;
+
+      let geocode = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      });
+
+      if (geocode && geocode.length > 0) {
+        const addr = geocode[0];
+        const streetPart = [addr.name, addr.street, addr.district].filter(Boolean).join(', ');
+        const cityPart = [addr.city, addr.subregion].filter(Boolean).join(', ');
+        const statePart = addr.region ? `${addr.region}` : '';
+        const pinPart = addr.postalCode ? `${addr.postalCode}` : '';
+        const countryPart = addr.country || '';
+
+        const fullAddress = [
+          streetPart,
+          cityPart,
+          [statePart, pinPart].filter(Boolean).join(' - '),
+          countryPart
+        ].filter(v => v && v.trim()).join(', ');
+
+        if (target === 'billing') {
+          setTempBillingAddress(fullAddress);
+          if (tempSameAsBilling) {
+            setTempShippingAddress(fullAddress);
+          }
+        } else {
+          setTempShippingAddress(fullAddress);
+        }
+      } else {
+        Alert.alert('Error', 'No address details found for your current location.');
+      }
+    } catch (error: any) {
+      console.error('[Get Location Error]:', error);
+      Alert.alert('Error', 'Failed to retrieve your current location: ' + (error?.message || ''));
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const { data: dealersData = [], isLoading: isLoadingDealers } = useDealers({ search: customerSearchQuery, limit: 100 });
+
+  const dealers = React.useMemo(() => {
+    return dealersData.map((item: any) => {
+      return {
+        id: String(item.id),
+        name: item.contact_name || item.name || '',
+        company: item.company_name || item.display_name || item.company || '',
+        email: item.email || '',
+        phone: item.phone || '',
+        address: item.address || item.location || '',
+        ...item,
+      };
+    });
+  }, [dealersData]);
+
+  React.useEffect(() => {
+    const targetId = params.leadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
+    if (leads.length > 0) {
+      const match = leads.find(l => String(l.id) === String(targetId));
       if (match) {
         setCustomerType(match.tag === 'DEALER' ? 'DEALER' : 'LEAD');
         handleSelectCustomer(match);
@@ -301,6 +433,8 @@ export default function AddOrderScreen() {
     setClientName(customer.company || customer.name || '');
     setContactPerson(customer.name || '');
     setHotelLocation(customer.address || customer.location || 'No address provided');
+    setBillingAddress(customer.address || customer.location || '');
+    setShippingAddress(customer.address || customer.location || '');
     setShowCustomerModal(false);
   };
 
@@ -310,27 +444,36 @@ export default function AddOrderScreen() {
     setClientName('');
     setContactPerson('');
     setHotelLocation('');
+    setBillingAddress('');
+    setShippingAddress('');
+    setSameAsBilling(true);
+    setCompanyId('');
+    setCompanyName('');
   };
 
-  const filteredCustomerList = leads.filter((lead: any) => {
-    const isDealer = (lead.name || '').toLowerCase().includes('dealer') ||
-      (lead.company || '').toLowerCase().includes('dealer') ||
-      (lead.tag || '').toLowerCase().includes('dealer') ||
-      (lead.status || '').toLowerCase().includes('dealer');
+  const filteredCustomerList = React.useMemo(() => {
     if (customerType === 'DEALER') {
-      return isDealer || !leads.some(l => (l.name || '').toLowerCase().includes('dealer'));
+      return dealers.filter((d: any) => {
+        const query = customerSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (
+          (d.name || '').toLowerCase().includes(query) ||
+          (d.company || '').toLowerCase().includes(query) ||
+          (d.phone || '').includes(query)
+        );
+      });
     } else {
-      return !isDealer || !leads.some(l => !(l.name || '').toLowerCase().includes('dealer'));
+      return leads.filter((lead: any) => {
+        const query = customerSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (
+          (lead.name || '').toLowerCase().includes(query) ||
+          (lead.company || '').toLowerCase().includes(query) ||
+          (lead.phone || '').includes(query)
+        );
+      });
     }
-  }).filter((lead: any) => {
-    const query = customerSearchQuery.toLowerCase().trim();
-    if (!query) return true;
-    return (
-      (lead.name || '').toLowerCase().includes(query) ||
-      (lead.company || '').toLowerCase().includes(query) ||
-      (lead.phone || '').includes(query)
-    );
-  });
+  }, [customerType, dealers, leads, customerSearchQuery]);
 
   // Items State
   const [items, setItems] = useState<ItemLine[]>([makeEmptyItem()]);
@@ -570,6 +713,89 @@ export default function AddOrderScreen() {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleApplyBulkDiscount = (num: number) => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to apply discount.');
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.isSelected !== false ? { ...item, item_discount: String(num) } : item
+      )
+    );
+  };
+
+  const handleApplyBulkRate = (op: 'SET' | 'ADD' | 'SUB', num: number) => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to apply rate changes.');
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.isSelected === false) return item;
+        const currentPrice = parseFloat(item.unit_price) || 0;
+        let newPrice = currentPrice;
+        if (op === 'SET') {
+          newPrice = num;
+        } else if (op === 'ADD') {
+          newPrice = currentPrice + num;
+        } else if (op === 'SUB') {
+          newPrice = Math.max(0, currentPrice - num);
+        }
+        return { ...item, unit_price: String(parseFloat(newPrice.toFixed(2))) };
+      })
+    );
+  };
+
+  const handleResetBulk = () => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to reset.');
+      return;
+    }
+
+    Alert.alert('Confirm Reset', 'Are you sure you want to reset the price and discount of selected items?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: () => {
+          setItems((prev) =>
+            prev.map((item) => {
+              if (item.isSelected === false) return item;
+              let originalPrice = '0';
+              if (item.product_id) {
+                const prod = products.find((p: any) => String(p.id) === String(item.product_id));
+                if (prod) {
+                  originalPrice = String(prod.selling_price || prod.dealer_price || 0);
+                }
+              }
+              return {
+                ...item,
+                unit_price: originalPrice,
+                item_discount: '0',
+              };
+            })
+          );
+        }
+      }
+    ]);
+  };
+
+  const handleToggleSelectAll = () => {
+    const allSel = items.every((item) => item.isSelected !== false);
+    setItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        isSelected: !allSel,
+      }))
+    );
+  };
+
   // Calculate Totals
   let subTotal = 0;
   let taxTotal = 0;
@@ -597,11 +823,6 @@ export default function AddOrderScreen() {
   const payableAmt = Math.max(0, computedGrandTotal - discountAmt);
 
   const handleSave = () => {
-    if (!selectedCustomer) {
-      Alert.alert('Required Field', 'Please select a Customer.');
-      return;
-    }
-
     // Validate items
     for (let i = 0; i < items.length; i++) {
       if (!items[i].item_name.trim()) {
@@ -616,28 +837,117 @@ export default function AddOrderScreen() {
 
     const formattedAmount = `₹ ${payableAmt.toFixed(2)}`;
 
-    const newOrder: OrderRecord = {
-      id: String(ordersState.length + 1),
+    const getBackendStatus = (statusStr: string): string => {
+      const s = (statusStr || 'PENDING').toUpperCase();
+      if (s === 'PENDING') return 'DRAFT';
+      if (s === 'COMPLETE' || s === 'COMPLETED') return 'CONFIRMED';
+      if (s === 'INPROGRESS' || s === 'PROCESS' || s === 'PROCESSING') return 'PROCESSING';
+      if (s === 'CANCEL' || s === 'CANCELLED') return 'CANCELLED';
+      if (s === 'DELIVERED') return 'DELIVERED';
+      if (s === 'APPROVED') return 'CONFIRMED';
+      return 'DRAFT';
+    };
+
+    const leadId = customerType === 'LEAD' && selectedCustomer ? selectedCustomer.id : undefined;
+    const dealerId = customerType === 'DEALER' && selectedCustomer ? selectedCustomer.id : undefined;
+
+    const newOrder: any = {
+      // Backend Validation fields
+      order_type: orderType,
+      source_type: customerType === 'DEALER' ? 'DEALER_PO' : 'LEAD_QUOTATION',
+      lead_id: leadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b',
+      dealer_id: dealerId,
+      company_id: companyId ? String(companyId) : '0364bbec-99cf-42d1-8d3f-1efbb6a0c9e2',
+      order_date: new Date().toISOString(),
+      expected_delivery_date: expectedDelivery ? expectedDelivery.toISOString() : undefined,
+      status: getBackendStatus(status),
+      payment_status: 'PENDING',
+      billing_address: billingAddress || hotelLocation || 'No address provided',
+      shipping_address_line1: shippingAddress || hotelLocation || 'No address provided',
+      subtotal: subTotal,
+      discount_amount: discountAmt,
+      discount_type: adjustmentType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED',
+      gst_amount: taxTotal,
+      tax_amount: taxTotal,
+      shipping_charges: shippingAmt,
+      additional_charges: addChargesAmt > 0 ? [{ name: chargesType || 'Service Charge', amount: addChargesAmt }] : [],
+      grand_total: payableAmt,
+      internal_notes: internalRemarks || undefined,
+      customer_notes: internalRemarks || undefined,
+      advance_amount: isAdvanceAccount ? (parseFloat(advanceAmount) || 0) : 0,
+
+      // New database alignment fields
+      amount_in_words: numberToWords(payableAmt),
+      sales_member_id: userProfile?.id || selectedCustomer?.assigned_to || '56fab03a-e2dc-4b00-9335-43b5fa6a80f0',
+      city_id: selectedCustomer?.city_id || null,
+      state_id: selectedCustomer?.state_id || null,
+      country_id: selectedCustomer?.country_id || null,
+      pincode: selectedCustomer?.pincode || null,
+      address_line1: selectedCustomer?.address_line1 || billingAddress || null,
+      address_line2: selectedCustomer?.address_line2 || null,
+      shipping_address_line2: sameAsBilling ? (selectedCustomer?.address_line2 || null) : null,
+      shipping_city_id: sameAsBilling ? (selectedCustomer?.city_id || null) : null,
+      shipping_state_id: sameAsBilling ? (selectedCustomer?.state_id || null) : null,
+      shipping_country_id: sameAsBilling ? (selectedCustomer?.country_id || null) : null,
+      shipping_pincode: sameAsBilling ? (selectedCustomer?.pincode || null) : null,
+      advance_payment_date: isAdvanceAccount ? advanceDate.toISOString() : null,
+      advance_payment_method: isAdvanceAccount ? paymentType : null,
+      advance_receipt_url: isAdvanceAccount ? (advanceProof || null) : null,
+
+      // Legacy/UI Fallback fields
+      id: String(Date.now()),
       orderNo,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
       clientName,
       contactPerson,
       hotelLocation,
-      status,
       itemsCount: items.length,
       paymentType,
       amount: formattedAmount,
+      order_no: orderNo,
+      client_name: clientName,
+      contact_person: contactPerson,
+      hotel_location: hotelLocation,
+      payment_type: paymentType,
+      total_items: items.length,
+
       items: items.map((item) => {
-        const { total } = calcItem(item);
+        const { amount: itemTaxable, gst_amount: itemGstAmount, total } = calcItem(item);
+        const itemDiscPct = parseFloat(item.item_discount) || 0;
+        const itemDiscAmt = itemTaxable * (itemDiscPct / 100);
         return {
+          // Backend Validation fields
+          product_id: item.product_id || undefined,
+          item_code: item.item_code || '',
+          item_name: item.item_name,
+          item_description: item.item_description || '',
+          quantity: parseFloat(item.quantity) || 0,
+          unit_price: parseFloat(item.unit_price) || 0,
+          amount: itemTaxable,
+          gst_percentage: parseFloat(item.gst_percentage) || 0,
+          gst_amount: itemGstAmount,
+          item_discount: itemDiscPct,
+          discount_amount: itemDiscAmt,
+          images: item.images || [],
+          source: item.source || 'MANUAL',
+          barcodes: item.barcodes || [],
+
+          // Legacy/UI fields
           name: item.item_name.toUpperCase(),
           description: item.item_description || '',
           price: `₹ ${parseFloat(item.unit_price).toFixed(2)}`,
           qty: String(item.quantity),
           gst: `${item.gst_percentage}%`,
           total: `₹ ${total.toFixed(2)}`,
+          total_amount: total,
         };
       }),
+      payments: isAdvanceAccount && advanceAccountSelected ? [{
+        account_id: advanceAccountSelected.id,
+        amount: parseFloat(advanceAmount) || 0,
+        remark: advanceRemark || '',
+        receipt_url: advanceProof || ''
+      }] : [],
       internalRemarks: internalRemarks || undefined,
       expectedDelivery: expectedDelivery ? formatDate(expectedDelivery) : undefined,
       approvedBy: approvedBy || undefined,
@@ -654,16 +964,21 @@ export default function AddOrderScreen() {
       advanceAccountId: isAdvanceAccount && advanceAccountSelected ? advanceAccountSelected.id : undefined,
       advanceAccountName: isAdvanceAccount && advanceAccountSelected ? advanceAccountSelected.name : undefined,
       advanceDate: isAdvanceAccount ? formatDate(advanceDate) : undefined,
-      advanceAmount: isAdvanceAccount ? advanceAmount : undefined,
       advanceRemark: isAdvanceAccount ? advanceRemark : undefined,
       advanceProof: isAdvanceAccount ? (advanceProof || undefined) : undefined,
     };
 
-    updateOrdersState([newOrder, ...ordersState]);
-
-    Alert.alert('Success', 'Order created successfully!', [
-      { text: 'OK', onPress: handleBack }
-    ]);
+    createOrderMutation.mutate(newOrder, {
+      onSuccess: () => {
+        Alert.alert('Success', 'Order created successfully!', [
+          { text: 'OK', onPress: handleBack }
+        ]);
+      },
+      onError: (error: any) => {
+        console.error('[Create Order Error]:', error);
+        Alert.alert('Error', 'Failed to create order. Please try again.');
+      }
+    });
   };
 
   return (
@@ -698,6 +1013,24 @@ export default function AddOrderScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
+          {/* COMPANY PICKER SECTION */}
+          <View style={styles.inputGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
+              <Text style={styles.inputLabelGrey}>COMPANY</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.selectTrigger}
+              onPress={() => setShowCompanyPicker(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.selectTriggerText, !companyId && !companyName && { color: '#9CA3AF' }]} numberOfLines={1}>
+                {selectedCompany ? (selectedCompany.display_name || selectedCompany.name) : (companyName || 'Select Company')}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
           {/* CUSTOMER PICKER SECTION */}
           <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
@@ -773,28 +1106,98 @@ export default function AddOrderScreen() {
             )}
           </View>
 
+          {/* ORDER TYPE SECTION */}
+          <View style={styles.inputGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+              <Text style={styles.inputLabelGrey}>ORDER TYPE</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={[
+                  styles.selectTrigger,
+                  { flex: 1, justifyContent: 'center', borderColor: orderType === 'WITHOUT_BRANDING' ? primaryColor : COLORS.border, backgroundColor: orderType === 'WITHOUT_BRANDING' ? primaryLight : '#FAFAFA' }
+                ]}
+                onPress={() => setOrderType('WITHOUT_BRANDING')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: orderType === 'WITHOUT_BRANDING' ? primaryColor : COLORS.textDark }}>
+                  Without Branding
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.selectTrigger,
+                  { flex: 1, justifyContent: 'center', borderColor: orderType === 'CUSTOM_BRANDING' ? primaryColor : COLORS.border, backgroundColor: orderType === 'CUSTOM_BRANDING' ? primaryLight : '#FAFAFA' }
+                ]}
+                onPress={() => setOrderType('CUSTOM_BRANDING')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: orderType === 'CUSTOM_BRANDING' ? primaryColor : COLORS.textDark }}>
+                  Custom Branding
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* BILL TO SECTION */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabelGrey}>BILL TO</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={styles.inputLabelGrey}>SHIP TO</Text>
+              {selectedCustomer && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setTempBillingAddress(billingAddress);
+                    setTempShippingAddress(sameAsBilling ? billingAddress : shippingAddress);
+                    setTempSameAsBilling(sameAsBilling);
+                    setShowAddressModal(true);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="pencil-sharp" size={12} color={primaryColor} />
+                  <Text style={{ fontSize: 11.5, fontWeight: '800', color: primaryColor }}>EDIT PROFILE</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={styles.billToBox}>
               {selectedCustomer ? (
-                <View style={styles.billToContent}>
-                  <Text style={styles.billToCompany}>{selectedCustomer.company || selectedCustomer.name}</Text>
-                  <Text style={styles.billToText}>{selectedCustomer.email || 'No email provided'}</Text>
-                  <Text style={styles.billToText}>{selectedCustomer.phone || 'No phone provided'}</Text>
-                  <Text style={styles.billToText}>{selectedCustomer.address || selectedCustomer.location || 'No address provided'}</Text>
-                </View>
+                (!billingAddress || billingAddress === (selectedCustomer.address || selectedCustomer.location)) && sameAsBilling ? (
+                  <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 24, gap: 8 }}>
+                    <Ionicons name="checkmark-circle-outline" size={24} color="#0EA5E9" />
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#0EA5E9', letterSpacing: 0.5 }}>
+                      DIRECT BILLING DELIVERY
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.billToContent}>
+                    <Text style={styles.billToCompany}>{selectedCustomer.company || selectedCustomer.name}</Text>
+                    {sameAsBilling ? (
+                      <Text style={styles.billToText}>{billingAddress || 'No billing address provided'}</Text>
+                    ) : (
+                      <>
+                        <Text style={[styles.billToCompany, { fontSize: 11, color: COLORS.textMuted, marginTop: 4 }]}>BILLING ADDRESS</Text>
+                        <Text style={styles.billToText}>{billingAddress || 'No billing address provided'}</Text>
+                        <Text style={[styles.billToCompany, { fontSize: 11, color: COLORS.textMuted, marginTop: 6 }]}>SHIPPING ADDRESS</Text>
+                        <Text style={styles.billToText}>{shippingAddress || 'No shipping address provided'}</Text>
+                      </>
+                    )}
+                  </View>
+                )
               ) : (
                 <Text style={styles.noRecipientText}>NO RECIPIENT SELECTED</Text>
               )}
             </View>
           </View>
 
-          {/* ITEMS SECTION */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>ITEMS</Text>
-            <View style={styles.sectionLine} />
-          </View>
+          {/* ── BILL ITEMS BULK ACTIONS CARD ────────────────── */}
+          <BulkItemActionsCard
+            items={items}
+            onApplyBulkDiscount={handleApplyBulkDiscount}
+            onApplyBulkRate={handleApplyBulkRate}
+            onResetBulk={handleResetBulk}
+            onToggleSelectAll={handleToggleSelectAll}
+          />
 
           {items.map((item, idx) => {
             const { amount: itemTaxable, gst_amount: itemGstAmount, total: itemTotal } = calcItem(item);
@@ -802,6 +1205,23 @@ export default function AddOrderScreen() {
               <View key={item.tempId} style={styles.itemCard}>
                 {/* Item header */}
                 <View style={styles.itemHeader}>
+                  <TouchableOpacity
+                    style={{ padding: 4, marginRight: 2 }}
+                    onPress={() => {
+                      setItems((prev) => {
+                        const next = [...prev];
+                        next[idx] = { ...next[idx], isSelected: next[idx].isSelected !== false ? false : true };
+                        return next;
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={item.isSelected !== false ? "checkbox" : "square-outline"}
+                      size={22}
+                      color={item.isSelected !== false ? primaryColor : COLORS.textMuted}
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
                     onPress={() => toggleCollapse(idx)}
@@ -1099,11 +1519,16 @@ export default function AddOrderScreen() {
         {/* ── SAVE ORDER BUTTON ───────────────────────── */}
         <View style={styles.nonStickySaveContainer}>
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: primaryColor }]}
+            style={[styles.saveBtn, { backgroundColor: primaryColor }, createOrderMutation.isPending && { opacity: 0.7 }]}
             onPress={handleSave}
             activeOpacity={0.85}
+            disabled={createOrderMutation.isPending}
           >
-            <Text style={styles.saveBtnText}>Save Order</Text>
+            {createOrderMutation.isPending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>Save Order</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1263,6 +1688,177 @@ export default function AddOrderScreen() {
             </ScrollView>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* ── DELIVERY ADDRESS CONFIGURE MODAL ─────────────── */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={showAddressModal}
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowAddressModal(false)}
+          />
+          <View style={[styles.modalContent, { maxHeight: '80%', paddingBottom: 24 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Delivery Address</Text>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 }}>
+                  Configure billing and shipping details for this order
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
+              {/* Billing Address Field */}
+              <View style={styles.formField}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="receipt-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.inputLabel}>BILLING ADDRESS</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleGetLocation('billing')}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    activeOpacity={0.7}
+                    disabled={isLocatingBilling}
+                  >
+                    {isLocatingBilling ? (
+                      <ActivityIndicator size="small" color={primaryColor} />
+                    ) : (
+                      <>
+                        <Ionicons name="locate-outline" size={14} color={primaryColor} />
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: primaryColor }}>Use Current Location</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={[styles.textInputBox, { height: 70, textAlignVertical: 'top', paddingTop: 8 }]}
+                  placeholder="Full billing address, city, state, pincode..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                  value={tempBillingAddress}
+                  onChangeText={(txt) => {
+                    setTempBillingAddress(txt);
+                    if (tempSameAsBilling) {
+                      setTempShippingAddress(txt);
+                    }
+                  }}
+                />
+              </View>
+
+              {/* Shipping Address Header with Checkbox */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
+                  <Text style={styles.inputLabel}>SHIPPING ADDRESS</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  onPress={() => {
+                    const nextVal = !tempSameAsBilling;
+                    setTempSameAsBilling(nextVal);
+                    if (nextVal) {
+                      setTempShippingAddress(tempBillingAddress);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={tempSameAsBilling ? "checkbox" : "square-outline"}
+                    size={18}
+                    color={tempSameAsBilling ? primaryColor : COLORS.textMuted}
+                  />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.textMuted }}>SAME AS BILLING</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Shipping Address Field (Only shown if NOT same as billing) */}
+              {!tempSameAsBilling && (
+                <View style={styles.formField}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => handleGetLocation('shipping')}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                      activeOpacity={0.7}
+                      disabled={isLocatingShipping}
+                    >
+                      {isLocatingShipping ? (
+                        <ActivityIndicator size="small" color={primaryColor} />
+                      ) : (
+                        <>
+                          <Ionicons name="locate-outline" size={14} color={primaryColor} />
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: primaryColor }}>Use Current Location</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={[styles.textInputBox, { height: 70, textAlignVertical: 'top', paddingTop: 8 }]}
+                    placeholder="Full shipping address, city, state, pincode..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={3}
+                    value={tempShippingAddress}
+                    onChangeText={setTempShippingAddress}
+                  />
+                </View>
+              )}
+
+              {/* Modal Buttons */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                <TouchableOpacity
+                  onPress={() => setShowAddressModal(false)}
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderWidth: 1,
+                    borderColor: primaryColor,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#FFFFFF'
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: primaryColor }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setBillingAddress(tempBillingAddress);
+                    setSameAsBilling(tempSameAsBilling);
+                    setShippingAddress(tempSameAsBilling ? tempBillingAddress : tempShippingAddress);
+                    setShowAddressModal(false);
+                  }}
+                  style={{
+                    flex: 1.5,
+                    height: 40,
+                    backgroundColor: primaryColor,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>Apply Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* CHARGES TYPE MODAL */}
@@ -1760,36 +2356,112 @@ export default function AddOrderScreen() {
               )}
             </View>
 
-            <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
-              {filteredCustomerList.map((lead: any) => (
-                <TouchableOpacity
-                  key={lead.id}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    handleSelectCustomer(lead);
-                    setShowCustomerModal(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.modalRowText}>{lead.company || lead.name}</Text>
-                    {lead.company && lead.name && (
-                      <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
-                        {lead.name} • {lead.phone || 'No Phone'}
-                      </Text>
-                    )}
+            {customerType === 'DEALER' && isLoadingDealers ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={primaryColor} />
+              </View>
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+                {filteredCustomerList.map((lead: any) => (
+                  <TouchableOpacity
+                    key={lead.id}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      handleSelectCustomer(lead);
+                      setShowCustomerModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalRowText}>{lead.company || lead.name}</Text>
+                      {(lead.company || lead.name) && (
+                        <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
+                          {lead.name || 'No Contact'} • {lead.phone || 'No Phone'}
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                {filteredCustomerList.length === 0 && (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                      No matches found
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── COMPANY PICKER MODAL ─────────────── */}
+      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCompanyPicker(false)}
+        >
+          <View style={[styles.modalContent, { height: '45%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Company</Text>
+              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search by company name..."
+                placeholderTextColor="#9CA3AF"
+                value={companySearchQuery}
+                onChangeText={setCompanySearchQuery}
+                autoCorrect={false}
+                autoComplete="off"
+              />
+              {companySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCompanySearchQuery('')} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
                 </TouchableOpacity>
-              ))}
-              {filteredCustomerList.length === 0 && (
-                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
-                    No matches found
-                  </Text>
-                </View>
               )}
-            </ScrollView>
+            </View>
+
+            {isLoadingCompanies ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={primaryColor} />
+              </View>
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+                {companies.map((comp: any) => (
+                  <TouchableOpacity
+                    key={comp.id}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      setCompanyId(String(comp.id));
+                      setCompanyName(comp.display_name || comp.name || '');
+                      setShowCompanyPicker(false);
+                      setCompanySearchQuery('');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalRowText}>{comp.display_name || comp.name}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                {companies.length === 0 && (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                      No companies found
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>

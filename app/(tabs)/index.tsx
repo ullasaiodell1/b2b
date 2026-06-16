@@ -4,6 +4,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useAppPermissions } from '@/hooks/useAppPermissions';
+import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import React, { useEffect, useState } from 'react';
@@ -11,15 +12,15 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  KeyboardAvoidingView,
-  Platform
+  View
 } from 'react-native';
 import {
   BarChart,
@@ -149,6 +150,10 @@ export default function HomeScreen() {
         }
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    syncDeviceCallLogs();
   }, []);
 
   // Fetch analysis data from API using hook

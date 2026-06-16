@@ -97,6 +97,29 @@ export default function LeadsScreen() {
 
   const hasActiveFilters = !!(params.priority || params.tag || params.owner);
 
+  const isNavigatingRef = React.useRef(false);
+
+  const handleLeadPress = (lead: any) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push({
+      pathname: '/(tabs)/leads/lead-details',
+      params: {
+        id: lead.id,
+        name: lead.name,
+        company: lead.company,
+        email: lead.email,
+        phone: lead.phone,
+        tag: lead.tag,
+        priority: lead.priority,
+        owner: lead.owner,
+      }
+    });
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 1000);
+  };
+
 
 
   return (
@@ -128,14 +151,21 @@ export default function LeadsScreen() {
             styles.filterBtn,
             hasActiveFilters && { borderColor: primaryColor, backgroundColor: primaryLight }
           ]}
-          onPress={() => router.push({
-            pathname: '/(tabs)/leads/leads-filter',
-            params: {
-              priority: params.priority || '',
-              tag: params.tag || '',
-              owner: params.owner || '',
-            }
-          })}
+          onPress={() => {
+            if (isNavigatingRef.current) return;
+            isNavigatingRef.current = true;
+            router.push({
+              pathname: '/(tabs)/leads/leads-filter',
+              params: {
+                priority: params.priority || '',
+                tag: params.tag || '',
+                owner: params.owner || '',
+              }
+            });
+            setTimeout(() => {
+              isNavigatingRef.current = false;
+            }, 1000);
+          }}
           activeOpacity={0.8}
         >
           <Ionicons
@@ -199,19 +229,7 @@ export default function LeadsScreen() {
             <TouchableOpacity
               key={lead.id + '_' + idx}
               style={styles.card}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/lead-details',
-                params: {
-                  id: lead.id,
-                  name: lead.name,
-                  company: lead.company,
-                  email: lead.email,
-                  phone: lead.phone,
-                  tag: lead.tag,
-                  priority: lead.priority,
-                  owner: lead.owner,
-                }
-              })}
+              onPress={() => handleLeadPress(lead)}
               activeOpacity={0.85}
             >
               {/* Top row: Name & Tag */}
@@ -277,7 +295,14 @@ export default function LeadsScreen() {
       ]}>
         <TouchableOpacity
           style={[styles.primaryFab, { backgroundColor: primaryColor, shadowColor: primaryColor }]}
-          onPress={() => router.push('/(tabs)/leads/add-lead')}
+          onPress={() => {
+            if (isNavigatingRef.current) return;
+            isNavigatingRef.current = true;
+            router.push('/(tabs)/leads/add-lead');
+            setTimeout(() => {
+              isNavigatingRef.current = false;
+            }, 1000);
+          }}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={30} color="#FFFFFF" />

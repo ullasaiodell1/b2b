@@ -9,6 +9,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/config/reactQuery';
 import Toast from 'react-native-toast-message';
 import { ThemeProvider as AppThemeProvider } from '@/context/ThemeContext';
+import { useEffect } from 'react';
+import { requestNotificationPermission } from '@/utils/notifications';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -16,6 +18,12 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    requestNotificationPermission().catch((err) => {
+      console.warn('Failed to request notifications permission on startup:', err);
+    });
+  }, []);
 
   return (
     <AppThemeProvider>

@@ -18,36 +18,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type PriorityType = 'High' | 'Normal' | 'Low';
 
-const QUOTATION_TYPES = [
-  'Product Quotation',
-  'Project Based Quotation',
-  'Services Based Quotation',
-];
-
-const STATUSES = ['Sent', 'Accepted', 'Draft', 'Pending'];
-
-const CLIENTS = [
-  'NovaTech Solutions Pvt. Ltd.',
-  'Sunrise Exports',
-  'Delta Constructions',
-  'GreenField Agro',
-];
-
-const USERS = [
-  'Arjun Maheta',
-  'Parth Solanki',
-  'Khushal Nadiyapara',
-  'Jigar Kalariya',
-];
 
 export default function QuotationFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
+  const { referrer, leadId, qStartDate, qEndDate } = useLocalSearchParams<{
+    referrer?: string;
+    leadId?: string;
+    qStartDate?: string;
+    qEndDate?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
@@ -80,23 +63,28 @@ export default function QuotationFilterScreen() {
   );
 
   // Filters State
-  const [priority, setPriority] = useState<PriorityType>('High');
-  const [startDate, setStartDate] = useState<Date>(new Date(2022, 11, 28));
-  const [endDate, setEndDate] = useState<Date>(new Date(2023, 0, 10));
-  const [quotationType, setQuotationType] = useState<string>('');
-  const [status, setStatus] = useState<string>('Sent');
-  const [client, setClient] = useState<string>('');
-  const [salesPerson, setSalesPerson] = useState<string>('');
+
+  const [startDate, setStartDate] = useState<Date | null>(() => {
+    if (qStartDate) {
+      const parsed = new Date(qStartDate);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return null;
+  });
+  const [endDate, setEndDate] = useState<Date | null>(() => {
+    if (qEndDate) {
+      const parsed = new Date(qEndDate);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return null;
+  });
 
   // Picker States
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-  const [showRangePickerModal, setShowRangePickerModal] = useState(false);
 
-  // Dropdown Modal Selection helper states
-  const [activeSelectType, setActiveSelectType] = useState<'type' | 'client' | 'sales' | null>(null);
-
-  const formatDateShort = (date: Date) => {
+  const formatDateShort = (date: Date | null) => {
+    if (!date) return 'Select Date';
     const day = date.getDate();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = monthNames[date.getMonth()];
@@ -105,92 +93,37 @@ export default function QuotationFilterScreen() {
   };
 
   const handleResetAll = () => {
-    setPriority('High');
-    setStartDate(new Date(2022, 11, 28));
-    setEndDate(new Date(2023, 0, 10));
-    setQuotationType('');
-    setStatus('Sent');
-    setClient('');
-    setSalesPerson('');
+    setStartDate(null);
+    setEndDate(null);
   };
 
   const handleResetDates = () => {
-    setStartDate(new Date(2022, 11, 28));
-    setEndDate(new Date(2023, 0, 10));
+    setStartDate(null);
+    setEndDate(null);
   };
 
   const handleApplyFilter = () => {
-    // Apply filters logic goes here or saves to global filter state
-    handleBack();
-  };
-
-  const renderDropdownModal = () => {
-    if (!activeSelectType) return null;
-
-    let title = '';
-    let items: string[] = [];
-    let selectedValue = '';
-    let setSelected = (val: string) => { };
-
-    if (activeSelectType === 'type') {
-      title = 'Select Quotation Type';
-      items = QUOTATION_TYPES;
-      selectedValue = quotationType;
-      setSelected = setQuotationType;
-    } else if (activeSelectType === 'client') {
-      title = 'Select Client';
-      items = CLIENTS;
-      selectedValue = client;
-      setSelected = setClient;
-    } else if (activeSelectType === 'sales') {
-      title = 'Select Sales Person';
-      items = USERS;
-      selectedValue = salesPerson;
-      setSelected = setSalesPerson;
+    const isApplied = !!(startDate || endDate);
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          id: leadId,
+          qStartDate: startDate ? startDate.toISOString() : '',
+          qEndDate: endDate ? endDate.toISOString() : '',
+          qFilterApplied: isApplied ? 'true' : ''
+        }
+      });
+    } else {
+      router.navigate({
+        pathname: '/(tabs)/Quotation',
+        params: {
+          qStartDate: startDate ? startDate.toISOString() : '',
+          qEndDate: endDate ? endDate.toISOString() : '',
+          qFilterApplied: isApplied ? 'true' : ''
+        }
+      });
     }
-
-    return (
-      <Modal transparent animationType="slide" visible={!!activeSelectType}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setActiveSelectType(null)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{title}</Text>
-              <TouchableOpacity onPress={() => setActiveSelectType(null)}>
-                <Ionicons name="close" size={24} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-              {items.map((item) => {
-                const isItemSel = selectedValue === item;
-                return (
-                  <TouchableOpacity
-                    key={item}
-                    style={[styles.modalItem, isItemSel && styles.modalItemActive]}
-                    onPress={() => {
-                      setSelected(item);
-                      setActiveSelectType(null);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.modalItemText, isItemSel && styles.modalItemTextActive]}>
-                      {item}
-                    </Text>
-                    {isItemSel && (
-                      <Ionicons name="checkmark-circle" size={20} color={theme.primaryColor} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    );
   };
 
   return (
@@ -206,7 +139,10 @@ export default function QuotationFilterScreen() {
         >
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>QUATATION FILTER</Text>
+        <Text style={styles.headerTitle}>
+          <Text style={{ color: theme.primaryColor }}>QUOTATION </Text>
+          <Text style={{ color: COLORS.textDark }}>FILTER</Text>
+        </Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -224,143 +160,50 @@ export default function QuotationFilterScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Priority Section */}
-        <View style={styles.section}>
+        {/* Date Section Card */}
+        <View style={styles.filterCard}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Priority</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <View style={styles.priorityContainer}>
-            {(['High', 'Normal', 'Low'] as PriorityType[]).map((p) => {
-              const isSel = priority === p;
-              return (
-                <TouchableOpacity
-                  key={p}
-                  style={[styles.priorityTab, isSel && styles.priorityTabActive]}
-                  onPress={() => setPriority(p)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.priorityTabText, isSel && styles.priorityTabTextActive]}>
-                    {p}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Date Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Date</Text>
-            <View style={styles.sectionLine} />
+            <Ionicons name="calendar-outline" size={16} color={theme.primaryColor} style={{ marginRight: 2 }} />
+            <Text style={styles.sectionLabel}>Date Range</Text>
           </View>
 
           <View style={styles.datePickerRow}>
             <TouchableOpacity
               style={styles.dateDropdown}
-              onPress={() => setShowRangePickerModal(true)}
+              onPress={() => setShowStartPicker(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.dateText}>
-                {formatDateShort(startDate)} – {formatDateShort(endDate)}
-              </Text>
-              <Ionicons name="chevron-down" size={15} color={COLORS.textDark} />
+              <View>
+                <Text style={styles.dateLabelText}>From Date</Text>
+                <Text style={[styles.dateText, !startDate && styles.datePlaceholder]}>
+                  {formatDateShort(startDate)}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.dateResetBtn}
-              onPress={handleResetDates}
+              style={styles.dateDropdown}
+              onPress={() => setShowEndPicker(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.dateResetText}>Reset</Text>
-              <Ionicons name="refresh-outline" size={13} color={COLORS.textDark} style={{ marginLeft: 3 }} />
+              <View>
+                <Text style={styles.dateLabelText}>To Date</Text>
+                <Text style={[styles.dateText, !endDate && styles.datePlaceholder]}>
+                  {formatDateShort(endDate)}
+                </Text>
+              </View>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Quotation Type Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Quotation Type</Text>
-            <View style={styles.sectionLine} />
-          </View>
 
           <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setActiveSelectType('type')}
+            style={styles.dateResetBtn}
+            onPress={handleResetDates}
             activeOpacity={0.8}
           >
-            <Text style={[styles.selectBoxText, !quotationType && styles.selectBoxPlaceholder]}>
-              {quotationType || 'Select Quotation'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Status Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Status</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <View style={styles.radioList}>
-            {STATUSES.map((st) => {
-              const isSel = status === st;
-              return (
-                <TouchableOpacity
-                  key={st}
-                  style={styles.radioRow}
-                  onPress={() => setStatus(st)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.radioLabel}>{st}</Text>
-                  <View style={[styles.radioCircle, isSel && styles.radioCircleActive]}>
-                    {isSel && <View style={styles.radioDot} />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Client Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Client</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setActiveSelectType('client')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.selectBoxText, !client && styles.selectBoxPlaceholder]}>
-              {client || 'Select Company'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Sales Person Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Sales Person</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setActiveSelectType('sales')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.selectBoxText, !salesPerson && styles.selectBoxPlaceholder]}>
-              {salesPerson || 'Select User'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+            <Ionicons name="refresh-outline" size={13} color={COLORS.textDark} style={{ marginRight: 4 }} />
+            <Text style={styles.dateResetText}>Reset Range</Text>
           </TouchableOpacity>
         </View>
 
@@ -385,58 +228,85 @@ export default function QuotationFilterScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── DROPDOWN LIST SELECTION MODAL ─────────── */}
-      {renderDropdownModal()}
-
-      {/* ── SYSTEM DATE RANGE PICKER MODALS ────────── */}
-      {showRangePickerModal && (
-        <Modal transparent animationType="fade" visible={showRangePickerModal}>
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowRangePickerModal(false)}
-          >
-            <View style={styles.calendarModalContent}>
-              <Text style={styles.calendarModalTitle}>Select Date Range</Text>
-
-              <View style={styles.inlinePickersRow}>
-                {/* Start Date */}
-                <View style={styles.inlinePickerCol}>
-                  <Text style={styles.pickerLabel}>Start Date</Text>
-                  <DateTimePicker
-                    value={startDate}
-                    mode="date"
-                    display="calendar"
-                    onChange={(event: any, selectedDate?: Date) => {
-                      if (selectedDate) setStartDate(selectedDate);
-                    }}
-                  />
-                </View>
-
-                {/* End Date */}
-                <View style={styles.inlinePickerCol}>
-                  <Text style={styles.pickerLabel}>End Date</Text>
-                  <DateTimePicker
-                    value={endDate}
-                    mode="date"
-                    display="calendar"
-                    onChange={(event: any, selectedDate?: Date) => {
-                      if (selectedDate) setEndDate(selectedDate);
-                    }}
-                  />
-                </View>
+      {/* ── SYSTEM DATE PICKERS ─────────────────────── */}
+      {showStartPicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="fade" visible={showStartPicker}>
+            <TouchableOpacity
+              style={styles.calendarOverlay}
+              activeOpacity={1}
+              onPress={() => setShowStartPicker(false)}
+            >
+              <View style={styles.calendarContent}>
+                <DateTimePicker
+                  value={startDate || new Date()}
+                  mode="date"
+                  display="inline"
+                  onChange={(event: any, selectedDate?: Date) => {
+                    if (selectedDate) setStartDate(selectedDate);
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.saveBtn, { marginTop: 10 }]}
+                  onPress={() => setShowStartPicker(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveBtnText}>Done</Text>
+                </TouchableOpacity>
               </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={startDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event: any, selectedDate?: Date) => {
+              setShowStartPicker(false);
+              if (selectedDate) setStartDate(selectedDate);
+            }}
+          />
+        )
+      )}
 
-              <TouchableOpacity
-                style={styles.calendarDoneBtn}
-                onPress={() => setShowRangePickerModal(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.calendarDoneBtnText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+      {showEndPicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="fade" visible={showEndPicker}>
+            <TouchableOpacity
+              style={styles.calendarOverlay}
+              activeOpacity={1}
+              onPress={() => setShowEndPicker(false)}
+            >
+              <View style={styles.calendarContent}>
+                <DateTimePicker
+                  value={endDate || new Date()}
+                  mode="date"
+                  display="inline"
+                  onChange={(event: any, selectedDate?: Date) => {
+                    if (selectedDate) setEndDate(selectedDate);
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.saveBtn, { marginTop: 10 }]}
+                  onPress={() => setShowEndPicker(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={endDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event: any, selectedDate?: Date) => {
+              setShowEndPicker(false);
+              if (selectedDate) setEndDate(selectedDate);
+            }}
+          />
+        )
       )}
 
     </KeyboardAvoidingView>
@@ -474,10 +344,10 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Content
   scrollContent: {
-    paddingHorizontal: 5,
-    paddingTop: 5,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 150,
-    gap: 5,
+    gap: 12,
   },
   topRow: {
     flexDirection: 'row',
@@ -572,13 +442,36 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 40,
+    height: 48,
     backgroundColor: '#FFFFFF',
+  },
+  dateLabelText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginBottom: 2,
   },
   dateText: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+  datePlaceholder: {
+    color: '#9CA3AF',
+  },
+  filterCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    gap: 12,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
   dateResetBtn: {
     flexDirection: 'row',
@@ -748,54 +641,36 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
   },
 
-  // Calendar Modal Content
-  calendarModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    width: '90%',
-    maxWidth: 360,
-    alignSelf: 'center',
-    marginTop: 'auto',
-    marginBottom: 'auto',
+  },
+  calendarContent: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+    gap: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 6,
-    gap: 16,
+    elevation: 5,
   },
-  calendarModalTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textDark,
-    textAlign: 'center',
-  },
-  inlinePickersRow: {
-    flexDirection: 'column',
-    gap: 12,
-    alignItems: 'center',
-  },
-  inlinePickerCol: {
-    alignItems: 'center',
-  },
-  pickerLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.textMuted,
-    marginBottom: 4,
-  },
-  calendarDoneBtn: {
+  saveBtn: {
     backgroundColor: theme.primaryColor,
-    borderRadius: 8,
-    height: 40,
+    borderRadius: 10,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
-  calendarDoneBtnText: {
+  saveBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '800',
   },
 });

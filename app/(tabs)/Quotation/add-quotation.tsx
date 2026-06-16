@@ -1,10 +1,13 @@
+import BulkItemActionsCard from '@/components/custom/BulkItemActionsCard';
 import SelectImagesModal from '@/components/custom/SelectImagesModal';
 import SelectProductModal from '@/components/custom/SelectProductModal';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeads, useCreateLead, useLeadSources, useLeadStatuses, useUsers } from '@/hooks/useLeads';
+import { useCompanies } from '@/hooks/useCompany';
+import { useCreateLead, useLeads, useLeadSources, useLeadStatuses, useUsers } from '@/hooks/useLeads';
 import { useProducts } from '@/hooks/useProducts';
 import { useCreateQuotation } from '@/hooks/useQuotations';
+import { getCompanyDetails } from '@/services/api/company';
 import { CreateQuotationPayload, QuotationItem } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -41,6 +44,7 @@ interface ItemLine {
   images?: string[] | null;
   availableImages?: string[] | null;
   isCollapsed?: boolean;
+  isSelected?: boolean;
 }
 
 function makeEmptyItem(): ItemLine {
@@ -57,6 +61,7 @@ function makeEmptyItem(): ItemLine {
     images: [],
     availableImages: [],
     isCollapsed: false,
+    isSelected: true,
   };
 }
 
@@ -81,6 +86,51 @@ function calcItem(item: ItemLine) {
 
 function formatAmount(n: number) {
   return '₹ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function convertNumberToWords(amount: number): string {
+  const num = Math.floor(amount);
+  if (num === 0) return 'Zero Rupees Only';
+
+  const single = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const double = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const formatTens = (n: number) => {
+    if (n < 10) return single[n];
+    if (n < 20) return double[n - 10];
+    return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + single[n % 10] : '');
+  };
+
+  const convert = (n: number, suffix: string) => {
+    if (n === 0) return '';
+    let res = '';
+    if (n > 99) {
+      res += single[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n > 0) {
+      res += formatTens(n) + ' ';
+    }
+    return res + suffix + ' ';
+  };
+
+  let words = '';
+  words += convert(Math.floor(num / 10000000) % 100, 'Crore');
+  words += convert(Math.floor(num / 100000) % 100, 'Lakh');
+  words += convert(Math.floor(num / 1000) % 100, 'Thousand');
+  words += convert(num % 1000, '');
+
+  words = words.trim().replace(/\s+/g, ' ');
+  if (!words) return 'Zero Rupees Only';
+
+  const paise = Math.round((amount - num) * 100);
+  let paiseWords = '';
+  if (paise > 0) {
+    paiseWords = ' and ' + formatTens(paise) + ' Paise';
+  }
+
+  return words + ' Rupees' + paiseWords + ' Only';
 }
 
 export default function AddQuotationScreen() {
@@ -108,9 +158,19 @@ export default function AddQuotationScreen() {
     notes?: string;
   }>();
   const referrer = params.referrer;
-  const [leadId, setLeadId] = useState(params.leadId || '');
+  const [leadId, setLeadId] = useState(params.leadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b');
+  const [companyId, setCompanyId] = useState<string>('');
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+
+  const [chargesGst, setChargesGst] = useState('18');
+  const [chargesType, setChargesType] = useState('Service Charge');
+  const [showChargesTypeModal, setShowChargesTypeModal] = useState(false);
+  const [chargesAmount, setChargesAmount] = useState('');
+  const [amountInWords, setAmountInWords] = useState('');
   const insets = useSafeAreaInsets();
   const createMutation = useCreateQuotation();
+  const { data: companies = [], isLoading: isLoadingCompanies } = useCompanies({ search: companySearchQuery, limit: 100 });
   const { primaryColor, primaryLight } = useTheme();
 
   // ── Leads list and references ──────────────────────────────────────────────
@@ -149,6 +209,7 @@ export default function AddQuotationScreen() {
   const { data: usersData } = useUsers();
 
   const selectedLead = leads.find((l) => String(l.id) === String(leadId)) || null;
+  const selectedCompany = companies.find((c: any) => String(c.id) === String(companyId)) || null;
 
   // Picker/Modals Visibility
   const [showLeadPicker, setShowLeadPicker] = useState(false);
@@ -191,6 +252,7 @@ export default function AddQuotationScreen() {
     setContactEmail('');
     setGstNumber('');
     setPanNumber('');
+    setCompanyId('');
   };
 
   const handleQuickCreateLead = async () => {
@@ -333,8 +395,60 @@ export default function AddQuotationScreen() {
       setContactEmail(selectedLead.email || '');
       setGstNumber((selectedLead as any).gst_number || (selectedLead as any).gstNo || '');
       setPanNumber((selectedLead as any).pan_number || (selectedLead as any).panNo || '');
+
+      if ((selectedLead as any).company_id) {
+        setCompanyId(String((selectedLead as any).company_id));
+      } else {
+        const cName = (selectedLead as any).company_name || selectedLead.company || '';
+        if (cName.trim()) {
+          const match = companies.find(
+            (c: any) =>
+              c.display_name?.toLowerCase().trim() === cName.trim().toLowerCase() ||
+              c.name?.toLowerCase().trim() === cName.trim().toLowerCase()
+          );
+          if (match) {
+            setCompanyId(String(match.id));
+          } else {
+            setCompanyId('');
+          }
+        } else {
+          setCompanyId('');
+        }
+      }
     }
-  }, [selectedLead]);
+  }, [selectedLead, companies]);
+
+  // Fetch company details when companyId changes to auto-populate GST/PAN/phone/email
+  React.useEffect(() => {
+    const fetchCompanyDetailsData = async () => {
+      if (!companyId) return;
+      try {
+        const res = await getCompanyDetails(companyId) as any;
+        const data = res?.data?.[0] || (Array.isArray(res?.data) ? res.data[0] : res?.data) || res?.[0] || res;
+        if (data) {
+          setCompanyName(data.display_name || data.name || '');
+          if (data.gstin || data.gst_number) {
+            setGstNumber(data.gstin || data.gst_number);
+          }
+          if (data.pan || data.pan_number) {
+            setPanNumber(data.pan || data.pan_number);
+          }
+          if (data.phone) {
+            setContactPhone(data.phone);
+          }
+          if (data.email) {
+            setContactEmail(data.email);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching company details in useEffect:', err);
+      }
+    };
+
+    fetchCompanyDetailsData();
+  }, [companyId]);
+
+
 
   // No longer using search param synchronization for select-product and select-images
 
@@ -357,6 +471,89 @@ export default function AddQuotationScreen() {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleApplyBulkDiscount = (num: number) => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to apply discount.');
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.isSelected !== false ? { ...item, item_discount: String(num) } : item
+      )
+    );
+  };
+
+  const handleApplyBulkRate = (op: 'SET' | 'ADD' | 'SUB', num: number) => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to apply rate changes.');
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.isSelected === false) return item;
+        const currentPrice = parseFloat(item.unit_price) || 0;
+        let newPrice = currentPrice;
+        if (op === 'SET') {
+          newPrice = num;
+        } else if (op === 'ADD') {
+          newPrice = currentPrice + num;
+        } else if (op === 'SUB') {
+          newPrice = Math.max(0, currentPrice - num);
+        }
+        return { ...item, unit_price: String(parseFloat(newPrice.toFixed(2))) };
+      })
+    );
+  };
+
+  const handleResetBulk = () => {
+    const selectedCount = items.filter(item => item.isSelected !== false).length;
+    if (selectedCount === 0) {
+      Alert.alert('Info', 'No items selected to reset.');
+      return;
+    }
+
+    Alert.alert('Confirm Reset', 'Are you sure you want to reset the price and discount of selected items?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: () => {
+          setItems((prev) =>
+            prev.map((item) => {
+              if (item.isSelected === false) return item;
+              let originalPrice = '0';
+              if (item.product_id) {
+                const prod = products.find((p: any) => String(p.id) === String(item.product_id));
+                if (prod) {
+                  originalPrice = String(prod.selling_price || prod.dealer_price || 0);
+                }
+              }
+              return {
+                ...item,
+                unit_price: originalPrice,
+                item_discount: '0',
+              };
+            })
+          );
+        }
+      }
+    ]);
+  };
+
+  const handleToggleSelectAll = () => {
+    const allSel = items.every((item) => item.isSelected !== false);
+    setItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        isSelected: !allSel,
+      }))
+    );
+  };
+
   // ── Totals ─────────────────────────────────────────────────────────────────
   let subTotal = 0;
   let taxTotal = 0;
@@ -365,7 +562,23 @@ export default function AddQuotationScreen() {
     subTotal += amount;
     taxTotal += gst_amount;
   });
-  const grandTotal = subTotal + taxTotal;
+
+  const addChargesAmt = parseFloat(chargesAmount) || 0;
+  const addChargesGstPct = parseFloat(chargesGst) || 0;
+  const addChargesGstAmt = addChargesAmt * (addChargesGstPct / 100);
+
+  const computedSubTotal = subTotal + addChargesAmt;
+  const computedGstTotal = taxTotal + addChargesGstAmt;
+  const computedGrandTotal = computedSubTotal + computedGstTotal;
+
+  // Automatically generate amount in words from grand total
+  React.useEffect(() => {
+    if (computedGrandTotal > 0) {
+      setAmountInWords(convertNumberToWords(computedGrandTotal));
+    } else {
+      setAmountInWords('');
+    }
+  }, [computedGrandTotal]);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSave = () => {
@@ -403,8 +616,23 @@ export default function AddQuotationScreen() {
       } as QuotationItem;
     });
 
+    if (!companyId) {
+      Alert.alert('Validation', 'Please select a Company.');
+      return;
+    }
+
+    const isDealer = selectedLead
+      ? (selectedLead.tag === 'DEALER' ||
+        (selectedLead.name || '').toLowerCase().includes('dealer') ||
+        (selectedLead.company || '').toLowerCase().includes('dealer') ||
+        (selectedLead.tag || '').toLowerCase().includes('dealer') ||
+        (selectedLead.status || '').toLowerCase().includes('dealer'))
+      : false;
+
     const payload: CreateQuotationPayload = {
-      lead_id: leadId || null,
+      lead_id: isDealer ? null : (leadId || null),
+      dealer_id: isDealer ? (leadId || null) : null,
+      company_id: companyId ? String(companyId) : null,
       quotation_date: quotationDate.toISOString(),
       status: 'DRAFT',
       company_name: companyName.trim() || null,
@@ -414,9 +642,12 @@ export default function AddQuotationScreen() {
       gst_number: gstNumber.trim() || null,
       pan_number: panNumber.trim() || null,
       notes: notes.trim() || null,
-      sub_total: parseFloat(subTotal.toFixed(2)),
-      tax_total: parseFloat(taxTotal.toFixed(2)),
-      grand_total: parseFloat(grandTotal.toFixed(2)),
+      amount_in_words: amountInWords.trim() || null,
+      additional_charges: addChargesAmt > 0 ? [{ name: chargesType, amount: addChargesAmt }] : [],
+      subtotal: parseFloat(computedSubTotal.toFixed(2)),
+      sub_total: parseFloat(computedSubTotal.toFixed(2)),
+      tax_total: parseFloat(computedGstTotal.toFixed(2)),
+      grand_total: parseFloat(computedGrandTotal.toFixed(2)),
       discount_percentage: 0,
       discount_amount: 0,
       items: mappedItems,
@@ -471,6 +702,21 @@ export default function AddQuotationScreen() {
         </View>
 
         <View style={styles.card}>
+          {/* Select Company Dropdown */}
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Company *</Text>
+            <TouchableOpacity
+              style={styles.selectTrigger}
+              onPress={() => setShowCompanyPicker(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.selectTriggerText, !companyId && !companyName && { color: '#9CA3AF' }]} numberOfLines={1}>
+                {selectedCompany ? (selectedCompany.display_name || selectedCompany.name) : (companyName || 'Select Company')}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.formField}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <Text style={styles.inputLabel}>Customer / Lead *</Text>
@@ -510,35 +756,38 @@ export default function AddQuotationScreen() {
             </View>
           </View>
 
-          {selectedLead && (
+          {(selectedLead || companyId) && (
             <View style={styles.leadDetailsRow}>
               <View style={styles.leadDetailsItem}>
-                <Text style={styles.leadDetailsLabel}>EMAIL</Text>
+                <Text style={styles.leadDetailsLabel}>COMPANY NAME</Text>
                 <Text style={styles.leadDetailsValue} numberOfLines={1} ellipsizeMode="tail">
-                  {selectedLead.email || '—'}
+                  {companyName || '—'}
                 </Text>
               </View>
               <View style={styles.leadDetailsItem}>
                 <Text style={styles.leadDetailsLabel}>PHONE</Text>
                 <Text style={styles.leadDetailsValue} numberOfLines={1} ellipsizeMode="tail">
-                  {selectedLead.phone || '—'}
+                  {contactPhone || (selectedLead && selectedLead.phone) || '—'}
                 </Text>
               </View>
               <View style={styles.leadDetailsItem}>
                 <Text style={styles.leadDetailsLabel}>GST</Text>
                 <Text style={styles.leadDetailsValue} numberOfLines={1} ellipsizeMode="tail">
-                  {(selectedLead as any).gst_number || (selectedLead as any).gstNo || '—'}
+                  {gstNumber || '—'}
                 </Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* ── ITEMS ────────────────────────────────── */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>ITEMS</Text>
-          <View style={styles.sectionLine} />
-        </View>
+        {/* ── BILL ITEMS BULK ACTIONS CARD ────────────────── */}
+        <BulkItemActionsCard
+          items={items}
+          onApplyBulkDiscount={handleApplyBulkDiscount}
+          onApplyBulkRate={handleApplyBulkRate}
+          onResetBulk={handleResetBulk}
+          onToggleSelectAll={handleToggleSelectAll}
+        />
 
         {items.map((item, idx) => {
           const { amount, gst_amount, total } = calcItem(item);
@@ -546,6 +795,24 @@ export default function AddQuotationScreen() {
             <View key={item.tempId} style={styles.itemCard}>
               {/* Item header */}
               <View style={styles.itemHeader}>
+                <TouchableOpacity
+                  style={{ padding: 4, marginRight: 2 }}
+                  onPress={() => {
+                    setItems((prev) => {
+                      const next = [...prev];
+                      next[idx] = { ...next[idx], isSelected: next[idx].isSelected !== false ? false : true };
+                      return next;
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={item.isSelected !== false ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={item.isSelected !== false ? primaryColor : COLORS.textMuted}
+                  />
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
                   onPress={() => toggleCollapse(idx)}
@@ -738,19 +1005,99 @@ export default function AddQuotationScreen() {
           <Text style={[styles.addItemBtnText, { color: primaryColor }]}>Add Item</Text>
         </TouchableOpacity>
 
+        {/* ── NOTES & ADDITIONAL INFO ───────────────────── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>NOTES &amp; ADDITIONAL INFO</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <View style={styles.card}>
+          {/* Additional Charges Title */}
+          <Text style={{ fontSize: 12.5, fontWeight: '800', color: primaryColor, marginBottom: 8 }}>Additional Charges</Text>
+
+          <View style={styles.gridRow}>
+            <View style={[styles.formField, { flex: 1 }]}>
+              <Text style={styles.inputLabel}>Charges GST %</Text>
+              <TextInput
+                style={styles.textInputBox}
+                keyboardType="numeric"
+                value={chargesGst}
+                onChangeText={setChargesGst}
+              />
+            </View>
+            <View style={[styles.formField, { flex: 1.5 }]}>
+              <Text style={styles.inputLabel}>Charge Type</Text>
+              <TouchableOpacity
+                style={styles.selectTrigger}
+                onPress={() => setShowChargesTypeModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.selectTriggerText}>{chargesType}</Text>
+                <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Amount</Text>
+            <TextInput
+              style={styles.textInputBox}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="#9CA3AF"
+              value={chargesAmount}
+              onChangeText={setChargesAmount}
+            />
+          </View>
+
+          <View style={{ height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 }} />
+
+          {/* Additional Notes */}
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Additional Notes</Text>
+            <TextInput
+              style={[styles.textInputBox, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
+              multiline
+              numberOfLines={3}
+              placeholder="Priority customer - first order"
+              placeholderTextColor="#9CA3AF"
+              value={notes}
+              onChangeText={setNotes}
+            />
+          </View>
+
+          {/* Amount in Words (Display Only) */}
+          {amountInWords ? (
+            <View style={[styles.formField, { marginTop: 10 }]}>
+              <Text style={styles.inputLabel}>Amount in Words</Text>
+              <Text style={{ fontSize: 13, color: COLORS.textDark, fontWeight: '700', paddingHorizontal: 4 }}>
+                {amountInWords}
+              </Text>
+            </View>
+          ) : null}
+
+
+        </View>
+
         {/* ── ORDER TOTAL SUMMARY ───────────────────── */}
         <View style={styles.totalSummaryCard}>
           <View style={styles.totalSummaryRow}>
             <Text style={styles.totalSummaryLabel}>Subtotal</Text>
             <Text style={styles.totalSummaryVal}>{formatAmount(subTotal)}</Text>
           </View>
+          {addChargesAmt > 0 && (
+            <View style={styles.totalSummaryRow}>
+              <Text style={styles.totalSummaryLabel}>{chargesType}</Text>
+              <Text style={styles.totalSummaryVal}>{formatAmount(addChargesAmt)}</Text>
+            </View>
+          )}
           <View style={styles.totalSummaryRow}>
             <Text style={styles.totalSummaryLabel}>Tax Total</Text>
-            <Text style={styles.totalSummaryVal}>{formatAmount(taxTotal)}</Text>
+            <Text style={styles.totalSummaryVal}>{formatAmount(computedGstTotal)}</Text>
           </View>
           <View style={[styles.totalSummaryRow, styles.totalSummaryGrand]}>
             <Text style={styles.grandLabel}>Grand Total</Text>
-            <Text style={[styles.grandVal, { color: primaryColor }]}>{formatAmount(grandTotal)}</Text>
+            <Text style={[styles.grandVal, { color: primaryColor }]}>{formatAmount(computedGrandTotal)}</Text>
           </View>
         </View>
 
@@ -780,7 +1127,7 @@ export default function AddQuotationScreen() {
           activeOpacity={1}
           onPress={() => setShowLeadPicker(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { height: '85%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Customer / Lead</Text>
               <TouchableOpacity onPress={() => setShowLeadPicker(false)}>
@@ -853,6 +1200,76 @@ export default function AddQuotationScreen() {
                       </Text>
                     </View>
                   )}
+              </ScrollView>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── COMPANY PICKER MODAL ─────────────── */}
+      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCompanyPicker(false)}
+        >
+          <View style={[styles.modalContent, { height: '45%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Company</Text>
+              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search by company name..."
+                placeholderTextColor="#9CA3AF"
+                value={companySearchQuery}
+                onChangeText={setCompanySearchQuery}
+                autoCorrect={false}
+                autoComplete="off"
+              />
+              {companySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCompanySearchQuery('')} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isLoadingCompanies ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={primaryColor} />
+              </View>
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+                {companies.map((comp: any) => (
+                  <TouchableOpacity
+                    key={comp.id}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      setCompanyId(String(comp.id));
+                      setCompanyName(comp.display_name || comp.name || '');
+                      setShowCompanyPicker(false);
+                      setCompanySearchQuery('');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalRowText}>{comp.display_name || comp.name}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                {companies.length === 0 && (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                      No companies found
+                    </Text>
+                  </View>
+                )}
               </ScrollView>
             )}
           </View>
@@ -987,6 +1404,43 @@ export default function AddQuotationScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── CHARGE TYPE PICKER MODAL ─────────────── */}
+      <Modal transparent animationType="slide" visible={showChargesTypeModal} onRequestClose={() => setShowChargesTypeModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowChargesTypeModal(false)}
+        >
+          <View style={[styles.modalContent, { height: '40%', paddingBottom: 30 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Charge Type</Text>
+              <TouchableOpacity onPress={() => setShowChargesTypeModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+              {['Service Charge', 'Packaging Charge', 'Printing Charge', 'Installation Charge', 'Handling Charge', 'Freight Charge'].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    setChargesType(type);
+                    setShowChargesTypeModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalRowText}>{type}</Text>
+                  {chargesType === type && <Ionicons name="checkmark" size={16} color={primaryColor} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+
 
       <SelectProductModal
         visible={activeProductSelectIndex !== null}
@@ -1352,4 +1806,5 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 20,
   },
+
 });

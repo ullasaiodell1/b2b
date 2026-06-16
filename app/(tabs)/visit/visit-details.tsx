@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -59,13 +60,19 @@ export default function VisitDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; leadId: string }>();
+  const params = useLocalSearchParams<{ id: string; leadId?: string; lead_id?: string }>();
+  console.log('[VisitDetailsScreen] Params received from router:', JSON.stringify(params));
   const insets = useSafeAreaInsets();
 
-  const { data: rawVisit, isLoading, refetch } = useVisitDetails(params.leadId, params.id);
+  const effectiveLeadId = params.leadId || params.lead_id || '';
+  console.log('[VisitDetailsScreen] resolved effectiveLeadId:', effectiveLeadId);
+  const { data: rawVisit, isLoading, refetch } = useVisitDetails(effectiveLeadId, params.id);
   const { mutateAsync: deleteVisit } = useDeleteVisit();
 
+  const visit = rawVisit || {} as any;
+
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const getDisplayStatus = (status: string) => {
     const s = String(status || '').toUpperCase();
@@ -109,19 +116,32 @@ export default function VisitDetailsScreen() {
 
   const getImageUri = (imageUrl: any) => {
     if (!imageUrl) return '';
-    try {
-      const parsed = JSON.parse(imageUrl);
-      const candidate = parsed?.url || parsed?.thumb || parsed?.src || parsed?.key || parsed?.path || parsed;
+    const getFullUrl = (candidate: string) => {
+      if (candidate.startsWith('http')) return candidate;
+      const cleaned = candidate.startsWith('/') ? candidate.slice(1) : candidate;
+      return `${serverDetails.s3BucketURL}/${cleaned}`;
+    };
+
+    if (typeof imageUrl === 'object' && imageUrl !== null) {
+      const candidate = imageUrl.url || imageUrl.thumb || imageUrl.src || imageUrl.key || imageUrl.path;
       if (typeof candidate === 'string' && candidate.length > 0) {
-        if (candidate.startsWith('http')) return candidate;
-        const cleaned = candidate.startsWith('/') ? candidate.slice(1) : candidate;
-        return `${serverDetails.s3BucketURL}/${cleaned}`;
+        return getFullUrl(candidate);
       }
-    } catch {
-      if (typeof imageUrl === 'string' && imageUrl.length > 0) {
-        if (imageUrl.startsWith('http')) return imageUrl;
-        const cleaned = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
-        return `${serverDetails.s3BucketURL}/${cleaned}`;
+    }
+
+    if (typeof imageUrl === 'string' && imageUrl.length > 0) {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        if (parsed && typeof parsed === 'object') {
+          const candidate = parsed.url || parsed.thumb || parsed.src || parsed.key || parsed.path;
+          if (typeof candidate === 'string' && candidate.length > 0) {
+            return getFullUrl(candidate);
+          }
+        } else if (typeof parsed === 'string' && parsed.length > 0) {
+          return getFullUrl(parsed);
+        }
+      } catch {
+        return getFullUrl(imageUrl);
       }
     }
     return '';
@@ -139,7 +159,13 @@ export default function VisitDetailsScreen() {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              await deleteVisit({ leadId: params.leadId, id: params.id });
+              const resolvedLeadId = effectiveLeadId || visit.lead_id || visit.leadId || '';
+              if (!resolvedLeadId) {
+                Alert.alert('Error', 'Lead ID is required to delete this visit.');
+                setIsDeleting(false);
+                return;
+              }
+              await deleteVisit({ leadId: resolvedLeadId, id: params.id });
               Alert.alert('Success', 'Visit deleted successfully.', [
                 { text: 'OK', onPress: () => router.back() }
               ]);
@@ -159,7 +185,6 @@ export default function VisitDetailsScreen() {
     Linking.openURL(`tel:${phone}`);
   };
 
-  const visit = rawVisit || {} as any;
   const imageUri = getImageUri(visit.image_url);
   const statusColor = getStatusColor(visit.status);
   const displayStatus = getDisplayStatus(visit.status);
@@ -215,9 +240,13 @@ export default function VisitDetailsScreen() {
       >
         {/* IMAGE SECTION */}
         {imageUri ? (
-          <View style={styles.imageCard}>
+          <TouchableOpacity 
+            style={styles.imageCard}
+            onPress={() => setShowPreviewModal(true)}
+            activeOpacity={0.9}
+          >
             <Image source={{ uri: imageUri }} style={styles.visitImage} resizeMode="cover" />
-          </View>
+          </TouchableOpacity>
         ) : (
           <View style={[styles.imageCard, styles.imagePlaceholder]}>
             <Ionicons name="map-outline" size={60} color="#CBD5E1" />
@@ -310,6 +339,31 @@ export default function VisitDetailsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Full Screen Image Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={styles.previewModalContainer}>
+          <TouchableOpacity
+            style={styles.previewModalCloseBtn}
+            onPress={() => setShowPreviewModal(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -506,5 +560,27 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.textDark,
     fontWeight: '600',
     lineHeight: 20,
+  },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewModalCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });

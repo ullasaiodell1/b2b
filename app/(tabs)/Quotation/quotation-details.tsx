@@ -20,6 +20,10 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { getAuthToken } from '@/utils/storage';
+import { serverDetails } from '@/config';
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: '#6B7280',
@@ -62,6 +66,74 @@ export default function QuotationDetailsScreen() {
   const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
   const updateStatusMutation = useUpdateQuotationStatus();
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+  
+  const [downloading, setDownloading] = React.useState(false);
+  const [downloadSuccess, setDownloadSuccess] = React.useState(false);
+
+  const handleDownload = async () => {
+    if (!id || !quotation) return;
+    setDownloading(true);
+    
+    const prefix = quotation.prefix || 'QT';
+    const qNumber = quotation.quotation_number
+      ? `${prefix}-${quotation.quotation_number}`
+      : id.slice(0, 8).toUpperCase();
+
+    try {
+      const token = await getAuthToken();
+      const downloadUrl = `${serverDetails.serverProxyURL}/quotation/${id}/download?isDiscount=true&isDisccount=true`;
+      console.log(`[QuotationDetails] Starting download from URL: ${downloadUrl}`);
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(downloadUrl, {
+          headers: {
+            Authorization: token || '',
+          },
+        });
+        if (!response.ok) throw new Error('Failed to download file from server');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotation-${qNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setDownloadSuccess(true);
+      } else {
+        const localUri = FileSystem.documentDirectory + `quotation-${qNumber}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(
+          downloadUrl,
+          localUri,
+          {
+            headers: {
+              Authorization: token || '',
+            },
+          }
+        );
+        console.log(`[QuotationDetails] File downloaded successfully to: ${uri}`);
+        
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Share Quotation #${qNumber}`,
+            UTI: 'com.adobe.pdf',
+          });
+          setDownloadSuccess(true);
+        } else {
+          Alert.alert('Info', `Quotation downloaded successfully to:\n${uri}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('[Download Quotation Error]:', err);
+      Alert.alert('Error', err?.message || 'Failed to download quotation PDF.');
+    } finally {
+      setDownloading(false);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    }
+  };
 
   const handleStatusChange = (newStatus: string) => {
     if (!id) return;
@@ -351,16 +423,23 @@ export default function QuotationDetailsScreen() {
 
         {/* Download Quotation */}
         <TouchableOpacity
-          style={styles.downloadOrderBanner}
-          onPress={() => Alert.alert('Download', 'Download feature coming soon')}
+          style={[styles.downloadOrderBanner, downloading && { opacity: 0.7 }]}
+          onPress={handleDownload}
+          disabled={downloading}
           activeOpacity={0.85}
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.downloadOrderTitle}>Download Quotation</Text>
-            <Text style={styles.downloadOrderSub}>Export as PDF</Text>
+            <Text style={styles.downloadOrderSub}>
+              {downloading ? 'Downloading...' : downloadSuccess ? 'Downloaded successfully!' : 'Export as PDF'}
+            </Text>
           </View>
           <View style={styles.downloadOrderIconBg}>
-            <Ionicons name="download" size={20} color={theme.primaryColor} />
+            {downloading ? (
+              <ActivityIndicator size="small" color={theme.primaryColor} />
+            ) : (
+              <Ionicons name={downloadSuccess ? "checkmark" : "download"} size={20} color={theme.primaryColor} />
+            )}
           </View>
         </TouchableOpacity>
       </ScrollView>
@@ -433,16 +512,21 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
-  scrollContent: { paddingHorizontal: 5, paddingTop: 5, gap: 5 },
+  scrollContent: { paddingHorizontal: 12, paddingTop: 12, gap: 12 },
 
   // Summary card
   summaryCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 10,
-    gap: 5,
+    padding: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
   summaryTopRow: {
     flexDirection: 'row',
@@ -499,6 +583,11 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
   productTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   productIndexBadge: {
@@ -531,6 +620,11 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderColor: COLORS.border,
     padding: 14,
     gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
   remarkTitleRow: { flexDirection: 'row', alignItems: 'center' },
   remarkTitleText: { fontSize: 12.5, fontWeight: '800', color: COLORS.textDark },
@@ -544,6 +638,11 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderColor: COLORS.border,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
   },
   totalRow: {
     flexDirection: 'row',
@@ -564,7 +663,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#437E6B',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },

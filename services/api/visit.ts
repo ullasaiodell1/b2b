@@ -18,6 +18,14 @@ export const getVisitDetails = (leadId: string, id: string) => {
   }) as Promise<VisitRecord>;
 };
 
+export const getVisitByIdDirect = (id: string) => {
+  console.log(`[API getVisitByIdDirect] ID: ${id}`);
+  return axios({
+    method: 'GET',
+    url: `/visits/${id}`
+  }) as Promise<VisitRecord>;
+};
+
 export const createVisit = (leadId: string, data: Partial<VisitRecord>) => {
   console.log(`[API createVisit] data:`, data);
   return axios({
