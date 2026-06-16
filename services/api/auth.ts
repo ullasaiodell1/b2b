@@ -1,104 +1,57 @@
 import axios from './httpRequest';
 
+// POST /auth/login — account login
 export const accountLogin = (data: any) => {
-  console.log('[Auth API Request] accountLogin (POST /auth/login) - Payload:', JSON.stringify(data, null, 2));
   return axios({
     method: 'POST',
     url: `/auth/login`,
     data
-  })
-    .then((res) => {
-      console.log('[Auth API Response] accountLogin (POST /auth/login) - Success:', JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn('[Auth API Error] accountLogin (POST /auth/login) - Error:', JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
 
+// DELETE /auth/logout — account logout
 export const accountLogout = (token?: string) => {
-  console.log('[Auth API Request] accountLogout (DELETE /auth/logout)');
   return axios({
     method: 'DELETE',
     url: `/auth/logout`,
     headers: token ? { Authorization: token } : undefined
-  })
-    .then((res) => {
-      console.log('[Auth API Response] accountLogout (DELETE /auth/logout) - Success:', JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn('[Auth API Error] accountLogout (DELETE /auth/logout) - Error:', JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
 
+// POST /auth/verify-login — OTP verification
 export const otpVerification = (data: any) => {
-  console.log('[Auth API Request] otpVerification (POST /auth/verify-login) - Payload:', JSON.stringify(data, null, 2));
   return axios({
     method: 'POST',
     url: `/auth/verify-login`,
     data
-  })
-    .then((res) => {
-      console.log('[Auth API Response] otpVerification (POST /auth/verify-login) - Success:', JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn('[Auth API Error] otpVerification (POST /auth/verify-login) - Error:', JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
 
+// GET /auth/me — get current user
 export const getCurrentUser = () => {
-  console.log('[Auth API Request] getCurrentUser (GET /auth/me)');
   return axios({
     method: 'GET',
     url: `/auth/me`
-  })
-    .then((res) => {
-      console.log('[Auth API Response] getCurrentUser (GET /auth/me) - Success:', JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn('[Auth API Error] getCurrentUser (GET /auth/me) - Error:', JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
 
+// PUT /auth/session — update auth session
 export const updateAuthSession = (data: any) => {
-  console.log('[Auth API Request] updateAuthSession (PUT /auth/session) - Payload:', JSON.stringify(data, null, 2));
   return axios({
     method: 'PUT',
     url: `/auth/session`,
     data
-  })
-    .then((res) => {
-      console.log('[Auth API Response] updateAuthSession (PUT /auth/session) - Success:', JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn('[Auth API Error] updateAuthSession (PUT /auth/session) - Error:', JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
 
+// DELETE /auth/sessions/:sessionId — delete session
 export const deleteSession = (sessionId: string, token: string) => {
-  console.log(`[Auth API Request] deleteSession (DELETE /auth/sessions/${sessionId})`);
   return axios({
     method: 'DELETE',
     url: `/auth/sessions/${sessionId}`,
     headers: { Authorization: token }
-  })
-    .then((res) => {
-      console.log(`[Auth API Response] deleteSession (DELETE /auth/sessions/${sessionId}) - Success:`, JSON.stringify(res, null, 2));
-      return res;
-    })
-    .catch((err) => {
-      console.warn(`[Auth API Error] deleteSession (DELETE /auth/sessions/${sessionId}) - Error:`, JSON.stringify(err, null, 2));
-      throw err;
-    });
+  });
 };
+
 
 
