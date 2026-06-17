@@ -1,4 +1,3 @@
-import { ProfileData, profileData } from '@/components/ProfileState';
 import { getProfile, updateProfile } from '@/services/api/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -8,6 +7,7 @@ export const profileKeys = {
   list: () => [...profileKeys.lists()] as const,
 };
 
+// ── READ / UPDATE ──────────────────────────────────────────────────
 export function useProfile() {
   const queryClient = useQueryClient();
 

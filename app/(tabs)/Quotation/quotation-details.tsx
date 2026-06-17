@@ -1,9 +1,13 @@
+import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useQuotationDetails, useUpdateQuotationStatus } from '@/hooks/useQuotations';
 import { QuotationItem } from '@/types/quotation';
+import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -20,10 +24,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
-import { getAuthToken } from '@/utils/storage';
-import { serverDetails } from '@/config';
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: '#6B7280',
@@ -66,14 +66,14 @@ export default function QuotationDetailsScreen() {
   const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
   const updateStatusMutation = useUpdateQuotationStatus();
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
-  
+
   const [downloading, setDownloading] = React.useState(false);
   const [downloadSuccess, setDownloadSuccess] = React.useState(false);
 
   const handleDownload = async () => {
     if (!id || !quotation) return;
     setDownloading(true);
-    
+
     const prefix = quotation.prefix || 'QT';
     const qNumber = quotation.quotation_number
       ? `${prefix}-${quotation.quotation_number}`
@@ -113,7 +113,7 @@ export default function QuotationDetailsScreen() {
           }
         );
         console.log(`[QuotationDetails] File downloaded successfully to: ${uri}`);
-        
+
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(uri, {
@@ -203,12 +203,17 @@ export default function QuotationDetailsScreen() {
     ? `${prefix}-${quotation.quotation_number}`
     : id.slice(0, 8).toUpperCase();
 
-  const clientName =
-    quotation.lead_name ||
+  const companyName =
     quotation.lead_company_name ||
     quotation.company_name ||
     quotation.dealer_company_name ||
     '—';
+
+  const contactPersonName =
+    quotation.contact_name ||
+    quotation.lead_name ||
+    quotation.dealer_contact_name ||
+    null;
 
   const items: QuotationItem[] = Array.isArray(quotation.items) ? quotation.items : [];
 
@@ -244,17 +249,18 @@ export default function QuotationDetailsScreen() {
             </View>
           </View>
 
-          {/* Client info */}
-          {clientName !== '—' && (
+          {/* Company Name */}
+          {companyName !== '—' && (
             <View style={styles.summaryInfoRow}>
               <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-              <Text style={styles.summaryInfoText}>{clientName}</Text>
+              <Text style={styles.summaryInfoText}>{companyName}</Text>
             </View>
           )}
-          {!!quotation.contact_name && (
+          {/* Contact Person */}
+          {!!contactPersonName && (
             <View style={styles.summaryInfoRow}>
               <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-              <Text style={styles.summaryInfoText}>{quotation.contact_name}</Text>
+              <Text style={styles.summaryInfoText}>{contactPersonName}</Text>
             </View>
           )}
           {!!quotation.contact_email && (
@@ -347,23 +353,28 @@ export default function QuotationDetailsScreen() {
 
                   <View style={styles.cardDivider} />
 
-                  <View style={styles.productStatsGrid}>
-                    <View style={styles.statsGridCol}>
-                      <Text style={styles.gridLabel}>
-                        Qty: <Text style={styles.gridVal}>{item.quantity}</Text>
-                      </Text>
-                      <Text style={styles.gridLabel}>
-                        GST: <Text style={styles.gridVal}>{item.gst_percentage ?? 0}%</Text>
-                      </Text>
-                    </View>
-                    <View style={[styles.statsGridCol, { alignItems: 'flex-end' }]}>
-                      <Text style={styles.gridLabel}>
-                        Rate: <Text style={styles.gridVal}>{formatAmount(item.unit_price)}</Text>
-                      </Text>
-                      <Text style={styles.gridLabel}>
-                        Amount: <Text style={styles.gridPriceVal}>{formatAmount(item.amount)}</Text>
-                      </Text>
-                    </View>
+                  {/* Row 1: Qty | Unit | Unit Price */}
+                  <View style={styles.itemTableHeader}>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 1 }]}>Qty</Text>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 1 }]}>Unit</Text>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 2, textAlign: 'right' }]}>Unit Price</Text>
+                  </View>
+                  <View style={[styles.itemTableRow, { marginBottom: 6 }]}>
+                    <Text style={[styles.itemTableCell, { flex: 1 }]} numberOfLines={1}>{item.quantity}</Text>
+                    <Text style={[styles.itemTableCell, { flex: 1 }]} numberOfLines={1}>{item.base_unit || 'Pcs'}</Text>
+                    <Text style={[styles.itemTableCell, { flex: 2, textAlign: 'right' }]} numberOfLines={1}>{formatAmount(item.unit_price)}</Text>
+                  </View>
+
+                  {/* Row 2: Disc % | GST Amt | Total */}
+                  <View style={[styles.itemTableHeader, { backgroundColor: '#EEF5F2' }]}>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 1 }]}>Disc %</Text>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 1.5 }]}>GST Amt</Text>
+                    <Text style={[styles.itemTableHeaderCell, { flex: 1.5, textAlign: 'right' }]}>Total</Text>
+                  </View>
+                  <View style={styles.itemTableRow}>
+                    <Text style={[styles.itemTableCell, { flex: 1 }]} numberOfLines={1}>{item.item_discount ?? 0}%</Text>
+                    <Text style={[styles.itemTableCell, { flex: 1.5 }]} numberOfLines={1}>{formatAmount(item.gst_amount)}</Text>
+                    <Text style={[styles.itemTableCell, styles.itemTableCellTotal, { flex: 1.5, textAlign: 'right' }]} numberOfLines={1}>{formatAmount(item.amount)}</Text>
                   </View>
                 </View>
               );
@@ -479,8 +490,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.bgWhite,
-    gap: 12,
-    padding: 24,
+    gap: 1,
+    padding: 10,
   },
   loaderText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
   errorText: { fontSize: 14, color: COLORS.textDark, fontWeight: '700', textAlign: 'center' },
@@ -512,16 +523,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
-  scrollContent: { paddingHorizontal: 12, paddingTop: 12, gap: 12 },
+  scrollContent: { paddingHorizontal: 5, paddingTop: 5, gap: 5 },
 
   // Summary card
   summaryCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    gap: 8,
+    padding: 10,
+    gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -604,11 +615,36 @@ const getStyles = (theme: any) => StyleSheet.create({
   productSpec: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, marginTop: 2 },
   productDesc: { fontSize: 11.5, fontWeight: '600', color: COLORS.textMuted, marginTop: 3 },
   cardDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 10 },
-  productStatsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
-  statsGridCol: { flex: 1, gap: 5 },
-  gridLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
-  gridVal: { fontWeight: '800', color: COLORS.textDark },
-  gridPriceVal: { fontSize: 12.5, fontWeight: '900', color: COLORS.textDark },
+  itemTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#F4F7F5',
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    marginBottom: 3,
+  },
+  itemTableHeaderCell: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
+  itemTableRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  itemTableCell: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  itemTableCellTotal: {
+    fontWeight: '900',
+    color: '#16A34A',
+  },
 
   // Remark
   remarkCard: {

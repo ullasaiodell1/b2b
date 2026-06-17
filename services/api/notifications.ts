@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import axios from './httpRequest';
 
+// POST /notifications/register-token — register push token
 export const registerPushToken = (expoPushToken: string): Promise<void> => {
     console.log(`[API registerPushToken] expoPushToken:`, expoPushToken);
     const url = '/notifications/register-token';
@@ -14,6 +15,7 @@ export const registerPushToken = (expoPushToken: string): Promise<void> => {
     });
 };
 
+// DELETE /notifications/unregister-token — unregister push token
 export const unregisterPushToken = (): Promise<void> => {
     const url = '/notifications/unregister-token';
     console.log(`[API unregisterPushToken] url:`, url);

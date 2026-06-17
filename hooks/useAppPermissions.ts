@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
 import { Platform } from 'react-native';
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useAppPermissions() {
     const [permissionStatus, setPermissionStatus] = useState<{
         locationForeground: Location.PermissionStatus | null;

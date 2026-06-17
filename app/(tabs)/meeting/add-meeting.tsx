@@ -2,13 +2,13 @@ import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCreateMeeting } from '@/hooks/useMeetings';
-import { getLeads } from '@/services/api/leads';
+import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
+import { scheduleMeetingNotification } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { scheduleMeetingNotification } from '@/utils/notifications';
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,11 @@ export default function AddMeetingScreen() {
   const [methodDropdownOpen, setMethodDropdownOpen] = useState(false);
   const [purpose, setPurpose] = useState('');
 
+  // ─── Lead State ────────────────────────────────────────────────
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(params.leadId || null);
+  const [selectedLeadName, setSelectedLeadName] = useState<string | null>(params.leadName || null);
+  const [selectedLeadCompany, setSelectedLeadCompany] = useState<string | null>(params.company || null);
+
   // ─── DateTime State ───────────────────────────────────────────
   const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
   const [scheduledTime, setScheduledTime] = useState<Date>(() => {
@@ -89,6 +94,11 @@ export default function AddMeetingScreen() {
 
   // ─── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
+    if (!selectedLeadId) {
+      Alert.alert('Required', 'Please select a Lead.');
+      return;
+    }
+
     if (!status) {
       Alert.alert('Required', 'Please select a Status.');
       return;
@@ -124,26 +134,8 @@ export default function AddMeetingScreen() {
     }
 
     try {
-      let targetLeadId = params.leadId;
-      if (!targetLeadId) {
-        try {
-          const leadsRes = await getLeads({ limit: 1 });
-          const firstLead = Array.isArray(leadsRes) ? leadsRes[0] : (leadsRes?.data?.[0] || leadsRes?.data?.data?.[0]);
-          if (firstLead) {
-            targetLeadId = firstLead.id;
-          }
-        } catch (err) {
-          console.error('Failed to get fallback lead:', err);
-        }
-      }
-
-      if (!targetLeadId) {
-        targetLeadId = '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
-      }
-
       await createMeetingMutation.mutateAsync({
-        leadId: targetLeadId,
-        lead_id: targetLeadId,
+        leadId: selectedLeadId,
         scheduled_at: combined.toISOString(),
         status: status ?? 'SCHEDULED',
         follow_up_method: method ?? 'Online',
@@ -379,24 +371,22 @@ export default function AddMeetingScreen() {
             </View>
           </View>
 
-          {/* ── Lead (read-only if passed) ───────────── */}
-          {params.leadName ? (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Lead</Text>
-                <View style={[styles.inputRow, styles.readonlyRow]}>
-                  <Ionicons name="person-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
-                  <Text style={[styles.textInput, { color: COLORS.textMuted }]} numberOfLines={1}>
-                    {params.leadName}{params.company ? ` · ${params.company}` : ''}
-                  </Text>
-                  <Ionicons name="lock-closed-outline" size={13} color={COLORS.textMuted} />
-                </View>
-              </View>
-            </>
-          ) : null}
-
         </View>
+
+        {/* ── SELECTED LEAD CARD & LIST ───────────── */}
+        {!params.leadId && (
+          <LeadSelectCard
+            selectedLeadId={selectedLeadId}
+            onSelectLead={(leadId, leadName, leadCompany) => {
+              setSelectedLeadId(leadId);
+              setSelectedLeadName(leadName);
+              setSelectedLeadCompany(leadCompany);
+            }}
+            initialLeadId={params.leadId}
+            initialLeadName={params.leadName}
+            initialLeadCompany={params.company}
+          />
+        )}
 
         {/* ── SAVE MEETING BUTTON ───────────────────────── */}
         <View style={styles.nonStickySaveContainer}>
@@ -704,5 +694,176 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textDark,
     textAlign: 'center',
+  },
+
+  // ── Selected Lead Card ────────────────────────────────
+  selectedLeadCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    marginTop: 8,
+    gap: 10,
+  },
+  selectedLeadHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 8,
+  },
+  selectedLeadTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  changeLeadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  changeLeadBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  selectedLeadInfo: {
+    gap: 6,
+  },
+  noLeadSelectedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    gap: 8,
+  },
+  noLeadSelectedText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#B91C1C',
+    flex: 1,
+  },
+  leadListContainer: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    marginTop: 8,
+    gap: 10,
+  },
+  sectionLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    height: '100%',
+    padding: 0,
+  },
+  hintText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  leadsContainer: {
+    gap: 8,
+  },
+  leadListItemCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 10,
+    gap: 4,
+  },
+
+  // ── Lead Card Inner Styles (copied from index) ─────────
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardName: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: COLORS.textDark,
+  },
+  priorityTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  tagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.tagBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.tagText,
+  },
+  companyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  companyText: {
+    fontSize: 12.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  contactsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F5F2',
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '48%',
+  },
+  contactText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textDark,
   },
 });

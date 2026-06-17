@@ -1,5 +1,5 @@
-import { OrderRecord, OrderFilterState } from '../types/order';
-export { OrderRecord, OrderFilterState };
+import { OrderFilterState, OrderRecord, OrderStatus } from '@/types/order';
+export { OrderFilterState, OrderRecord, OrderStatus };
 
 export const INITIAL_ORDERS: OrderRecord[] = [
   {

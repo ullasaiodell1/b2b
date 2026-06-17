@@ -1,7 +1,8 @@
-import { OrderRecord, updateOrderFilterState } from '@/components/OrderState';
+import { OrderRecord, OrderStatus, activeOrderFilter, subscribeToOrders, updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useOrders } from '@/hooks/useOrders';
+import { cleanOrderParams } from '@/utils/orderHelper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
@@ -22,7 +23,19 @@ export default function OrderListScreen() {
   const styles = getStyles(theme);
 
   const navigation = useNavigation<any>();
-  const { orders, filter: filters, isLoading, refetch } = useOrders();
+  const [filters, setFilters] = useState(activeOrderFilter);
+
+  React.useEffect(() => {
+    return subscribeToOrders(() => {
+      setFilters({ ...activeOrderFilter });
+    });
+  }, []);
+
+  const cleanedFilters = React.useMemo(() => {
+    return cleanOrderParams(filters);
+  }, [filters]);
+
+  const { data: orders = [], isLoading, refetch } = useOrders(cleanedFilters);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleClearStatusFilter = () => {
@@ -42,14 +55,15 @@ export default function OrderListScreen() {
   });
 
   const renderOrderCard = ({ item }: { item: OrderRecord }) => {
-    const config = {
+    const configMap: Record<OrderStatus, { bg: string; text: string; icon: string }> = {
       'Complete': { bg: COLORS.completeBg, text: COLORS.complete, icon: 'checkmark-circle-outline' },
       'Pending': { bg: COLORS.pendingBg, text: COLORS.pending, icon: 'time-outline' },
       'Inprogress': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline' },
       'Delivered': { bg: COLORS.completeBg, text: COLORS.complete, icon: 'cube-outline' },
       'Booking': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'bookmark-outline' },
       'Out Of Delivery': { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'car-outline' },
-    }[item.status] || { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline' };
+    };
+    const config = configMap[item.status] || { bg: COLORS.inprogressBg, text: COLORS.inprogress, icon: 'sync-outline' };
 
     return (
       <TouchableOpacity

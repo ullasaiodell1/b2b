@@ -1,7 +1,16 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import CallLogs from 'react-native-call-log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addCallRaw, fetchRawLeads } from '@/services/api/call';
+
+// react-native-call-log is a native module — not available in Expo Go.
+// Use a safe dynamic require to avoid crashing the bundle.
+let CallLogs: any = null;
+try {
+  CallLogs = require('react-native-call-log').default ?? require('react-native-call-log');
+} catch {
+  CallLogs = null;
+}
+
 
 const LAST_SYNC_KEY = '@last_call_log_sync_time';
 
@@ -150,7 +159,8 @@ export async function syncDeviceCallLogs(): Promise<void> {
           is_auto_logged: true,
         };
 
-        await addCallRaw(lead.id, callPayload);
+        const normalizedPayload = normalizeCallPayload(lead.id, callPayload);
+        await addCallRaw(lead.id, normalizedPayload);
         successCount++;
       } catch (err) {
         console.error(`[CallLogSync] Failed to upload call log for lead ${lead.id}:`, err);
@@ -164,4 +174,40 @@ export async function syncDeviceCallLogs(): Promise<void> {
   } catch (error) {
     console.error('[CallLogSync] Error during call log syncing:', error);
   }
+}
+
+/**
+ * Normalizes call payload structure for the backend API.
+ */
+export function normalizeCallPayload(leadId: string, data: any) {
+  let call_type = 'INBOUND';
+  if (data.type === 'Incoming' || data.call_type === 'INBOUND') call_type = 'INBOUND';
+  else if (data.type === 'Outgoing' || data.call_type === 'OUTBOUND') call_type = 'OUTBOUND';
+  else if (data.type === 'Missed' || data.call_type === 'MISSED') call_type = 'MISSED';
+
+  let duration_seconds = 0;
+  if (data.duration) {
+    const parts = data.duration.split(':');
+    if (parts.length === 2) {
+      duration_seconds = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+  } else if (data.duration_seconds !== undefined) {
+    duration_seconds = data.duration_seconds;
+  }
+
+  const payload: any = {
+    lead_id: leadId,
+    call_type,
+    call_start_time: data.call_start_time || new Date().toISOString(),
+    duration_seconds,
+    subject: data.name || data.subject || 'Call log',
+    remarks: data.remarks || '',
+    is_auto_logged: !!data.is_auto_logged,
+  };
+
+  if (data.recordingUrl || data.recording_url) {
+    payload.recording_url = data.recordingUrl || data.recording_url;
+  }
+
+  return payload;
 }

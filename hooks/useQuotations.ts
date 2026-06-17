@@ -1,11 +1,4 @@
-import {
-  createQuotation,
-  deleteQuotation,
-  getQuotationDetails,
-  listQuotation,
-  updateQuotation,
-  updateQuotationStatus,
-} from '@/services/api/quotation';
+import { createQuotation, deleteQuotation, getQuotationDetails, listQuotation, updateQuotation, updateQuotationStatus, } from '@/services/api/quotation';
 import { CreateQuotationPayload, QuotationFilterState, QuotationRecord } from '@/types/quotation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -17,19 +10,16 @@ export const quotationKeys = {
   details: (id: string) => [...quotationKeys.all, 'details', id] as const,
 };
 
+
 // ─── List Quotations ───────────────────────────────────────────────────────────
 export const useQuotations = (params?: Partial<QuotationFilterState>) => {
   return useQuery({
     queryKey: quotationKeys.quotationFilter(params),
     queryFn: async (): Promise<QuotationRecord[]> => {
       const res = await listQuotation(params) as any;
-      const raw = Array.isArray(res)
-        ? res
-        : (Array.isArray(res?.data)
-          ? res.data
-          : (Array.isArray(res?.data?.data)
-            ? res.data.data
-            : []));
+      const raw = Array.isArray(res) ? res :
+        (Array.isArray(res?.data) ? res.data :
+          (Array.isArray(res?.data?.data) ? res.data.data : []));
       return raw as QuotationRecord[];
     },
   });
@@ -96,3 +86,5 @@ export const useDeleteQuotation = () => {
     },
   });
 };
+
+

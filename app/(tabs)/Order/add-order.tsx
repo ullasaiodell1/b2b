@@ -1,13 +1,13 @@
-import { AdvanceAccountCard } from '@/components/custom/AdvanceAccountCard';
-import BulkItemActionsCard from '@/components/custom/BulkItemActionsCard';
-import { FinancialAdjustmentsCard, LogisticsCard } from '@/components/custom/LogisticsAndAdjustmentsCards';
-import { AdditionalChargesCard, OperationalInsightsCard } from '@/components/custom/OperationalAndChargesCards';
-import SelectImagesModal from '@/components/custom/SelectImagesModal';
-import SelectProductModal from '@/components/custom/SelectProductModal';
-import { OrderRecord } from '@/components/OrderState';
+import { AdvanceAccountCard } from '@/components/order&quotations/AdvanceAccountCard';
+import BulkItemActionsCard from '@/components/order&quotations/BulkItemActionsCard';
+import { FinancialAdjustmentsCard, LogisticsCard } from '@/components/order&quotations/LogisticsAndAdjustmentsCards';
+import { AdditionalChargesCard, OperationalInsightsCard } from '@/components/order&quotations/OperationalAndChargesCards';
+import { OrderRecord } from '@/components/order&quotations/OrderState';
+import SelectImagesModal from '@/components/order&quotations/SelectImagesModal';
+import SelectProductModal from '@/components/order&quotations/SelectProductModal';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useCompanyAccounts, useCompanies } from '@/hooks/useCompany';
+import { useCompanies, useCompanyAccounts } from '@/hooks/useCompany';
 import { useCouriers, useCreateCourier } from '@/hooks/useCourier';
 import { useDealers } from '@/hooks/useDealers';
 import { useImagePicker } from '@/hooks/useImagePicker';
@@ -17,7 +17,6 @@ import { useCreateOrder } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 import { useProfile } from '@/hooks/useProfile';
 import { useUsersCombobox } from '@/hooks/useUsers';
-import { getCompanyDetails } from '@/services/api/company';
 import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -203,7 +202,6 @@ export default function AddOrderScreen() {
   const createOrderMutation = useCreateOrder();
   const { data: products = [] } = useProducts();
   const { profile: userProfile } = useProfile();
-  const [orderType, setOrderType] = useState<'WITHOUT_BRANDING' | 'CUSTOM_BRANDING'>('WITHOUT_BRANDING');
 
   const toggleCollapse = (idx: number) => {
     setItems((prev) => {
@@ -853,7 +851,6 @@ export default function AddOrderScreen() {
 
     const newOrder: any = {
       // Backend Validation fields
-      order_type: orderType,
       source_type: customerType === 'DEALER' ? 'DEALER_PO' : 'LEAD_QUOTATION',
       lead_id: leadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b',
       dealer_id: dealerId,
@@ -1106,38 +1103,6 @@ export default function AddOrderScreen() {
             )}
           </View>
 
-          {/* ORDER TYPE SECTION */}
-          <View style={styles.inputGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-              <Text style={styles.inputLabelGrey}>ORDER TYPE</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-              <TouchableOpacity
-                style={[
-                  styles.selectTrigger,
-                  { flex: 1, justifyContent: 'center', borderColor: orderType === 'WITHOUT_BRANDING' ? primaryColor : COLORS.border, backgroundColor: orderType === 'WITHOUT_BRANDING' ? primaryLight : '#FAFAFA' }
-                ]}
-                onPress={() => setOrderType('WITHOUT_BRANDING')}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: orderType === 'WITHOUT_BRANDING' ? primaryColor : COLORS.textDark }}>
-                  Without Branding
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.selectTrigger,
-                  { flex: 1, justifyContent: 'center', borderColor: orderType === 'CUSTOM_BRANDING' ? primaryColor : COLORS.border, backgroundColor: orderType === 'CUSTOM_BRANDING' ? primaryLight : '#FAFAFA' }
-                ]}
-                onPress={() => setOrderType('CUSTOM_BRANDING')}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: orderType === 'CUSTOM_BRANDING' ? primaryColor : COLORS.textDark }}>
-                  Custom Branding
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           {/* BILL TO SECTION */}
           <View style={styles.inputGroup}>

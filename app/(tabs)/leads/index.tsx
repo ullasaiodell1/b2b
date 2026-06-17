@@ -1,4 +1,5 @@
 import CustomHeader from '@/components/custom/CustomHeader';
+import { updateLeadsState } from '@/components/lead/LeadState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeads } from '@/hooks/useLeads';
@@ -28,7 +29,22 @@ export default function LeadsScreen() {
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: rawLeads = [], isLoading, isFetching, refetch } = useLeads();
+  const leadsQuery = useLeads();
+  const { data: rawLeads = [], isLoading, isFetching, refetch } = leadsQuery;
+
+  useEffect(() => {
+    if (leadsQuery.data) {
+      console.log('[useLeads] Query success data count:', leadsQuery.data.length);
+      updateLeadsState(leadsQuery.data);
+    }
+  }, [leadsQuery.data]);
+
+  useEffect(() => {
+    if (leadsQuery.isError) {
+      console.error('[useLeads] Query error:', leadsQuery.error);
+    }
+  }, [leadsQuery.isError, leadsQuery.error]);
+
   const { primaryColor, primaryLight } = useTheme();
 
   const leads = React.useMemo(() => {

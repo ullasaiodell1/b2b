@@ -8,6 +8,7 @@ export const productKeys = {
   productFilter: (params?: any) => [...productKeys.lists(), params] as const,
 };
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useProducts(params?: any) {
   return useQuery({
     queryKey: productKeys.productFilter(params),

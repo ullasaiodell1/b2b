@@ -1,4 +1,5 @@
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
+import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadDetails, useUsers } from '@/hooks/useLeads';
@@ -142,6 +143,22 @@ export default function AddTaskScreen() {
     }
     return new Date();
   });
+
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadName, setSelectedLeadName] = useState<string | null>(null);
+  const [selectedLeadCompany, setSelectedLeadCompany] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (effectiveLeadId) {
+      setSelectedLeadId(effectiveLeadId);
+    }
+  }, [effectiveLeadId]);
+
+  useEffect(() => {
+    if (resolvedLeadName) {
+      setSelectedLeadName(resolvedLeadName);
+    }
+  }, [resolvedLeadName]);
 
   // ─── Validation Error States ───────────────────────────────────
   const [titleError, setTitleError] = useState(false);
@@ -325,7 +342,7 @@ export default function AddTaskScreen() {
     }
 
     try {
-      const targetLeadId = effectiveLeadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
+      const targetLeadId = selectedLeadId || '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
 
       if (id) {
         await updateTaskMutation.mutateAsync({
@@ -433,16 +450,22 @@ export default function AddTaskScreen() {
 
         <View style={styles.form}>
 
-          {/* ── Related Lead (If applicable) ────────── */}
-          {resolvedLeadName ? (
+          {/* ── Related Lead ────────────────────────── */}
+          {!(leadId || task?.lead_id) && (
             <View style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>Related Lead</Text>
-              <View style={[styles.inputContainer, styles.disabledInput]}>
-                <Ionicons name="link-outline" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
-                <Text style={styles.disabledInputText}>{resolvedLeadName}</Text>
-              </View>
+              <LeadSelectCard
+                selectedLeadId={selectedLeadId}
+                onSelectLead={(leadId, leadName, leadCompany) => {
+                  setSelectedLeadId(leadId);
+                  setSelectedLeadName(leadName);
+                  setSelectedLeadCompany(leadCompany);
+                }}
+                initialLeadId={leadId || task?.lead_id || undefined}
+                initialLeadName={leadName || dbLead?.name || undefined}
+                initialLeadCompany={dbLead?.company_name || dbLead?.company || undefined}
+              />
             </View>
-          ) : null}
+          )}
 
           {/* ── Title (required) ──────────────────── */}
           <View style={styles.fieldContainer}>

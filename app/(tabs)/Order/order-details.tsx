@@ -1,11 +1,16 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useOrderDetails } from '@/hooks/useOrders';
+import { getAuthToken } from '@/utils/storage';
+import { serverDetails } from '@/config';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -38,8 +43,11 @@ export default function OrderDetailsScreen() {
 
   const id = params.id as string;
   const { data: order, isLoading } = useOrderDetails(id);
+
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [courierSlipDownloading, setCourierSlipDownloading] = useState(false);
+  const [courierSlipSuccess, setCourierSlipSuccess] = useState(false);
 
   const handleDownload = () => {
     setDownloading(true);
@@ -48,6 +56,56 @@ export default function OrderDetailsScreen() {
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 2000);
     }, 1200);
+  };
+
+  const handleDownloadCourierSlip = async () => {
+    if (!id) return;
+    setCourierSlipDownloading(true);
+    try {
+      const token = await getAuthToken();
+      const downloadUrl = `${serverDetails.serverProxyURL}/orders/${id}/courier-slip`;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(downloadUrl, {
+          headers: { Authorization: token || '' },
+        });
+        if (!response.ok) throw new Error('Failed to download courier slip');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `courier-slip-${id.slice(0, 8).toUpperCase()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setCourierSlipSuccess(true);
+      } else {
+        const localUri = FileSystem.documentDirectory + `courier-slip-${id.slice(0, 8).toUpperCase()}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(
+          downloadUrl,
+          localUri,
+          { headers: { Authorization: token || '' } }
+        );
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Share Courier Slip',
+            UTI: 'com.adobe.pdf',
+          });
+          setCourierSlipSuccess(true);
+        } else {
+          Alert.alert('Downloaded', `Courier slip saved to:\n${uri}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('[CourierSlip Download Error]:', err);
+      Alert.alert('Error', err?.message || 'Failed to download courier slip PDF.');
+    } finally {
+      setCourierSlipDownloading(false);
+      setTimeout(() => setCourierSlipSuccess(false), 3000);
+    }
   };
 
   if (isLoading || !order) {
@@ -207,6 +265,7 @@ export default function OrderDetailsScreen() {
           const qtyVal = getCleanNumber(item.quantity || item.qty) || 0;
           const gstVal = getCleanNumber(item.gst_percentage || item.gst) || 0;
           const discountVal = getCleanNumber(item.discount_percentage || item.discount || item.item_discount) || 0;
+          const unitLabel = item.uom || item.unit || item.unit_of_measure || 'Pcs';
 
           // Taxable Amount (Price - Discount) * Qty
           const discountAmount = rateVal * (discountVal / 100);
@@ -216,8 +275,8 @@ export default function OrderDetailsScreen() {
 
           const displayQty = String(qtyVal);
           const displayGst = gstVal > 0 ? `${gstVal}%` : '0%';
-          const displayRate = '₹ ' + rateVal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-          const displayTotal = '₹ ' + lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+          const displayRate = '₹' + rateVal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+          const displayTotal = '₹' + lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
           const imageUrl = (Array.isArray(item.images) && item.images.length > 0)
             ? item.images[0]
@@ -247,25 +306,21 @@ export default function OrderDetailsScreen() {
               </View>
 
               <View style={styles.pricingGrid}>
-                <View style={styles.pricingRow}>
-                  <View style={styles.pricingCell}>
-                    <Text style={styles.priceLabel}>Qty : <Text style={styles.priceValue}>{displayQty} Pcs</Text></Text>
-                  </View>
-                  <View style={styles.pricingCellAlignRight}>
-                    <Text style={styles.priceLabel}>Rate : <Text style={styles.priceValue}>{displayRate}</Text></Text>
-                  </View>
+                {/* Table Header */}
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Qty</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Unit</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.4 }]}>Unit Price</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>GST %</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.4, textAlign: 'right' }]}>Total</Text>
                 </View>
-
-                <View style={styles.pricingRow}>
-                  <View style={styles.pricingCell}>
-                    <Text style={styles.priceLabel}>
-                      GST : <Text style={styles.priceValue}>{displayGst}</Text>
-                      {discountVal > 0 ? ` (Disc: ${discountVal}%)` : ''}
-                    </Text>
-                  </View>
-                  <View style={styles.pricingCellAlignRight}>
-                    <Text style={styles.priceLabel}>Price : <Text style={[styles.priceValue, { color: theme.primaryColor }]}>{displayTotal}</Text></Text>
-                  </View>
+                {/* Table Data Row */}
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 1 }]}>{displayQty}</Text>
+                  <Text style={[styles.tableCell, { flex: 1 }]}>{unitLabel}</Text>
+                  <Text style={[styles.tableCell, { flex: 1.4 }]}>{displayRate}</Text>
+                  <Text style={[styles.tableCell, { flex: 1 }]}>{displayGst}</Text>
+                  <Text style={[styles.tableCell, styles.tableCellTotal, { flex: 1.4, textAlign: 'right' }]}>{displayTotal}</Text>
                 </View>
               </View>
             </View>
@@ -273,114 +328,35 @@ export default function OrderDetailsScreen() {
         })}
 
 
-
-        {/* Section: Basic Remark */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>BASIC REMARK</Text>
-          <View style={styles.sectionLine} />
-        </View>
-
-        <View style={styles.remarkCard}>
-          <View style={styles.remarkTop}>
-            <Ionicons name="location-sharp" size={15} color="#EF4444" />
-            <Text style={styles.remarkNoteTitle}>Note</Text>
-          </View>
-          <Text style={styles.remarkText}>
-            {"Lorem Ipsum is Simply Dummy Text Of The Printing And Typesetting Industry. Lorem Ipsum Has Been The Industry's Standard Dummy Text Ever Since The 1500s."}
-          </Text>
-          <View style={styles.remarkFooter}>
-            <Text style={styles.remarkFooterText}>Added By You</Text>
-            <Text style={styles.remarkFooterText}>Feb, 24, 2026</Text>
-          </View>
-        </View>
-
-
-
-        {/* Section: Barcodes */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>ORDER BARCODES</Text>
-          <View style={styles.sectionLine} />
-        </View>
-
-        {(!order.barcodes || order.barcodes.length === 0) ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="barcode-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.emptyText}>No barcodes associated with this order</Text>
-          </View>
-        ) : (
-          <View style={styles.barcodeList}>
-            {order.barcodes.map((bc: any, idx: number) => (
-              <View key={idx} style={styles.barcodeCard}>
-                <Ionicons name="barcode-outline" size={20} color={theme.primaryColor} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.barcodeText}>{bc.barcode || bc.code || 'N/A'}</Text>
-                  <Text style={styles.barcodeSubtext}>
-                    {bc.item_name || bc.name || 'Product Barcode'} {bc.qty ? `| Qty: ${bc.qty}` : ''}
-                  </Text>
-                </View>
-                {bc.status && (
-                  <View style={[styles.statusBadge, bc.status.toLowerCase() === 'scanned' ? styles.scannedBadge : styles.pendingBadge]}>
-                    <Text style={[styles.statusBadgeText, { color: bc.status.toLowerCase() === 'scanned' ? '#03543F' : '#92400E' }]}>{bc.status.toUpperCase()}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Section: Inventory Reservations */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>INVENTORY RESERVATIONS</Text>
-          <View style={styles.sectionLine} />
-        </View>
-
-        {(!order.reservations || order.reservations.length === 0) ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="bookmark-outline" size={20} color={COLORS.textMuted} />
-            <Text style={styles.emptyText}>No reservations found for this order</Text>
-          </View>
-        ) : (
-          <View style={styles.reservationList}>
-            {order.reservations.map((res: any, idx: number) => {
-              const isReserved = (res.status || 'Active').toLowerCase() === 'active' || (res.status || 'Active').toLowerCase() === 'reserved';
-              return (
-                <View key={idx} style={styles.reservationCard}>
-                  <View style={styles.reservationHeader}>
-                    <Ionicons name="calendar-outline" size={14} color={theme.primaryColor} />
-                    <Text style={styles.reservationTitle}>Reservation {res.reservation_no || res.id?.slice(0, 8).toUpperCase() || idx + 1}</Text>
-                    <View style={[styles.statusBadge, isReserved ? styles.reservedBadge : styles.releaseBadge]}>
-                      <Text style={[styles.statusBadgeText, { color: isReserved ? '#1E40AF' : '#991B1B' }]}>{(res.status || 'Active').toUpperCase()}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.reservationDetails}>
-                    <Text style={styles.resDetailText}>
-                      Item: <Text style={styles.resDetailValue}>{res.item_name || res.product_name || 'N/A'}</Text>
-                    </Text>
-                    <Text style={styles.resDetailText}>
-                      Reserved Qty: <Text style={styles.resDetailValue}>{res.reserved_qty || res.quantity || '0'} Pcs</Text>
-                    </Text>
-                    {res.warehouse_name && (
-                      <Text style={styles.resDetailText}>
-                        Warehouse: <Text style={styles.resDetailValue}>{res.warehouse_name}</Text>
-                      </Text>
-                    )}
-                    {res.expires_at && (
-                      <Text style={styles.resDetailText}>
-                        Expires: <Text style={styles.resDetailValue}>{new Date(res.expires_at).toLocaleDateString()}</Text>
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
         {/* Total Amount Green Box */}
         <View style={styles.totalBox}>
           <Text style={styles.totalBoxLabel}>Total Amount</Text>
           <Text style={styles.totalBoxVal}>{order.amount}</Text>
         </View>
+
+        {/* Download Courier Slip */}
+        <TouchableOpacity
+          style={[styles.downloadBox, { backgroundColor: '#1E4D3B' }]}
+          activeOpacity={0.8}
+          onPress={handleDownloadCourierSlip}
+          disabled={courierSlipDownloading}
+        >
+          <View>
+            <Text style={styles.downloadTitle}>Download Courier Slip</Text>
+            <Text style={styles.downloadSubtitle}>Export Shipping Label As PDF</Text>
+          </View>
+          <View style={styles.downloadIconCircle}>
+            {courierSlipDownloading ? (
+              <ActivityIndicator size="small" color={theme.primaryColor} />
+            ) : (
+              <Ionicons
+                name={courierSlipSuccess ? 'checkmark' : 'receipt-outline'}
+                size={16}
+                color={theme.primaryColor}
+              />
+            )}
+          </View>
+        </TouchableOpacity>
 
         {/* Download Order Green Box */}
         <TouchableOpacity
@@ -398,7 +374,7 @@ export default function OrderDetailsScreen() {
               <ActivityIndicator size="small" color={theme.primaryColor} />
             ) : (
               <Ionicons
-                name={downloadSuccess ? "checkmark" : "download-outline"}
+                name={downloadSuccess ? 'checkmark' : 'download-outline'}
                 size={16}
                 color={theme.primaryColor}
               />
@@ -543,30 +519,40 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '500',
   },
   pricingGrid: {
-    gap: 6,
     borderTopWidth: 1,
     borderTopColor: '#F0F4F2',
-    paddingTop: 8,
+    paddingTop: 6,
+    gap: 0,
   },
-  pricingRow: {
+  tableHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#F4F7F5',
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    marginBottom: 3,
   },
-  pricingCell: {
-    flex: 1,
-  },
-  pricingCellAlignRight: {
-    flex: 1.2,
-    alignItems: 'flex-end',
-  },
-  priceLabel: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  priceValue: {
+  tableHeaderCell: {
+    fontSize: 9.5,
     fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+  },
+  tableCell: {
+    fontSize: 11.5,
+    fontWeight: '700',
     color: COLORS.textDark,
+  },
+  tableCellTotal: {
+    fontWeight: '900',
+    color: '#16A34A',
   },
 
   // Sections Header
@@ -590,44 +576,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
 
-  // Remark Card
-  remarkCard: {
-    backgroundColor: '#F9FAF9',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 10,
-    gap: 5,
-  },
-  remarkTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  remarkNoteTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  remarkText: {
-    fontSize: 11.5,
-    color: COLORS.textDark,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  remarkFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2EF',
-    paddingTop: 8,
-    marginTop: 2,
-  },
-  remarkFooterText: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
 
 
 
@@ -733,47 +681,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: theme.primaryColor,
   },
-  emptyCard: {
-    backgroundColor: '#F9FAF9',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginVertical: 4,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  barcodeList: {
-    gap: 8,
-    marginVertical: 4,
-  },
-  barcodeCard: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  barcodeText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  barcodeSubtext: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    marginTop: 2,
-  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -785,53 +692,12 @@ const getStyles = (theme: any) => StyleSheet.create({
   pendingBadge: {
     backgroundColor: '#FEF3C7',
   },
-  reservedBadge: {
-    backgroundColor: '#E0F2FE',
-  },
   releaseBadge: {
     backgroundColor: '#FEE2E2',
   },
   statusBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-  },
-  reservationList: {
-    gap: 8,
-    marginVertical: 4,
-  },
-  reservationCard: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    gap: 8,
-  },
-  reservationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2EF',
-    paddingBottom: 6,
-  },
-  reservationTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  reservationDetails: {
-    gap: 4,
-  },
-  resDetailText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  resDetailValue: {
-    color: COLORS.textDark,
-    fontWeight: '700',
   },
   detailsCard: {
     backgroundColor: COLORS.bgWhite,

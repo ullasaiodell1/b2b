@@ -7,7 +7,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,7 +23,6 @@ interface OwnerRecord {
   id: string;
   name: string;
   email: string;
-  avatar: any;
 }
 
 const OWNERS: OwnerRecord[] = [];
@@ -48,7 +46,6 @@ export default function SelectOwnerScreen() {
       id: String(u.id),
       name: u.name,
       email: u.email,
-      avatar: require('@/assets/images/lead_avatar.png'),
     }))
     : OWNERS;
 
@@ -93,14 +90,7 @@ export default function SelectOwnerScreen() {
           <Text style={styles.headerSubtitle}>Fill In The Details Below</Text>
         </View>
 
-        {/* Right Plus Action */}
-        <TouchableOpacity
-          style={styles.plusBtn}
-          onPress={() => Alert.alert('Create Owner', 'Create new owner profile details...')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add" size={20} color={theme.primaryColor} />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       <View style={styles.content}>
@@ -139,8 +129,6 @@ export default function SelectOwnerScreen() {
                 }}
                 activeOpacity={0.9}
               >
-                <Image source={owner.avatar} style={styles.avatarImage} />
-
                 <View style={styles.ownerInfoCol}>
                   <Text style={styles.ownerNameText}>{owner.name}</Text>
                   <Text style={styles.ownerEmailText}>{owner.email}</Text>
@@ -203,15 +191,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  plusBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  ownerInfoCol: {
+    flex: 1,
+    gap: 2,
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -282,17 +264,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     shadowOpacity: 0.08,
     elevation: 2,
   },
-  avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#E2E8F0',
-  },
-  ownerInfoCol: {
-    flex: 1,
-    marginLeft: 12,
-    gap: 2,
-  },
+
   ownerNameText: {
     fontSize: 13.5,
     fontWeight: '800',

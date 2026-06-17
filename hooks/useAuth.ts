@@ -2,15 +2,10 @@ import { accountLogin, accountLogout, otpVerification, deleteSession } from "@/s
 import { useMutation } from "@tanstack/react-query";
 import type { LoginCredentials, OTPVerificationCredentials } from "@/types/user";
 
+// ── CREATE ────────────────────────────────────────────────────────
 export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginCredentials) => accountLogin(data),
-  });
-}
-
-export function useLogout() {
-  return useMutation({
-    mutationFn: (token?: string) => accountLogout(token),
   });
 }
 
@@ -23,6 +18,13 @@ export function useOTPVerification() {
 export function useResendOTP() {
   return useMutation({
     mutationFn: (data: LoginCredentials) => accountLogin(data),
+  });
+}
+
+// ── DELETE ────────────────────────────────────────────────────────
+export function useLogout() {
+  return useMutation({
+    mutationFn: (token?: string) => accountLogout(token),
   });
 }
 

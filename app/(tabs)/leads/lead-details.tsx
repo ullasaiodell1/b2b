@@ -1,30 +1,32 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCalls } from '@/hooks/useCalls';
-import { useDeleteLead, useLeadDetails } from '@/hooks/useLeads';
+import { useDeleteLead, useLeadDetails, useLeadStatuses, useUpdateLead } from '@/hooks/useLeads';
 import { useMeetings } from '@/hooks/useMeetings';
-import { getOrderField } from '@/app/(tabs)/Order/orderHelper';
 import { useQuotations } from '@/hooks/useQuotations';
 import { useTasks } from '@/hooks/useTasks';
 import { useVisits } from '@/hooks/useVisits';
 import { getOrders } from '@/services/api/order';
+import { getOrderField } from '@/utils/orderHelper';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,6 +57,64 @@ const DetailRow: React.FC<DetailRowProps> = ({ label, value, required }) => {
 
 
 const STATUS_COLORS: Record<string, string> = {
+  // ── Core Lead Statuses ─────────────────────────
+  NEW: '#0EA5E9',
+  CONTACTED: '#F59E0B',
+  'PROPOSAL SENT': '#8B5CF6',
+  PROPOSAL_SENT: '#8B5CF6',
+  NEGOTIATION: '#F97316',
+  WON: '#10B981',
+  LOST: '#EF4444',
+  JUNK: '#6B7280',
+  QUALIFIED: '#3B82F6',
+  UNQUALIFIED: '#9CA3AF',
+  FOLLOW_UP: '#EC4899',
+  'FOLLOW-UP': '#EC4899',
+  FOLLOWUP: '#EC4899',
+  INTERESTED: '#06B6D4',
+  NOT_INTERESTED: '#F43F5E',
+  'NOT INTERESTED': '#F43F5E',
+  CONVERTED: '#22C55E',
+  CLOSED: '#64748B',
+  OPEN: '#0EA5E9',
+  PENDING: '#F59E0B',
+  ACTIVE: '#10B981',
+  INACTIVE: '#9CA3AF',
+  // ── Custom / Special Statuses ──────────────────
+  TRASH: '#B91C1C',
+  HYBRID: '#14B8A6',
+  SPECIAL: '#EAB308',
+  NOT_SPECIAL: '#7C3AED',
+  'NOT SPECIAL': '#7C3AED',
+  NOTSPECIAL: '#7C3AED',
+  FIRE: '#EF4444',
+  'LOS ANGELES': '#4F46E5',
+  LOS_ANGELES: '#4F46E5',
+  LOSANGELES: '#4F46E5',
+  DUBAI: '#D97706',
+  // ── Extra Common Variants ──────────────────────
+  HOT: '#EF4444',
+  WARM: '#F97316',
+  COLD: '#0EA5E9',
+  HOLD: '#64748B',
+  'ON HOLD': '#64748B',
+  ON_HOLD: '#64748B',
+  IN_PROGRESS: '#3B82F6',
+  'IN PROGRESS': '#3B82F6',
+  INPROGRESS: '#3B82F6',
+  CONTACTED_AGAIN: '#F59E0B',
+  REVISIT: '#8B5CF6',
+  DEMO: '#06B6D4',
+  TRIAL: '#10B981',
+  URGENT: '#DC2626',
+  VIP: '#D97706',
+  PREMIUM: '#C026D3',
+  PROSPECT: '#0284C7',
+  DEAD: '#374151',
+  DEFERRED: '#78716C',
+  ESCALATED: '#DC2626',
+  RESOLVED: '#16A34A',
+  // ── Quotation / Order Statuses ─────────────────
   DRAFT: '#6B7280',
   SENT: '#F59E0B',
   VIEWED: '#3B82F6',
@@ -113,6 +173,8 @@ export default function LeadDetailsScreen() {
 
   const [quotationSearchQuery, setQuotationSearchQuery] = useState('');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   const { data: rawLead, isLoading, isFetching, refetch } = useLeadDetails(params.id || '');
 
@@ -140,6 +202,8 @@ export default function LeadDetailsScreen() {
     } as any;
   }, [rawLead]);
   const { mutateAsync: deleteLead } = useDeleteLead();
+  const { mutateAsync: updateLead } = useUpdateLead();
+  const { data: leadStatuses = [] } = useLeadStatuses();
 
   const quotationsQuery = useQuotations({ lead_id: params.id || '' });
   const { isLoading: isQuotationsLoading, isFetching: isQuotationsFetching } = quotationsQuery;
@@ -319,7 +383,6 @@ export default function LeadDetailsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('Overview');
   const [leadInfoExpanded, setLeadInfoExpanded] = useState(true);
   const [addressExpanded, setAddressExpanded] = useState(true);
-  const [descExpanded, setDescExpanded] = useState(true);
   const [visitExpanded, setVisitExpanded] = useState(false);
   const [meetingExpanded, setMeetingExpanded] = useState(false);
   const [taskExpanded, setTaskExpanded] = useState(false);
@@ -331,7 +394,7 @@ export default function LeadDetailsScreen() {
   const handleViewList = (type: 'Call' | 'Meeting' | 'Task' | 'Visit') => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
-    const pathMap = {
+    const pathMap: Record<string, string> = {
       Call: '/(tabs)/call',
       Meeting: '/(tabs)/meeting',
       Task: '/(tabs)/task',
@@ -342,6 +405,9 @@ export default function LeadDetailsScreen() {
       params: {
         leadId,
         leadName,
+        company: leadCompany !== '----' ? leadCompany : '',
+        phone: leadPhone !== '----' ? leadPhone : '',
+        email: leadEmail !== '----' ? leadEmail : '',
       },
     } as any);
     setTimeout(() => {
@@ -562,38 +628,237 @@ export default function LeadDetailsScreen() {
             <View style={styles.profileCard}>
               <View style={styles.profileTopRow}>
                 <View style={styles.profileInfoCol}>
-                  <Text style={styles.profileName}>{leadName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={styles.profileName}>{leadName}</Text>
+                    {/* Clickable Status Badge */}
+                    {(() => {
+                      const rawStatus = dbLead?.status_name || dbLead?.status || '';
+                      const sk = rawStatus.toUpperCase();
+                      const skU = sk.replace(/\s+/g, '_');
+                      const badgeColor = STATUS_COLORS[sk] || STATUS_COLORS[skU] || '#9CA3AF';
+                      return (
+                        <TouchableOpacity
+                          onPress={() => setStatusModalVisible(true)}
+                          activeOpacity={0.75}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: badgeColor + '22',
+                            borderWidth: 1.5,
+                            borderColor: badgeColor,
+                            borderRadius: 20,
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            gap: 5,
+                          }}
+                        >
+                          <View style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: 4,
+                            backgroundColor: badgeColor,
+                          }} />
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: '800',
+                            color: badgeColor,
+                            letterSpacing: 0.2,
+                          }}>
+                            {rawStatus || 'Set Status'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={11} color={badgeColor} />
+                        </TouchableOpacity>
+                      );
+                    })()}
+                  </View>
 
                   <View style={styles.profileDetailLine}>
                     <Ionicons name="business-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.profileDetailText}>{leadCompany}</Text>
                   </View>
 
-                  <View style={styles.profileDetailLine}>
-                    <Ionicons name="mail-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.profileDetailText}>{leadEmail}</Text>
-                  </View>
+                  {leadEmail !== '----' && (
+                    <TouchableOpacity
+                      style={styles.profileDetailLine}
+                      onPress={() => Linking.openURL(`mailto:${leadEmail}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="mail-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                      <Text style={[styles.profileDetailText, { color: '#2563EB', textDecorationLine: 'underline' }]}>
+                        {leadEmail}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-                  <View style={styles.profileDetailLine}>
-                    <Ionicons name="home-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.profileDetailText}>
-                      {[dbLead?.city_name || dbLead?.city, dbLead?.state_name || dbLead?.state].filter(Boolean).join(', ') || '----'}
-                    </Text>
-                  </View>
+                  {/* Phone — tappable, opens dialer */}
+                  {leadPhone !== '----' && (
+                    <TouchableOpacity
+                      style={styles.profileDetailLine}
+                      onPress={() => Linking.openURL(`tel:${leadPhone}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="call-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                      <Text style={[styles.profileDetailText, { color: '#2563EB', textDecorationLine: 'underline' }]}>
+                        {leadPhone}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Location — tappable, opens Google Maps */}
+                  {(() => {
+                    const locationStr = [dbLead?.city_name || dbLead?.city, dbLead?.state_name || dbLead?.state].filter(Boolean).join(', ');
+                    if (!locationStr) return null;
+                    return (
+                      <TouchableOpacity
+                        style={styles.profileDetailLine}
+                        onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(locationStr)}`)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="location-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                        <Text style={[styles.profileDetailText, { color: '#2563EB', textDecorationLine: 'underline' }]}>
+                          {locationStr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
                 </View>
               </View>
-
-              {/* Action Buttons Row */}
-              <View style={styles.actionsRow}>
-                <TouchableOpacity style={styles.actionCircleBtn} onPress={() => handleAddAction('Meeting')} activeOpacity={0.85}>
-                  <Ionicons name="people" size={16} color={COLORS.textDark} />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionCircleBtn} onPress={() => handleAddAction('Visit')} activeOpacity={0.85}>
-                  <Ionicons name="location" size={16} color={COLORS.textDark} />
-                </TouchableOpacity>
-              </View>
             </View>
+
+            {/* STATUS CHANGE MODAL */}
+            <Modal
+              visible={statusModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setStatusModalVisible(false)}
+            >
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}
+                activeOpacity={1}
+                onPress={() => setStatusModalVisible(false)}
+              >
+                <View style={{
+                  backgroundColor: '#FFFFFF',
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  paddingTop: 12,
+                  paddingBottom: 32,
+                  maxHeight: '70%',
+                }}>
+                  {/* Handle */}
+                  <View style={{ width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+
+                  {/* Title */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 14 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: COLORS.textDark }}>Change Status</Text>
+                    <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
+                      <Ionicons name="close-circle" size={22} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {statusUpdating ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                      <ActivityIndicator size="large" color={theme.primaryColor} />
+                      <Text style={{ marginTop: 10, fontSize: 13, color: COLORS.textMuted, fontWeight: '600' }}>Updating status...</Text>
+                    </View>
+                  ) : (
+                    <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                      {(Array.isArray(leadStatuses) ? leadStatuses : []).map((s: any) => {
+                        const statusLabel = s.name || s.label || s.status_name || String(s);
+                        const statusId = s.id || s.value || s.status_id;
+                        const statusKeyUnderscore = statusLabel.toUpperCase().replace(/\s+/g, '_');
+                        const statusKeyExact = statusLabel.toUpperCase();
+                        const color = STATUS_COLORS[statusKeyExact] || STATUS_COLORS[statusKeyUnderscore] || '#6B7280';
+                        const currentStatus = dbLead?.status_name || dbLead?.status || '';
+                        const isActive = currentStatus.toLowerCase() === statusLabel.toLowerCase();
+                        return (
+                          <TouchableOpacity
+                            key={String(statusId || statusLabel)}
+                            onPress={async () => {
+                              if (isActive) { setStatusModalVisible(false); return; }
+                              try {
+                                setStatusUpdating(true);
+                                // Build full payload — API requires all required fields, not just status_id
+                                const r = rawLead as any;
+                                const priorityMap: Record<string, string> = { HOT: 'HOT', WARM: 'WARM', COLD: 'COLD' };
+                                const fullPayload = {
+                                  name: r?.name || '',
+                                  phone: r?.phone || '',
+                                  email: r?.email || null,
+                                  status_id: statusId,
+                                  source_id: r?.source_id || null,
+                                  alternate_phone: r?.alternate_phone || null,
+                                  address_line1: r?.address_line1 || null,
+                                  address_line2: r?.address_line2 || null,
+                                  city_id: r?.city_id || null,
+                                  state_id: r?.state_id || null,
+                                  country_id: r?.country_id || null,
+                                  assigned_to: r?.assigned_to || null,
+                                  priority: priorityMap[r?.priority] || r?.priority || 'WARM',
+                                  company_name: r?.company_name || null,
+                                  designation: r?.designation || null,
+                                  website: r?.website || null,
+                                  gst_number: r?.gst_number || null,
+                                  pan_number: r?.pan_number || null,
+                                  tags: Array.isArray(r?.tags) ? r.tags.map((t: any) => t.name || t) : [],
+                                  expected_revenue: r?.expected_revenue ? parseFloat(r.expected_revenue) : null,
+                                  property_type: r?.property_type || null,
+                                  business_type: r?.business_type || null,
+                                  remarks: r?.remarks || null,
+                                  interested_category_id: Array.isArray(r?.interested_category_id) ? r.interested_category_id : [],
+                                };
+                                await updateLead({
+                                  id: params.id!,
+                                  data: fullPayload,
+                                });
+                                await refetch();
+                                setStatusModalVisible(false);
+                              } catch (err: any) {
+                                Alert.alert('Error', err?.message || 'Failed to update status.');
+                              } finally {
+                                setStatusUpdating(false);
+                              }
+                            }}
+                            activeOpacity={0.75}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              paddingHorizontal: 20,
+                              paddingVertical: 14,
+                              backgroundColor: isActive ? color + '15' : '#FFFFFF',
+                              borderBottomWidth: 1,
+                              borderBottomColor: '#F3F4F6',
+                            }}
+                          >
+                            <View style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: color,
+                              marginRight: 12,
+                            }} />
+                            <Text style={{
+                              flex: 1,
+                              fontSize: 13.5,
+                              fontWeight: isActive ? '900' : '600',
+                              color: isActive ? color : COLORS.textDark,
+                            }}>
+                              {statusLabel}
+                            </Text>
+                            {isActive && (
+                              <Ionicons name="checkmark-circle" size={20} color={color} />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+
+
 
 
 
@@ -628,9 +893,15 @@ export default function LeadDetailsScreen() {
                   <DetailRow label="Mobile" value={dbLead?.alternate_phone || "----"} />
                   <DetailRow label="Website" value={dbLead?.website || "----"} />
                   <DetailRow label="Lead Source" value={leadTag} />
-                  <DetailRow label="Lead Status" value={dbLead?.status || "----"} />
+                  <DetailRow label="Lead Status" value={dbLead?.status_name || dbLead?.status || "----"} />
                   <DetailRow label="Created By" value={dbLead?.created_by_name || leadOwner} />
                   <DetailRow label="Modified By" value={leadOwner} />
+                  <View style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                    <Text style={styles.detailLabel}>Description</Text>
+                    <Text style={[styles.detailValue, { textAlign: 'left', marginTop: 6 }]} numberOfLines={0}>
+                      {dbLead?.remarks || '----'}
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
@@ -663,33 +934,6 @@ export default function LeadDetailsScreen() {
                   <DetailRow label="State" value={dbLead?.state_name || dbLead?.state || "----"} />
                   <DetailRow label="City" value={dbLead?.city_name || dbLead?.city || "----"} />
                   <DetailRow label="Pincode" value={dbLead?.pincode || "----"} />
-                </View>
-              )}
-            </View>
-
-            {/* ACCORDION 3: DESCRIPTION */}
-            <View style={[styles.accordionCard, { marginBottom: 1 }]}>
-              <TouchableOpacity
-                style={styles.accordionHeader}
-                onPress={() => setDescExpanded(!descExpanded)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.accordionTitleLeft}>
-                  <View style={styles.indicatorBar} />
-                  <Text style={styles.accordionTitleText}>DESCRIPTION</Text>
-                </View>
-                <View style={styles.chevronBg}>
-                  <Ionicons
-                    name={descExpanded ? "chevron-up" : "chevron-down"}
-                    size={16}
-                    color={COLORS.textDark}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {descExpanded && (
-                <View style={styles.accordionContent}>
-                  <DetailRow label="Description" value={dbLead?.remarks || '-----'} />
                 </View>
               )}
             </View>

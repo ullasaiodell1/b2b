@@ -1,6 +1,7 @@
 import { ALL_TAB_MODULES, configuredTabs, dynamicTabId, resetTabs, setDynamicTab, subscribeToTabs, updateConfiguredTabs } from '@/components/TabState';
 import { useEffect, useState } from 'react';
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useTabs() {
   const [tabs, setTabs] = useState<string[]>(configuredTabs);
   const [activeDynamicTab, setActiveDynamicTab] = useState<string | null>(dynamicTabId);

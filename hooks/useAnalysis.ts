@@ -9,6 +9,7 @@ export const analysisKeys = {
   analysisFilter: (params?: any) => [...analysisKeys.lists(), params] as const,
 };
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useAnalysis(params?: any) {
   const query = useQuery({
     queryKey: analysisKeys.analysisFilter(params),
@@ -17,18 +18,15 @@ export function useAnalysis(params?: any) {
       return raw;
     },
   });
-
   useEffect(() => {
     if (query.data) {
       console.log('[useAnalysis] Query success data:', query.data);
     }
   }, [query.data]);
-
   useEffect(() => {
     if (query.isError) {
       console.error('[useAnalysis] Query error:', query.error);
     }
   }, [query.isError, query.error]);
-
   return query;
 }

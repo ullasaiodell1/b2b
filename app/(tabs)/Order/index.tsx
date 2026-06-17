@@ -1,4 +1,5 @@
 import CustomHeader from '@/components/custom/CustomHeader';
+import { activeOrderFilter, subscribeToOrders, updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useOrders } from '@/hooks/useOrders';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { cleanOrderParams } from '@/utils/orderHelper';
 
 const STATUS_MAP_UI = {
   'Complete': 'Complete',
@@ -30,7 +32,20 @@ export default function OrderScreen() {
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const { orders, filter: filterState, updateFilter, isLoading, refetch } = useOrders();
+  const [filterState, setFilterState] = useState(activeOrderFilter);
+
+  React.useEffect(() => {
+    return subscribeToOrders(() => {
+      setFilterState({ ...activeOrderFilter });
+    });
+  }, []);
+
+  const cleanedFilter = React.useMemo(() => {
+    return cleanOrderParams(filterState);
+  }, [filterState]);
+
+  const { data: orders = [], isLoading, refetch } = useOrders(cleanedFilter);
+  const updateFilter = updateOrderFilterState;
 
   // Search & Filter Logic
   const filteredOrders = (orders as any[]).filter((order: any) => {

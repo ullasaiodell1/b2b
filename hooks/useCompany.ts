@@ -10,6 +10,7 @@ export const companyKeys = {
   companiesList: (params?: any) => [...companyKeys.companiesAll, 'list', params] as const,
 };
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useCompanies(params?: any) {
   return useQuery({
     queryKey: companyKeys.companiesList(params),

@@ -119,7 +119,7 @@ export default function OtpScreen() {
           }).start();
 
           setTimeout(() => {
-            router.replace('/(tabs)');
+            router.replace('/(tabs)' as any);
           }, 1200);
         },
         onError: (err: any) => {

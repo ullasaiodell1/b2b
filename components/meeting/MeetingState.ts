@@ -1,4 +1,4 @@
-import { MeetingRecord } from '../types/meeting';
+import { MeetingRecord } from '@/types/meeting';
 export { MeetingRecord };
 
 export const INITIAL_MEETINGS: MeetingRecord[] = [

@@ -18,7 +18,6 @@ export function useTasks(params?: any) {
       return res;
     },
   });
-
   return query;
 }
 
@@ -33,7 +32,6 @@ export function useTask(id: string) {
     },
     enabled: !!id,
   });
-
   return query;
 }
 

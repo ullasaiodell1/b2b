@@ -1,12 +1,12 @@
-import { activeCallFilter, CallFilterState, updateCallFilterState } from '@/components/CallState';
+import { activeCallFilter, CallFilterState, updateCallFilterState } from '@/components/call/CallState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -16,7 +16,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const formatDate = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');

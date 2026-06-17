@@ -1,4 +1,4 @@
-import { activeCallFilter, CallFilterState, subscribeToCalls, updateCallFilterState } from '@/components/CallState';
+import { activeCallFilter, CallFilterState, subscribeToCalls, updateCallFilterState } from '@/components/call/CallState';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';

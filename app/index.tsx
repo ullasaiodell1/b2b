@@ -21,7 +21,7 @@ export default function Index() {
           router.replace('/slides');
         } else if (token) {
           // Already logged in, direct to dashboard
-          router.replace('/(tabs)');
+          router.replace('/(tabs)' as any);
         } else {
           // Not logged in, show sign-in screen
           router.replace('/sign-in');

@@ -49,7 +49,7 @@ export const getOrderField = (order: any) => {
   const itemsCount = order.itemsCount || order.items_count || (Array.isArray(order.items) ? order.items.length : 0) || 0;
 
   const paymentType = order.paymentType || order.payment_type || order.payment_method || order.payment_terms || order.payment_terms_custom || 'N/A';
-  
+
   const rawAmount = order.amount || order.payable_amount || order.grand_total || order.total_amount || 0;
   const amount = formatAmountValue(rawAmount);
 
@@ -69,3 +69,38 @@ export const getOrderField = (order: any) => {
     approvedBy,
   };
 };
+
+export function cleanOrderParams(params?: any) {
+  const cleanedParams: any = {};
+  if (params) {
+    const allowedParams = [
+      'company_id',
+      'status',
+      'search',
+      'user_id',
+      'assigned_to_user_id',
+      'offset',
+      'limit',
+      'payment_status',
+      'order_type',
+      'source_type',
+      'dealer_id',
+      'lead_id',
+      'startDate',
+      'endDate',
+      'sort_by',
+      'sort_direction',
+    ];
+
+    allowedParams.forEach((key) => {
+      if (params[key] !== undefined && params[key] !== null && String(params[key]).trim() !== '') {
+        cleanedParams[key] = params[key];
+      }
+    });
+
+    if (params.dateRange && params.dateRange.trim() !== '') {
+      cleanedParams.dateRange = params.dateRange;
+    }
+  }
+  return cleanedParams;
+}

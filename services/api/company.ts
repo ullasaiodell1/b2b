@@ -1,62 +1,54 @@
 import axios from './httpRequest';
 
-export const getCompanies = async (params?: any) => {
-  console.log('[API getCompanies] Request params:', params);
-  const res = await axios({
+// GET /companies — get companies list
+export const getCompanies = (params?: any) => {
+  return axios({
     method: 'GET',
     url: `/companies`,
     params
   });
-  console.log('[API getCompanies] Response:', res?.data || res);
-  return res;
 };
 
-export const getCompanyDetails = async (id: string) => {
-  const res = await axios({
+// GET /companies/:id — get company details
+export const getCompanyDetails = (id: string) => {
+  return axios({
     method: 'GET',
     url: `/companies/${id}`
   });
-  console.log(`[API getCompanyDetails] ID: ${id} Response:`, res?.data || res);
-  return res;
 };
 
-export const createCompany = async (data: any) => {
-  console.log('[API createCompany] Request:', data);
-  const res = await axios({
+// POST /companies — create company
+export const createCompany = (data: any) => {
+  return axios({
     method: 'POST',
     url: `/companies`,
     data
   });
-  console.log('[API createCompany] Response:', res?.data || res);
-  return res;
 };
 
-export const updateCompany = async (id: string, data: any) => {
-  console.log(`[API updateCompany] ID: ${id} Request:`, data);
-  const res = await axios({
+// PUT /companies/:id — update company
+export const updateCompany = (id: string, data: any) => {
+  return axios({
     method: 'PUT',
     url: `/companies/${id}`,
     data
   });
-  console.log(`[API updateCompany] ID: ${id} Response:`, res?.data || res);
-  return res;
 };
 
-export const deleteCompany = async (id: string) => {
-  const res = await axios({
+// DELETE /companies/:id — delete company
+export const deleteCompany = (id: string) => {
+  return axios({
     method: 'DELETE',
     url: `/companies/${id}`
   });
-  console.log(`[API deleteCompany] ID: ${id} Response:`, res?.data || res);
-  return res;
 };
 
-export const getCompanyAccounts = async (companyId: string) => {
-  const res = await axios({
+// GET /companies/:companyId/accounts — get company accounts
+export const getCompanyAccounts = (companyId: string) => {
+  return axios({
     method: 'GET',
     url: `/companies/${companyId}/accounts`
   });
-  console.log(`[API getCompanyAccounts] ID: ${companyId} Response:`, res?.data || res);
-  return res;
 };
+
 

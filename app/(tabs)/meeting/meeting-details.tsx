@@ -1,4 +1,4 @@
-import { MeetingRecord, meetingsState, subscribeToMeetings, updateMeetingsState } from '@/components/MeetingState';
+import { MeetingRecord, meetingsState, subscribeToMeetings, updateMeetingsState } from '@/components/meeting/MeetingState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';

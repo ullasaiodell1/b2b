@@ -109,3 +109,16 @@ export interface CreateQuotationPayload {
   grand_total: number;
   items: QuotationItem[];
 }
+
+export interface UpdateQuotationStatusPayload {
+  id: string;
+  status: string;
+  reject_remarks?: string;
+}
+
+export interface UpdateQuotationPayload extends Omit<Partial<CreateQuotationPayload>, 'status'> {
+  id: string;
+  status?: string;
+}
+
+

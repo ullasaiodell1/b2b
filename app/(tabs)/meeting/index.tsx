@@ -1,6 +1,6 @@
+import { updateMeetingsState } from '@/components/meeting/MeetingState';
 import { COLORS } from '@/constants/theme';
 import { useMeetings } from '@/hooks/useMeetings';
-import { updateMeetingsState } from '@/components/MeetingState';
 import { MeetingRecord, MeetingStatus } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -55,8 +55,8 @@ export default function MeetingScreen() {
   });
 
   const { isLoading, isFetching, refetch } = query;
-  const rawMeetings: any[] = Array.isArray(query.data) 
-    ? query.data 
+  const rawMeetings: any[] = Array.isArray(query.data)
+    ? query.data
     : (query.data?.data || query.data?.followups || query.data?.results || []);
 
   const meetings = rawMeetings.map((item: any): MeetingRecord => {
@@ -67,8 +67,8 @@ export default function MeetingScreen() {
     const toTime = toDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     const scheduledAt = item.scheduled_at
       ? dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) +
-        ' · ' +
-        dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      ' · ' +
+      dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
       : '';
     const scheduledDateStr = item.scheduled_at
       ? `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`

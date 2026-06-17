@@ -8,6 +8,7 @@ export const locationKeys = {
   cities: (stateId?: string, search: string = '') => [...locationKeys.all, 'cities', stateId, search] as const,
 };
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useCountries(search: string = '') {
   return useQuery({
     queryKey: locationKeys.countries(search),

@@ -2,10 +2,16 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAttendance } from '@/hooks/useAttendance';
+import { useAttendanceStatus } from '@/hooks/useAttendance';
+import {
+  attendanceState,
+  subscribeToAttendance,
+  updateAttendanceState,
+  AttendanceState,
+} from '@/components/attendance/AttendanceState';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -75,12 +81,36 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
   );
 }
 
+function useAttendance() {
+  const [attendance, setAttendance] = useState<AttendanceState>(attendanceState);
+
+  useEffect(() => {
+    return subscribeToAttendance(() => {
+      setAttendance({ ...attendanceState });
+    });
+  }, []);
+
+  return {
+    attendance,
+    updateAttendance: updateAttendanceState,
+  };
+}
+
 export default function AttendanceScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const statusQuery = useAttendanceStatus();
+
+  useEffect(() => {
+    if (statusQuery.data) {
+      updateAttendanceState(statusQuery.data);
+    }
+  }, [statusQuery.data]);
+
   const { attendance: attState } = useAttendance();
   const [activeFilter, setActiveFilter] = useState<FilterType>('Present');
   const [pickerVisible, setPickerVisible] = useState(false);

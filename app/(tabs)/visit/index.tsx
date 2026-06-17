@@ -3,24 +3,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView, Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  ActivityIndicator,
-  RefreshControl
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CustomHeader from '@/components/custom/CustomHeader';
+import { serverDetails } from '@/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useVisits } from '@/hooks/useVisits';
-import { serverDetails } from '@/config';
 
 export default function VisitScreen() {
   const theme = useTheme();
@@ -191,22 +191,7 @@ export default function VisitScreen() {
         title="Visit"
         showSearch={false}
         showBack={!!params.leadId}
-        onBackPress={() => {
-          if (params.leadId) {
-            router.push({
-              pathname: '/(tabs)/leads/lead-details',
-              params: {
-                id: params.leadId,
-                name: params.leadName,
-                company: params.company,
-                phone: params.phone,
-                email: params.email,
-              }
-            } as any);
-          } else {
-            router.back();
-          }
-        }}
+        onBackPress={() => router.back()}
       />
 
       {/* SEARCH AND FILTERS */}

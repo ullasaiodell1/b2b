@@ -1,5 +1,5 @@
-import { CallRecord, CallFilterState } from '../types/call';
-export { CallRecord, CallFilterState };
+import { CallFilterState, CallRecord } from '@/types/call';
+export { CallFilterState, CallRecord };
 
 export const INITIAL_CALLS: CallRecord[] = [
   {

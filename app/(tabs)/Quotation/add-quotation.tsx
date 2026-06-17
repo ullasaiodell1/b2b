@@ -1,6 +1,6 @@
-import BulkItemActionsCard from '@/components/custom/BulkItemActionsCard';
-import SelectImagesModal from '@/components/custom/SelectImagesModal';
-import SelectProductModal from '@/components/custom/SelectProductModal';
+import BulkItemActionsCard from '@/components/order&quotations/BulkItemActionsCard';
+import SelectImagesModal from '@/components/order&quotations/SelectImagesModal';
+import SelectProductModal from '@/components/order&quotations/SelectProductModal';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCompanies } from '@/hooks/useCompany';

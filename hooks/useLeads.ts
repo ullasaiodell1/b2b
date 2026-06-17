@@ -1,8 +1,6 @@
-import { updateLeadsState } from '@/components/LeadState';
 import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, getLeadTags, updateLead } from '@/services/api/leads';
 import { getUsers } from '@/services/api/users';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 
 export const leadKeys = {
   all: ['leads'] as const,
@@ -15,6 +13,29 @@ export const leadKeys = {
   users: () => [...leadKeys.all, 'users'] as const,
   tags: () => [...leadKeys.all, 'tags'] as const,
 };
+
+// ── READ ───────────────────────────────────────────────────────────
+export function useLeads(params?: any) {
+  const query = useQuery({
+    queryKey: leadKeys.leadFilter(params),
+    queryFn: async () => {
+      const response = await getLeads(params);
+      console.log('[useLeads] Raw response type:', typeof response, Array.isArray(response));
+      console.log('[useLeads] Raw response keys:', response ? Object.keys(response) : 'null');
+      let rawData: any[] = [];
+      if (Array.isArray(response)) {
+        rawData = response;
+      } else if (Array.isArray(response?.data)) {
+        rawData = response.data;
+      } else if (Array.isArray(response?.data?.data)) {
+        rawData = response.data.data;
+      }
+      console.log('[useLeads] rawData length:', rawData.length);
+      return rawData;
+    },
+  });
+  return query;
+}
 
 export function useLeadDetails(id: string) {
   return useQuery({
@@ -49,23 +70,12 @@ export function useLeadSources() {
   });
 }
 
-export function useUpdateLead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateLead(id, data),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
-    }
-  });
-}
-
-export function useDeleteLead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteLead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+export function useLeadTags() {
+  return useQuery({
+    queryKey: leadKeys.tags(),
+    queryFn: async () => {
+      const res = await getLeadTags();
+      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     }
   });
 }
@@ -80,16 +90,7 @@ export function useUsers() {
   });
 }
 
-export function useLeadTags() {
-  return useQuery({
-    queryKey: leadKeys.tags(),
-    queryFn: async () => {
-      const res = await getLeadTags();
-      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-    }
-  });
-}
-
+// ── CREATE ────────────────────────────────────────────────────────
 export function useCreateLead() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -100,35 +101,25 @@ export function useCreateLead() {
   });
 }
 
-export function useLeads(params?: any) {
-  const query = useQuery({
-    queryKey: leadKeys.leadFilter(params),
-    queryFn: async () => {
-      const response = await getLeads(params);
-      console.log('[useLeads] Raw response type:', typeof response, Array.isArray(response));
-      console.log('[useLeads] Raw response keys:', response ? Object.keys(response) : 'null');
-      let rawData: any[] = [];
-      if (Array.isArray(response)) {
-        rawData = response;
-      } else if (Array.isArray(response?.data)) {
-        rawData = response.data;
-      } else if (Array.isArray(response?.data?.data)) {
-        rawData = response.data.data;
-      }
-      console.log('[useLeads] rawData length:', rawData.length);
-      return rawData;
-    },
+// ── UPDATE ────────────────────────────────────────────────────────
+export function useUpdateLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateLead(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
+    }
   });
-  useEffect(() => {
-    if (query.data) {
-      console.log('[useLeads] Query success data count:', query.data.length);
-      updateLeadsState(query.data);
+}
+
+// ── DELETE ────────────────────────────────────────────────────────
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteLead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
-  }, [query.data]);
-  useEffect(() => {
-    if (query.isError) {
-      console.error('[useLeads] Query error:', query.error);
-    }
-  }, [query.isError, query.error]);
-  return query;
+  });
 }

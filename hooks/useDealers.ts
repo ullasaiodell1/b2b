@@ -7,6 +7,7 @@ export const dealerKeys = {
   details: (id: string) => [...dealerKeys.all, 'detail', id] as const,
 };
 
+// ── READ ───────────────────────────────────────────────────────────
 export function useDealers(params?: any) {
   return useQuery({
     queryKey: dealerKeys.lists(params),

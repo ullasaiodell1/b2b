@@ -1,54 +1,18 @@
 import { OrderFilterState, OrderRecord } from '@/types/order';
 import axios from './httpRequest';
 
-export const getOrders = async (params?: any) => {
-  console.log(`[API getOrders] raw params:`, params);
-  const cleanedParams: any = {};
-  if (params) {
-    // Map standard query params
-    const allowedParams = [
-      'company_id',
-      'status',
-      'search',
-      'user_id',
-      'assigned_to_user_id',
-      'offset',
-      'limit',
-      'payment_status',
-      'order_type',
-      'source_type',
-      'dealer_id',
-      'lead_id',
-      'startDate',
-      'endDate',
-      'sort_by',
-      'sort_direction'
-    ];
-
-    allowedParams.forEach((key) => {
-      if (params[key] !== undefined && params[key] !== null && String(params[key]).trim() !== '') {
-        cleanedParams[key] = params[key];
-      }
-    });
-
-    // Custom mapping for dates if passed in range
-    if (params.dateRange && params.dateRange.trim() !== '') {
-      cleanedParams.dateRange = params.dateRange;
-    }
-  }
-  console.log(`[API getOrders] cleaned params sent to axios:`, cleanedParams);
-  const res = await axios({
+// GET /orders — list orders
+export const getOrders = (params?: any) => {
+  return axios({
     method: 'GET',
     url: `/orders`,
-    params: cleanedParams
+    params
   });
-  console.log(`[API getOrders] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const getOrderDetails = async (id: string, params?: { limit?: number; offset?: number }) => {
-  console.log(`[API getOrderDetails] ID: ${id}, params:`, params);
-  const res = await axios({
+// GET /orders/:id — get order details
+export const getOrderDetails = (id: string, params?: { limit?: number; offset?: number }) => {
+  return axios({
     method: 'GET',
     url: `/orders/${id}`,
     params: {
@@ -56,56 +20,45 @@ export const getOrderDetails = async (id: string, params?: { limit?: number; off
       offset: params?.offset ?? 0,
     }
   });
-  console.log(`[API getOrderDetails] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const getOrderBarcodes = async (id: string) => {
-  console.log(`[API getOrderBarcodes] ID: ${id}`);
-  const res = await axios({
+// GET /orders/:id/barcodes — get order barcodes
+export const getOrderBarcodes = (id: string) => {
+  return axios({
     method: 'GET',
     url: `/orders/${id}/barcodes`
   });
-  console.log(`[API getOrderBarcodes] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const getInventoryReservations = async (refId: string) => {
-  console.log(`[API getInventoryReservations] ref_id: ${refId}`);
-  const res = await axios({
+// GET /inventory/reservations — get inventory reservations
+export const getInventoryReservations = (refId: string) => {
+  return axios({
     method: 'GET',
     url: `/inventory/reservations`,
     params: { ref_id: refId }
   });
-  console.log(`[API getInventoryReservations] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const createOrder = async (data: Partial<OrderRecord>) => {
-  console.log(`[API createOrder] data:`, data);
-  const res = await axios({
+// POST /orders — create order
+export const createOrder = (data: Partial<OrderRecord>) => {
+  return axios({
     method: 'POST',
     url: `/orders`,
     data
   });
-  console.log(`[API createOrder] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const updateOrder = async (id: string, data: Partial<OrderRecord>) => {
-  console.log(`[API updateOrder] ID: ${id}, data:`, data);
-  const res = await axios({
+// PUT /orders/:id — update order
+export const updateOrder = (id: string, data: Partial<OrderRecord>) => {
+  return axios({
     method: 'PUT',
     url: `/orders/${id}`,
     data
   });
-  console.log(`[API updateOrder] response:`, JSON.stringify(res));
-  return res as any;
 };
 
-export const deleteOrder = async (id: string) => {
-  console.log(`[API deleteOrder] ID: ${id}`);
-  const res = await axios({ method: 'DELETE', url: `/orders/${id}` });
-  console.log(`[API deleteOrder] response:`, JSON.stringify(res));
-  return res;
+// DELETE /orders/:id — delete order
+export const deleteOrder = (id: string) => {
+  return axios({ method: 'DELETE', url: `/orders/${id}` });
 };
+

@@ -1,10 +1,11 @@
 import axios from './httpRequest';
 
+// GET /city-state-country — get city, state, and country details
 export const getCityStateCountry = (params?: any) => {
-  console.log(`[API getCityStateCountry] params:`, params);
   return axios({
     method: 'GET',
     url: `/city-state-country`,
     params
   });
 };
+

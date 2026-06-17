@@ -1,10 +1,11 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
+import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useLeadDetails } from '@/hooks/useLeads';
 import { useUpload } from '@/hooks/useUpload';
 import { useCreateVisit } from '@/hooks/useVisits';
-import { getLeads } from '@/services/api/leads';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
@@ -65,6 +66,19 @@ export default function AddVisitScreen() {
   const [phone, setPhone] = useState('');
   const [outcomeSummary, setOutcomeSummary] = useState('');
   const [nextSteps, setNextSteps] = useState('');
+
+  // Lead Selection States
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(params.leadId || null);
+  const { data: dbLead } = useLeadDetails(selectedLeadId || '');
+  const [selectedLeadName, setSelectedLeadName] = useState<string | null>(null);
+  const [selectedLeadCompany, setSelectedLeadCompany] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (dbLead) {
+      setSelectedLeadName(dbLead.name || null);
+      setSelectedLeadCompany(dbLead.company_name || dbLead.company || null);
+    }
+  }, [dbLead]);
 
   // Location States
   const [latitude, setLatitude] = useState<number | null>(null);
@@ -221,24 +235,14 @@ export default function AddVisitScreen() {
       return;
     }
 
+    if (!selectedLeadId) {
+      Alert.alert('Required', 'Please select a Lead.');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      let targetLeadId = params.leadId;
-      if (!targetLeadId) {
-        try {
-          const leadsRes = await getLeads({ limit: 1 });
-          const firstLead = Array.isArray(leadsRes) ? leadsRes[0] : (leadsRes?.data?.[0] || leadsRes?.data?.data?.[0]);
-          if (firstLead) {
-            targetLeadId = firstLead.id;
-          }
-        } catch (err) {
-          console.error('Failed to get fallback lead:', err);
-        }
-      }
-
-      if (!targetLeadId) {
-        targetLeadId = '58da794e-9c4f-4bfb-ae79-0541a1ba3e7b';
-      }
+      const targetLeadId = selectedLeadId;
 
       let finalPhotoUri = imageUri;
       if (imageUri && !imageUri.startsWith('http')) {
@@ -338,6 +342,23 @@ export default function AddVisitScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
+
+          {/* Related Lead Selection */}
+          {!params.leadId && (
+            <View style={styles.inputGroup}>
+              <LeadSelectCard
+                selectedLeadId={selectedLeadId}
+                onSelectLead={(leadId, leadName, leadCompany) => {
+                  setSelectedLeadId(leadId);
+                  setSelectedLeadName(leadName);
+                  setSelectedLeadCompany(leadCompany);
+                }}
+                initialLeadId={params.leadId || undefined}
+                initialLeadName={selectedLeadName || undefined}
+                initialLeadCompany={selectedLeadCompany || undefined}
+              />
+            </View>
+          )}
 
           {/* Title input */}
           <View style={styles.inputGroup}>

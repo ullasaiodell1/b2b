@@ -2,6 +2,7 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useQuotations } from '@/hooks/useQuotations';
+import { QuotationFilterState } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -51,6 +52,36 @@ function formatDate(dateStr?: string) {
   }
 }
 
+function cleanQuotationParams(params?: Partial<QuotationFilterState>) {
+  const cleanedParams: any = {};
+  if (params) {
+    const allowedParams = [
+      'company_id',
+      'lead_id',
+      'dealer_id',
+      'user_id',
+      'status',
+      'search',
+      'offset',
+      'limit',
+      'startDate',
+      'endDate',
+      'exclude_dealer',
+      'dealer_only',
+      'sort_by',
+      'sort_direction'
+    ];
+
+    allowedParams.forEach((key) => {
+      const value = params[key as keyof QuotationFilterState];
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        cleanedParams[key] = value;
+      }
+    });
+  }
+  return cleanedParams;
+}
+
 export default function QuotationScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -69,7 +100,15 @@ export default function QuotationScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: quotations = [], isLoading, isFetching, refetch } = useQuotations();
+  const filterParams = React.useMemo(() => {
+    return cleanQuotationParams({
+      startDate: params.qStartDate || undefined,
+      endDate: params.qEndDate || undefined,
+      search: searchQuery || undefined,
+    });
+  }, [params.qStartDate, params.qEndDate, searchQuery]);
+
+  const { data: quotations = [], isLoading, isFetching, refetch } = useQuotations(filterParams);
 
   const handleClearFilters = () => {
     router.setParams({
@@ -304,7 +343,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
     paddingHorizontal: 10,
     paddingTop: 5,
-    paddingBottom: 10,
+    paddingBottom: 5,
     gap: 5,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -342,7 +381,7 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   tabsRow: {
     backgroundColor: COLORS.bgWhite,
-    paddingBottom: 6,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -365,14 +404,14 @@ const getStyles = (theme: any) => StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
   loaderText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
 
-  listContent: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 120, gap: 10 },
+  listContent: { paddingHorizontal: 5, paddingTop: 5, paddingBottom: 5, gap: 5 },
 
   card: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 10,
     gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

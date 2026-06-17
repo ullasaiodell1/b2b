@@ -1,4 +1,4 @@
-import { LeadRecord } from '../types/leads';
+import { LeadRecord } from '@/types/leads';
 export { LeadRecord };
 
 export const INITIAL_LEADS: LeadRecord[] = [
