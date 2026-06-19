@@ -55,7 +55,11 @@ export function useLeadStatuses() {
     queryKey: leadKeys.statuses(),
     queryFn: async () => {
       const res = await getLeadStatuses();
-      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      // Handle both flat array and paginated { data: [...] } or { data: { data: [...] } }
+      if (Array.isArray(res?.data?.data)) return res.data.data;
+      if (Array.isArray(res?.data)) return res.data;
+      if (Array.isArray(res)) return res;
+      return [];
     }
   });
 }

@@ -2,12 +2,14 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDeleteVisit, useVisitDetails } from '@/hooks/useVisits';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import { serverDetails } from '@/config';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -59,9 +61,10 @@ const DetailRow: React.FC<DetailRowProps> = ({ label, value, icon, onPressValue 
 export default function VisitDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { id: string; leadId?: string; lead_id?: string; referrer?: string }) || {};
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; leadId?: string; lead_id?: string }>();
-  console.log('[VisitDetailsScreen] Params received from router:', JSON.stringify(params));
   const insets = useSafeAreaInsets();
 
   const effectiveLeadId = params.leadId || params.lead_id || '';
@@ -70,6 +73,37 @@ export default function VisitDetailsScreen() {
   const { mutateAsync: deleteVisit } = useDeleteVisit();
 
   const visit = rawVisit || {} as any;
+
+  const handleBack = () => {
+    const resolvedLeadId = effectiveLeadId || visit.lead_id || visit.leadId || '';
+    if (params.referrer === 'lead-details' && resolvedLeadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: resolvedLeadId, activeTab: 'Overview', expandSection: 'visit' }
+      });
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        const resolvedLeadId = effectiveLeadId || visit.lead_id || visit.leadId || '';
+        if (params.referrer === 'lead-details' && resolvedLeadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: resolvedLeadId, activeTab: 'Overview', expandSection: 'visit' }
+          });
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [params.referrer, effectiveLeadId, visit.lead_id, visit.leadId])
+  );
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -167,7 +201,7 @@ export default function VisitDetailsScreen() {
               }
               await deleteVisit({ leadId: resolvedLeadId, id: params.id });
               Alert.alert('Success', 'Visit deleted successfully.', [
-                { text: 'OK', onPress: () => router.back() }
+                { text: 'OK', onPress: () => handleBack() }
               ]);
             } catch (err: any) {
               Alert.alert('Error', err?.message || 'Failed to delete visit.');
@@ -206,7 +240,7 @@ export default function VisitDetailsScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -254,26 +288,29 @@ export default function VisitDetailsScreen() {
           </View>
         )}
 
-        {/* HERO TITLE & STATUS */}
-        <View style={styles.heroCard}>
-          <Text style={styles.visitTitle}>{visit.title || 'Untitled Visit'}</Text>
-          <Text style={styles.visitCompany}>{visit.company || visit.lead_company_name || 'No Associated Company'}</Text>
+        {/* VISIT DETAILS PANEL */}
+        <View style={styles.sectionCard}>
+          {/* HERO TITLE & STATUS */}
+          <View style={styles.heroCardContent}>
+            <Text style={styles.visitTitle}>{visit.title || 'Untitled Visit'}</Text>
+            <Text style={styles.visitCompany}>{visit.company || visit.lead_company_name || 'No Associated Company'}</Text>
 
-          <View style={styles.badgeRow}>
-            <View style={[styles.badge, { backgroundColor: statusColor + '15' }]}>
-              <View style={[styles.badgeDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.badgeText, { color: statusColor }]}>{displayStatus}</Text>
-            </View>
+            <View style={styles.badgeRow}>
+              <View style={[styles.badge, { backgroundColor: statusColor + '15' }]}>
+                <View style={[styles.badgeDot, { backgroundColor: statusColor }]} />
+                <Text style={[styles.badgeText, { color: statusColor }]}>{displayStatus}</Text>
+              </View>
 
-            <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
-              <Ionicons name="briefcase-outline" size={12} color={COLORS.textMuted} style={{ marginRight: 4 }} />
-              <Text style={[styles.badgeText, { color: COLORS.textMuted }]}>{visit.visit_type || 'Site Visit'}</Text>
+              <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
+                <Ionicons name="briefcase-outline" size={12} color={COLORS.textMuted} style={{ marginRight: 4 }} />
+                <Text style={[styles.badgeText, { color: COLORS.textMuted }]}>{visit.visit_type || 'Site Visit'}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* VISIT INFORMATION ACCORDION */}
-        <View style={styles.sectionCard}>
+          <View style={styles.divider} />
+
+          {/* VISIT INFORMATION */}
           <View style={styles.sectionHeader}>
             <View style={styles.indicatorBar} />
             <Text style={styles.sectionTitleText}>VISIT INFORMATION</Text>
@@ -284,10 +321,10 @@ export default function VisitDetailsScreen() {
             <DetailRow label="Status" value={displayStatus} />
             <DetailRow label="Associated Lead" value={visit.company || visit.lead_company_name || '—'} />
           </View>
-        </View>
 
-        {/* CONTACT PERSON ACCORDION */}
-        <View style={styles.sectionCard}>
+          <View style={styles.divider} />
+
+          {/* CONTACT PERSON */}
           <View style={styles.sectionHeader}>
             <View style={styles.indicatorBar} />
             <Text style={styles.sectionTitleText}>CONTACT PERSON</Text>
@@ -302,23 +339,32 @@ export default function VisitDetailsScreen() {
             />
             <DetailRow label="Designation" value={visit.contact_person_designation || '—'} />
           </View>
-        </View>
 
-        {/* LOCATION DETAILS ACCORDION */}
-        <View style={styles.sectionCard}>
+          <View style={styles.divider} />
+
+          {/* LOCATION DETAILS */}
           <View style={styles.sectionHeader}>
             <View style={styles.indicatorBar} />
             <Text style={styles.sectionTitleText}>LOCATION DETAILS</Text>
           </View>
           <View style={styles.sectionContent}>
-            <DetailRow label="Address" value={visit.location_address || 'Not Provided'} icon="location-outline" />
+            <DetailRow
+              label="Address"
+              value={visit.location_address || 'Not Provided'}
+              icon="location-outline"
+              onPressValue={visit.location_address && visit.location_address !== 'Not Provided' ? () => {
+                const query = encodeURIComponent(visit.location_address || '');
+                const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                Linking.openURL(url);
+              } : undefined}
+            />
             <DetailRow label="Latitude" value={formatCoordinate(visit.location_latitude, true)} icon="globe-outline" />
             <DetailRow label="Longitude" value={formatCoordinate(visit.location_longitude, false)} icon="globe-outline" />
           </View>
-        </View>
 
-        {/* DESCRIPTION & OUTCOMES ACCORDION */}
-        <View style={styles.sectionCard}>
+          <View style={styles.divider} />
+
+          {/* OUTCOME & DESCRIPTION */}
           <View style={styles.sectionHeader}>
             <View style={styles.indicatorBar} />
             <Text style={styles.sectionTitleText}>OUTCOME & DESCRIPTION</Text>
@@ -328,11 +374,11 @@ export default function VisitDetailsScreen() {
               <Text style={styles.blockLabel}>Description</Text>
               <Text style={styles.blockValue}>{visit.description || '—'}</Text>
             </View>
-            <View style={[styles.blockTextContainer, { marginTop: 14 }]}>
+            <View style={[styles.blockTextContainer, { marginTop: 12 }]}>
               <Text style={styles.blockLabel}>Outcome Summary</Text>
               <Text style={styles.blockValue}>{visit.outcome_summary || '—'}</Text>
             </View>
-            <View style={[styles.blockTextContainer, { marginTop: 14 }]}>
+            <View style={[styles.blockTextContainer, { marginTop: 12 }]}>
               <Text style={styles.blockLabel}>Next Steps</Text>
               <Text style={styles.blockValue}>{visit.next_steps || '—'}</Text>
             </View>
@@ -422,7 +468,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scrollContent: {
     padding: 8,
-    gap: 5,
+    gap: 6,
   },
   imageCard: {
     height: 200,
@@ -450,34 +496,30 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.textMuted,
     fontWeight: '600',
   },
-  heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  heroCardContent: {
+    padding: 14,
   },
   visitTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     color: COLORS.textDark,
   },
   visitCompany: {
-    fontSize: 13.5,
+    fontSize: 13,
     color: COLORS.textMuted,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 3,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 14,
+    marginTop: 10,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 20,
   },
   badgeDot: {
@@ -500,8 +542,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     backgroundColor: '#FAFBFC',
@@ -520,8 +562,13 @@ const getStyles = (theme: any) => StyleSheet.create({
     letterSpacing: 0.5,
   },
   sectionContent: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
   },
   detailRow: {
     flexDirection: 'row',

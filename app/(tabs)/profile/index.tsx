@@ -5,22 +5,22 @@ import { useLogout } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,7 +30,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { profile: backendProfile, isLoading, isFetching, refetch } = useProfile();
   const logoutMutation = useLogout();
@@ -88,12 +88,11 @@ export default function ProfileScreen() {
           logoutMutation.mutate(undefined, {
             onSuccess: async () => {
               await clearAuthData();
-              router.replace('/sign-in' as any);
+              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
             },
             onError: async () => {
-              // Always clean local storage and redirect even if network request fails
               await clearAuthData();
-              router.replace('/sign-in' as any);
+              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
             }
           });
         },
@@ -144,7 +143,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.editBtnBadge}
             activeOpacity={0.8}
-            onPress={() => router.push('/profile/edit-profile' as any)}
+            onPress={() => navigation.navigate('edit-profile' as any)}
           >
             <Ionicons name="create-outline" size={16} color="#FFFFFF" />
           </TouchableOpacity>

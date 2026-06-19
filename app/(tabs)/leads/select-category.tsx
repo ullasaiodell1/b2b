@@ -2,7 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,8 +23,9 @@ export default function SelectCategoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme) as any;
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{ currentCategory?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = route.params as { currentCategory?: string } ?? {};
   const insets = useSafeAreaInsets();
 
   const { data: products = [], isLoading } = useProducts();
@@ -53,7 +54,7 @@ export default function SelectCategoryScreen() {
       ...(global as any).leadSelection,
       interestedCategory: selectedCategory,
     };
-    router.back();
+    navigation.goBack();
   };
 
   return (
@@ -64,7 +65,7 @@ export default function SelectCategoryScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

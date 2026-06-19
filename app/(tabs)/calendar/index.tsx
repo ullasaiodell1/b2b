@@ -5,7 +5,7 @@ import { useMeetings } from '@/hooks/useMeetings';
 import { useTasks } from '@/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -78,7 +78,7 @@ const getTaskStatusConfig = (status?: string) => {
 export default function CalendarScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const today = new Date();
@@ -173,12 +173,13 @@ export default function CalendarScreen() {
   const speedDialTranslation = speedDialAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
 
   // ── Handlers ──────────────────────────────────────────────
-  const handleOpenAddMeeting = () => { setIsSpeedDialOpen(false); router.push('/(tabs)/meeting/add-meeting' as any); };
-  const handleOpenAddTask = () => { setIsSpeedDialOpen(false); router.push('/(tabs)/task/add-task' as any); };
+  const handleBack = () => { navigation.goBack(); };
+  const handleOpenAddMeeting = () => { setIsSpeedDialOpen(false); navigation.navigate('meeting', { screen: 'AddMeeting' } as any); };
+  const handleOpenAddTask = () => { setIsSpeedDialOpen(false); navigation.navigate('task', { screen: 'AddTask' } as any); };
   const handleMeetingPress = (id: string) => {
-    router.push({ pathname: '/(tabs)/meeting/meeting-details', params: { id } } as any);
+    navigation.navigate('meeting', { screen: 'MeetingDetails', params: { id } } as any);
   };
-  const handleTaskPress = () => { router.push('/(tabs)/task' as any); };
+  const handleTaskPress = () => { navigation.navigate('task', { screen: 'TaskIndex' } as any); };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>

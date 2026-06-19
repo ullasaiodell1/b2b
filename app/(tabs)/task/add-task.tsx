@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Calendar from 'expo-calendar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { scheduleTaskNotification } from '@/utils/notifications';
 import {
@@ -60,8 +60,9 @@ interface UserRecord {
 export default function AddTaskScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const router = useRouter();
-  const params = useLocalSearchParams();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { [key: string]: any }) || {};
   const insets = useSafeAreaInsets();
   const primaryColor = theme.primaryColor;
 
@@ -380,7 +381,7 @@ export default function AddTaskScreen() {
         await syncToSystemCalendar(title.trim(), description.trim(), dueDateObj);
       }
 
-      router.back();
+      navigation.goBack();
     } catch (err: any) {
       console.error('[AddTask] save error:', err);
       Alert.alert('Error', err?.message || `Failed to ${id ? 'update' : 'create'} task. Please try again.`);
@@ -404,7 +405,7 @@ export default function AddTaskScreen() {
 
       {/* ── HEADER ──────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

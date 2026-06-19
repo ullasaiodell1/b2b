@@ -3,7 +3,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -43,7 +43,7 @@ export default function CallFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [fromDate, setFromDate] = useState<Date | null>(() => {
@@ -86,7 +86,7 @@ export default function CallFilterScreen() {
       status: selectedStatus,
       dateRange: finalRange,
     });
-    router.back();
+    navigation.goBack();
   };
 
   return (
@@ -97,7 +97,7 @@ export default function CallFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -200,7 +200,7 @@ export default function CallFilterScreen() {
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 12, 18) }]}>
         <TouchableOpacity
           style={styles.cancelBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>

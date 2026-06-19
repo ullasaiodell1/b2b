@@ -20,6 +20,7 @@ import { useUsersCombobox } from '@/hooks/useUsers';
 import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -211,6 +212,7 @@ export default function AddOrderScreen() {
     });
   };
 
+  const navigation = useNavigation();
   const router = useRouter();
   const params = useLocalSearchParams<{
     referrer?: string;
@@ -224,12 +226,9 @@ export default function AddOrderScreen() {
 
   const handleBack = () => {
     if (referrer === 'lead-details' && params.leadId) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
-        params: { id: params.leadId }
-      });
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: params.leadId, activeTab: 'Order' } });
     } else {
-      router.back();
+      (navigation as any).goBack();
     }
   };
 
@@ -237,10 +236,7 @@ export default function AddOrderScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (referrer === 'lead-details' && params.leadId) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
-            params: { id: params.leadId }
-          });
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: params.leadId, activeTab: 'Order' } });
           return true;
         }
         return false;

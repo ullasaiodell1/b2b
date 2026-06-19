@@ -2,9 +2,8 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getCompanies } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,9 +33,9 @@ export default function SelectCompanyScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
   const navigation = useNavigation<any>();
-  const params = useLocalSearchParams<any>();
+  const route = useRoute<any>();
+  const params = route.params ?? {};
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState(params.currentCompany || '');
@@ -86,7 +85,7 @@ export default function SelectCompanyScreen() {
       ...(global as any).leadSelection,
       company: selectedCompany,
     };
-    router.back();
+    navigation.goBack();
   };
 
   return (
@@ -97,7 +96,7 @@ export default function SelectCompanyScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

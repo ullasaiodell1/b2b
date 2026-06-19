@@ -1,9 +1,9 @@
+import React, { useEffect, useRef, useState } from 'react';
 import { attendanceState, updateAttendanceState } from '@/components/attendance/AttendanceState';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   Animated,
   Dimensions,
@@ -21,8 +21,9 @@ const { width } = Dimensions.get('window');
 const REAL_SELFIE_URL = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop';
 
 export default function SelfieScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ mode: 'in' | 'out' }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params ?? {}) as { mode?: 'in' | 'out' };
   const mode = params.mode ?? 'in';
   const isIn = mode === 'in';
 
@@ -168,7 +169,7 @@ export default function SelfieScreen() {
 
       // Auto dismiss back to attendance screen
       setTimeout(() => {
-        router.back();
+        navigation.goBack();
       }, 1500);
     });
   };
@@ -232,7 +233,7 @@ export default function SelfieScreen() {
       </View>
 
       {/* ── TOP CONTROLS ───────────────────────────── */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
         <Ionicons name="close" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 

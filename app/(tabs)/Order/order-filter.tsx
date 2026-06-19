@@ -2,7 +2,7 @@ import { activeOrderFilter, updateOrderFilterState } from '@/components/order&qu
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
   BackHandler,
@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 const STATUS_MAP_UI = {
   'Complete': 'Complete',
@@ -36,18 +37,16 @@ const STATUS_MAP_BACKEND = {
 const FILTER_OPTIONS = ['Complete', 'Process', 'Pending', 'Out Of Delivery', 'Cancel'];
 
 export default function OrderFilterScreen() {
+  const navigation = useNavigation();
   const router = useRouter();
   const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     if (referrer === 'lead-details' && leadId) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
-        params: { id: leadId }
-      });
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Order' } });
     } else {
-      router.back();
+      navigation.goBack();
     }
   };
 
@@ -55,10 +54,7 @@ export default function OrderFilterScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (referrer === 'lead-details' && leadId) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
-            params: { id: leadId }
-          });
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Order' } });
           return true;
         }
         return false;
@@ -108,10 +104,11 @@ export default function OrderFilterScreen() {
         pathname: '/(tabs)/leads/lead-details',
         params: {
           id: leadId,
+          activeTab: 'Order',
           oStatus: backendStatus || '',
           oStartDate: startDate ? startDate.toISOString() : '',
           oEndDate: endDate ? endDate.toISOString() : '',
-          oFilterApplied: 'true'
+          oFilterApplied: 'true',
         }
       });
     } else {
@@ -132,201 +129,201 @@ export default function OrderFilterScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+    <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
-      {/* ── 1. HEADER ROW ─────────────────────────── */}
-      <View style={[s.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>ORDER FILTER</Text>
-      </View>
-
-      {/* ── 2. SCROLLABLE FILTER CONTROLS ─────────── */}
-      <ScrollView
-        style={s.scroll}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Reset Panel */}
-        <View style={s.panelHeader}>
-          <Text style={s.panelTitle}>Filters</Text>
-          <TouchableOpacity onPress={handleResetAll} activeOpacity={0.7}>
-            <Text style={s.resetAllText}>Reset All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Section: Date */}
-        <View style={s.section}>
-          <View style={s.sectionHeaderRow}>
-            <Text style={s.sectionLabel}>Date</Text>
-            <View style={s.sectionLine} />
-          </View>
-
-          <View style={s.dateFilterRow}>
-            <TouchableOpacity
-              style={s.dropdownBox}
-              onPress={() => setShowStartPicker(true)}
-              activeOpacity={0.8}
-            >
-              <View>
-                <Text style={s.dateLabelText}>Start Date</Text>
-                <Text style={s.dropdownText}>{formatDateShort(startDate)}</Text>
-              </View>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.dropdownBox}
-              onPress={() => setShowEndPicker(true)}
-              activeOpacity={0.8}
-            >
-              <View>
-                <Text style={s.dateLabelText}>End Date</Text>
-                <Text style={s.dropdownText}>{formatDateShort(endDate)}</Text>
-              </View>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={s.resetBtnFull} onPress={handleResetDateOnly} activeOpacity={0.8}>
-            <Text style={s.resetText}>Reset Range</Text>
-            <Ionicons name="reload-outline" size={14} color={COLORS.textDark} style={s.resetIcon} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section: Order Status */}
-        <View style={s.section}>
-          <View style={s.sectionHeaderRow}>
-            <Text style={s.sectionLabel}>Order Status</Text>
-            <View style={s.sectionLine} />
-          </View>
-
-          <View style={s.statusList}>
-            {FILTER_OPTIONS.map((status) => {
-              const isActive = selectedStatus === status;
-              return (
-                <TouchableOpacity
-                  key={status}
-                  style={[s.statusCard, isActive && s.statusCardActive]}
-                  onPress={() => setSelectedStatus(isActive ? '' : status)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[s.statusCardText, isActive && s.statusCardTextActive]}>
-                    {status}
-                  </Text>
-
-                  <View style={[s.checkboxCircle, isActive && s.checkboxCircleActive]}>
-                    {isActive && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* ── 3. BOTTOM BUTTON PANEL ───────────────── */}
-      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 12, 20) }]}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={[s.footerBtn, s.cancelBtn]}
-          activeOpacity={0.8}
-        >
-          <Text style={s.cancelBtnText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleApplyFilter}
-          style={[s.footerBtn, s.applyBtn]}
-          activeOpacity={0.8}
-        >
-          <Text style={s.applyBtnText}>Apply Filter</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── SYSTEM DATE PICKERS ─────────────────────── */}
-      {showStartPicker && (
-        Platform.OS === 'ios' ? (
-          <Modal transparent animationType="fade" visible={showStartPicker}>
-            <TouchableOpacity
-              style={s.calendarOverlay}
-              activeOpacity={1}
-              onPress={() => setShowStartPicker(false)}
-            >
-              <View style={s.calendarContent}>
-                <DateTimePicker
-                  value={startDate}
-                  mode="date"
-                  display="inline"
-                  onChange={(event: any, selectedDate?: Date) => {
-                    if (selectedDate) setStartDate(selectedDate);
-                  }}
-                />
-                <TouchableOpacity
-                  style={[s.saveBtn, { marginTop: 10 }]}
-                  onPress={() => setShowStartPicker(false)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={s.saveBtnText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        ) : (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display="default"
-            onChange={(event: any, selectedDate?: Date) => {
-              setShowStartPicker(false);
-              if (selectedDate) setStartDate(selectedDate);
-            }}
-          />
-        )
-      )}
-
-      {showEndPicker && (
-        Platform.OS === 'ios' ? (
-          <Modal transparent animationType="fade" visible={showEndPicker}>
-            <TouchableOpacity
-              style={s.calendarOverlay}
-              activeOpacity={1}
-              onPress={() => setShowEndPicker(false)}
-            >
-              <View style={s.calendarContent}>
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display="inline"
-                  onChange={(event: any, selectedDate?: Date) => {
-                    if (selectedDate) setEndDate(selectedDate);
-                  }}
-                />
-                <TouchableOpacity
-                  style={[s.saveBtn, { marginTop: 10 }]}
-                  onPress={() => setShowEndPicker(false)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={s.saveBtnText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        ) : (
-          <DateTimePicker
-            value={endDate}
-            mode="date"
-            display="default"
-            onChange={(event: any, selectedDate?: Date) => {
-              setShowEndPicker(false);
-              if (selectedDate) setEndDate(selectedDate);
-            }}
-          />
-        )
-      )}
-
+    {/* ── 1. HEADER ROW ─────────────────────────── */}
+    <View style={[s.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
+      <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.8}>
+        <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
+      </TouchableOpacity>
+      <Text style={s.headerTitle}>ORDER FILTER</Text>
     </View>
-  );
+
+    {/* ── 2. SCROLLABLE FILTER CONTROLS ─────────── */}
+    <ScrollView
+      style={s.scroll}
+      contentContainerStyle={s.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Reset Panel */}
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>Filters</Text>
+        <TouchableOpacity onPress={handleResetAll} activeOpacity={0.7}>
+          <Text style={s.resetAllText}>Reset All</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Section: Date */}
+      <View style={s.section}>
+        <View style={s.sectionHeaderRow}>
+          <Text style={s.sectionLabel}>Date</Text>
+          <View style={s.sectionLine} />
+        </View>
+
+        <View style={s.dateFilterRow}>
+          <TouchableOpacity
+            style={s.dropdownBox}
+            onPress={() => setShowStartPicker(true)}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={s.dateLabelText}>Start Date</Text>
+              <Text style={s.dropdownText}>{formatDateShort(startDate)}</Text>
+            </View>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.dropdownBox}
+            onPress={() => setShowEndPicker(true)}
+            activeOpacity={0.8}
+          >
+            <View>
+              <Text style={s.dateLabelText}>End Date</Text>
+              <Text style={s.dropdownText}>{formatDateShort(endDate)}</Text>
+            </View>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={s.resetBtnFull} onPress={handleResetDateOnly} activeOpacity={0.8}>
+          <Text style={s.resetText}>Reset Range</Text>
+          <Ionicons name="reload-outline" size={14} color={COLORS.textDark} style={s.resetIcon} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Section: Order Status */}
+      <View style={s.section}>
+        <View style={s.sectionHeaderRow}>
+          <Text style={s.sectionLabel}>Order Status</Text>
+          <View style={s.sectionLine} />
+        </View>
+
+        <View style={s.statusList}>
+          {FILTER_OPTIONS.map((status) => {
+            const isActive = selectedStatus === status;
+            return (
+              <TouchableOpacity
+                key={status}
+                style={[s.statusCard, isActive && s.statusCardActive]}
+                onPress={() => setSelectedStatus(isActive ? '' : status)}
+                activeOpacity={0.85}
+              >
+                <Text style={[s.statusCardText, isActive && s.statusCardTextActive]}>
+                  {status}
+                </Text>
+
+                <View style={[s.checkboxCircle, isActive && s.checkboxCircleActive]}>
+                  {isActive && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </ScrollView>
+
+    {/* ── 3. BOTTOM BUTTON PANEL ───────────────── */}
+    <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 12, 20) }]}>
+      <TouchableOpacity
+        onPress={handleBack}
+        style={[s.footerBtn, s.cancelBtn]}
+        activeOpacity={0.8}
+      >
+        <Text style={s.cancelBtnText}>Cancel</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={handleApplyFilter}
+        style={[s.footerBtn, s.applyBtn]}
+        activeOpacity={0.8}
+      >
+        <Text style={s.applyBtnText}>Apply Filter</Text>
+      </TouchableOpacity>
+    </View>
+
+    {/* ── SYSTEM DATE PICKERS ─────────────────────── */}
+    {showStartPicker && (
+      Platform.OS === 'ios' ? (
+        <Modal transparent animationType="fade" visible={showStartPicker}>
+          <TouchableOpacity
+            style={s.calendarOverlay}
+            activeOpacity={1}
+            onPress={() => setShowStartPicker(false)}
+          >
+            <View style={s.calendarContent}>
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display="inline"
+                onChange={(event: any, selectedDate?: Date) => {
+                  if (selectedDate) setStartDate(selectedDate);
+                }}
+              />
+              <TouchableOpacity
+                style={[s.saveBtn, { marginTop: 10 }]}
+                onPress={() => setShowStartPicker(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={s.saveBtnText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      ) : (
+        <DateTimePicker
+          value={startDate}
+          mode="date"
+          display="default"
+          onChange={(event: any, selectedDate?: Date) => {
+            setShowStartPicker(false);
+            if (selectedDate) setStartDate(selectedDate);
+          }}
+        />
+      )
+    )}
+
+    {showEndPicker && (
+      Platform.OS === 'ios' ? (
+        <Modal transparent animationType="fade" visible={showEndPicker}>
+          <TouchableOpacity
+            style={s.calendarOverlay}
+            activeOpacity={1}
+            onPress={() => setShowEndPicker(false)}
+          >
+            <View style={s.calendarContent}>
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display="inline"
+                onChange={(event: any, selectedDate?: Date) => {
+                  if (selectedDate) setEndDate(selectedDate);
+                }}
+              />
+              <TouchableOpacity
+                style={[s.saveBtn, { marginTop: 10 }]}
+                onPress={() => setShowEndPicker(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={s.saveBtnText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      ) : (
+        <DateTimePicker
+          value={endDate}
+          mode="date"
+          display="default"
+          onChange={(event: any, selectedDate?: Date) => {
+            setShowEndPicker(false);
+            if (selectedDate) setEndDate(selectedDate);
+          }}
+        />
+      )
+    )}
+
+  </View>
+);
 }
 
 const s = StyleSheet.create({

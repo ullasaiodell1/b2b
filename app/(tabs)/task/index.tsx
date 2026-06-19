@@ -4,7 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { TaskRecord } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -30,14 +30,15 @@ export default function TaskScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as {
     leadId?: string;
     leadName?: string;
     company?: string;
     phone?: string;
     email?: string;
-  }>();
+  }) || {};
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
@@ -152,8 +153,8 @@ export default function TaskScreen() {
         showBack={!!params.leadId}
         onBackPress={() => {
           if (params.leadId) {
-            router.push({
-              pathname: '/(tabs)/leads/lead-details',
+            navigation.navigate('leads', {
+              screen: 'lead-details',
               params: {
                 id: params.leadId,
                 name: params.leadName,
@@ -161,9 +162,9 @@ export default function TaskScreen() {
                 phone: params.phone,
                 email: params.email,
               }
-            } as any);
+            });
           } else {
-            router.back();
+            navigation.goBack();
           }
         }}
       />
@@ -198,7 +199,7 @@ export default function TaskScreen() {
               <TouchableOpacity
                 style={styles.filterBtn}
                 activeOpacity={0.8}
-                onPress={() => router.push('/(tabs)/task/task-filter' as any)}
+                onPress={() => navigation.navigate('task-filter')}
               >
                 <Ionicons name="funnel-outline" size={16} color={COLORS.textDark} />
                 <Text style={styles.filterBtnText}>Filters</Text>
@@ -254,21 +255,18 @@ export default function TaskScreen() {
                       key={task.id}
                       style={styles.taskCard}
                       activeOpacity={0.9}
-                      onPress={() => router.push({
-                        pathname: '/(tabs)/task/task-details',
-                        params: {
-                          id: task.id,
-                          title: task.title,
-                          due: formattedDue,
-                          due_date: task.due_date,
-                          priority: getDisplayPriority(task.priority),
-                          status: displayStatus,
-                          description: task.description || '',
-                          assigned_to: task.assigned_to || '',
-                          assigned_to_name: task.assigned_to_fullname || task.assigned_to_name || '',
-                          lead_id: task.lead_id || '',
-                        }
-                      } as any)}
+                      onPress={() => navigation.navigate('task-details', {
+                        id: task.id,
+                        title: task.title,
+                        due: formattedDue,
+                        due_date: task.due_date,
+                        priority: getDisplayPriority(task.priority),
+                        status: displayStatus,
+                        description: task.description || '',
+                        assigned_to: task.assigned_to || '',
+                        assigned_to_name: task.assigned_to_fullname || task.assigned_to_name || '',
+                        lead_id: task.lead_id || '',
+                      })}
                     >
                       {/* Header Row: Checkbox, Title, Status */}
                       <View style={styles.cardHeader}>
@@ -299,11 +297,11 @@ export default function TaskScreen() {
                       {/* Meta details */}
                       <View style={styles.cardMeta}>
                         <View style={styles.metaRow}>
-                          <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
+                          <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
                           <Text style={styles.metaText}>{formattedDue}</Text>
                         </View>
-                        <View style={[styles.metaRow, { marginTop: 4 }]}>
-                          <Ionicons name="close-circle-outline" size={15} color={priorityConfig.color} />
+                        <View style={styles.metaRow}>
+                          <Ionicons name="close-circle-outline" size={14} color={priorityConfig.color} />
                           <Text style={[styles.metaText, { color: priorityConfig.color }]}>
                             {getDisplayPriority(task.priority)}
                           </Text>
@@ -322,13 +320,10 @@ export default function TaskScreen() {
       <TouchableOpacity
         style={[styles.fab, { bottom: Math.max(insets.bottom + 90, 100) }]}
         activeOpacity={0.85}
-        onPress={() => router.push({
-          pathname: '/(tabs)/task/add-task',
-          params: {
-            leadId: params.leadId || '',
-            leadName: params.leadName || '',
-          }
-        } as any)}
+        onPress={() => navigation.navigate('add-task', {
+          leadId: params.leadId || '',
+          leadName: params.leadName || '',
+        })}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </TouchableOpacity>
@@ -455,7 +450,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
+    padding: 10,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -476,6 +471,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.textDark,
+    marginRight: 8,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
@@ -498,8 +494,11 @@ const getStyles = (theme: any) => StyleSheet.create({
 
   // Meta info
   cardMeta: {
-    paddingLeft: 30,
-    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingLeft: 32,
+    marginTop: 4,
   },
   metaRow: {
     flexDirection: 'row',

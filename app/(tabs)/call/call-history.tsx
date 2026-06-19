@@ -5,7 +5,8 @@ import { useCalls } from '@/hooks/useCalls';
 import { CallRecord } from '@/types/call';
 import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -64,7 +65,7 @@ function formatCallLog(item: any, leadInfo: { name: string; phone: string }): Ca
 export default function CallHistoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const params = useLocalSearchParams<{ leadId?: string; leadName?: string }>();
 
   const [activeTab, setActiveTab] = useState<CallType>('All');

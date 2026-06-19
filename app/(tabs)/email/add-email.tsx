@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -27,18 +27,19 @@ export default function AddEmailScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const { referrer, leadId } = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { referrer, leadId } = route.params ?? {};
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     if (referrer === 'lead-details' && leadId) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
+      navigation.navigate('leads', {
+        screen: 'lead-details',
         params: { id: leadId }
-      });
+      } as any);
     } else {
-      router.back();
+      navigation.goBack();
     }
   };
 
@@ -46,10 +47,10 @@ export default function AddEmailScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (referrer === 'lead-details' && leadId) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
+          navigation.navigate('leads', {
+            screen: 'lead-details',
             params: { id: leadId }
-          });
+          } as any);
           return true;
         }
         return false;

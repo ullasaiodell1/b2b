@@ -6,20 +6,21 @@ import { useCalls } from '@/hooks/useCalls';
 import { CallRecord } from '@/types/call';
 import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -70,7 +71,7 @@ export default function CallHistoryScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const params = useLocalSearchParams<{
     leadId?: string;
     leadName?: string;
@@ -216,8 +217,8 @@ export default function CallHistoryScreen() {
         showBack={!!params.leadId}
         onBackPress={() => {
           if (params.leadId) {
-            router.push({
-              pathname: '/(tabs)/leads/lead-details',
+            navigation.navigate('leads', {
+              screen: 'lead-details',
               params: {
                 id: params.leadId,
                 name: params.leadName,
@@ -227,7 +228,7 @@ export default function CallHistoryScreen() {
               }
             } as any);
           } else {
-            router.back();
+            navigation.goBack();
           }
         }}
       />
@@ -273,7 +274,7 @@ export default function CallHistoryScreen() {
 
           <TouchableOpacity
             style={[styles.filterBtn, !!filters.status && styles.filterBtnActive]}
-            onPress={() => router.push('/(tabs)/call/call-filter' as any)}
+            onPress={() => navigation.navigate('call-filter' as any)}
             activeOpacity={0.8}
           >
             <Ionicons name="funnel-outline" size={16} color={filters.status ? theme.primaryColor : COLORS.textDark} style={{ marginRight: 6 }} />

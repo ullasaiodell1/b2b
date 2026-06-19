@@ -14,6 +14,9 @@ export function useProducts(params?: any) {
     queryKey: productKeys.productFilter(params),
     queryFn: async () => {
       const res = await listAllProducts(params) as any;
+      if (Array.isArray(res?.data)) {
+        return res.data;
+      }
       return res?.data?.products || res?.products || [];
     },
   });

@@ -1,16 +1,18 @@
+import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useOrderDetails } from '@/hooks/useOrders';
 import { getAuthToken } from '@/utils/storage';
-import { serverDetails } from '@/config';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -36,12 +38,34 @@ const DOCUMENTS = [
 export default function OrderDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-
+  const navigation = useNavigation();
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{ id: string; referrer?: string; leadId?: string }>();
+  const { id, referrer, leadId } = params;
   const insets = useSafeAreaInsets();
 
-  const id = params.id as string;
+  const handleBack = () => {
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Order' } });
+    } else {
+      (navigation as any).goBack();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details' && leadId) {
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Order' } });
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer, leadId])
+  );
   const { data: order, isLoading } = useOrderDetails(id);
 
   const [downloading, setDownloading] = useState(false);
@@ -150,7 +174,7 @@ export default function OrderDetailsScreen() {
 
       {/* ── 1. HEADER ROW ─────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>

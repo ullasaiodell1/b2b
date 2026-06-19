@@ -2,8 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUsers } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -31,9 +30,9 @@ export default function SelectOwnerScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
   const navigation = useNavigation<any>();
-  const params = useLocalSearchParams<any>();
+  const route = useRoute<any>();
+  const params = route.params ?? {};
   const insets = useSafeAreaInsets();
 
   const { data: usersData } = useUsers();
@@ -65,7 +64,7 @@ export default function SelectOwnerScreen() {
       owner: selectedOwnerName,
       ownerId: selectedOwnerId,
     };
-    router.back();
+    navigation.goBack();
   };
 
   return (
@@ -76,7 +75,7 @@ export default function SelectOwnerScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

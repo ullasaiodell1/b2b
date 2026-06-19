@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 
 export default function AddCallScreen() {
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   useEffect(() => {
-    router.back();
+    navigation.goBack();
   }, []);
   return <View />;
 }

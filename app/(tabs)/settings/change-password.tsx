@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -21,7 +21,7 @@ export default function ChangePasswordScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -50,7 +50,7 @@ export default function ChangePasswordScreen() {
       {
         text: 'OK',
         onPress: () => {
-          router.back();
+          navigation.goBack();
         },
       },
     ]);
@@ -66,7 +66,7 @@ export default function ChangePasswordScreen() {
 
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

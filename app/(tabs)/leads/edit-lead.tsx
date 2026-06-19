@@ -1,11 +1,10 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeadDetails, useUpdateLead, useLeadSources, useLeadStatuses, useLeadTags, useUsers } from '@/hooks/useLeads';
+import { useLeadDetails, useLeadSources, useLeadStatuses, useLeadTags, useUpdateLead, useUsers } from '@/hooks/useLeads';
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,8 +30,9 @@ export default function EditLeadScreen() {
   const theme = useTheme();
   const styles = getStyles(theme) as any;
 
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { id } = route.params ?? {};
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { primaryColor, primaryLight } = useTheme();
@@ -402,7 +402,7 @@ export default function EditLeadScreen() {
         {
           text: 'OK', onPress: () => {
             (global as any).leadSelection = {};
-            router.replace({ pathname: '/(tabs)/leads/lead-details', params: { id } });
+            navigation.navigate('lead-details' as any, { id });
           }
         }
       ]);
@@ -429,7 +429,7 @@ export default function EditLeadScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="close" size={22} color={COLORS.textDark} />
@@ -504,9 +504,8 @@ export default function EditLeadScreen() {
             <Text style={styles.inputLabel}>Assigned To <Text style={{ color: primaryColor }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/select-owner',
-                params: { currentOwner: owner, currentOwnerId: ownerId }
+              onPress={() => navigation.navigate('select-owner' as any, {
+                currentOwner: owner, currentOwnerId: ownerId
               })}
               activeOpacity={0.85}
             >
@@ -560,9 +559,8 @@ export default function EditLeadScreen() {
             <Text style={styles.inputLabel}>Company <Text style={{ color: primaryColor }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/select-company',
-                params: { currentCompany: company }
+              onPress={() => navigation.navigate('select-company' as any, {
+                currentCompany: company
               })}
               activeOpacity={0.85}
             >
@@ -853,9 +851,8 @@ export default function EditLeadScreen() {
                 <Text style={styles.inputLabel}>Interested Category</Text>
                 <TouchableOpacity
                   style={styles.pickerTrigger}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/leads/select-category',
-                    params: { currentCategory: interestedCategory }
+                  onPress={() => navigation.navigate('select-category' as any, {
+                    currentCategory: interestedCategory
                   })}
                   activeOpacity={0.85}
                 >

@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   BackHandler,
@@ -24,18 +24,19 @@ export default function EmailFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string; referrer?: string; id?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = route.params ?? {} as { status?: string; company?: string; referrer?: string; id?: string };
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     if (params.referrer === 'lead-details' && params.id) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
+      navigation.navigate('leads', {
+        screen: 'lead-details',
         params: { id: params.id }
-      });
+      } as any);
     } else {
-      router.back();
+      navigation.goBack();
     }
   };
 
@@ -43,10 +44,10 @@ export default function EmailFilterScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (params.referrer === 'lead-details' && params.id) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
+          navigation.navigate('leads', {
+            screen: 'lead-details',
             params: { id: params.id }
-          });
+          } as any);
           return true;
         }
         return false;
@@ -69,22 +70,22 @@ export default function EmailFilterScreen() {
 
   const handleApplyFilter = () => {
     if (params.referrer === 'lead-details') {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
+      navigation.navigate('leads', {
+        screen: 'lead-details',
         params: {
           id: params.id || '',
           emailStatus: selectedStatus || '',
           emailCompany: selectedCompany !== 'Select Company' ? selectedCompany : '',
         }
-      });
+      } as any);
     } else {
-      router.push({
-        pathname: '/(tabs)/email',
+      navigation.navigate('email', {
+        screen: 'EmailIndex',
         params: {
           status: selectedStatus || '',
           company: selectedCompany !== 'Select Company' ? selectedCompany : '',
         },
-      });
+      } as any);
     }
   };
 

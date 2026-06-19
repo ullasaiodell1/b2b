@@ -33,6 +33,7 @@ export default function TabLayout() {
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="visit" options={{ href: null }} />
         <Tabs.Screen name="email" options={{ href: null }} />
+        <Tabs.Screen name="Reminder" options={{ href: null }} />
       </Tabs>
       <CustomDrawer />
     </View>

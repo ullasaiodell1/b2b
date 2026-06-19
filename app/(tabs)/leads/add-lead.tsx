@@ -4,8 +4,7 @@ import { useCreateLead, useLeadSources, useLeadStatuses, useLeadTags, useUsers }
 import { useCities, useCountries, useStates } from '@/hooks/useLocation';
 import { useProducts } from '@/hooks/useProducts';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -30,8 +29,7 @@ export default function AddLeadScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const routeParams = useLocalSearchParams<any>();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { primaryColor, primaryLight } = useTheme();
@@ -58,9 +56,9 @@ export default function AddLeadScreen() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Form States
-  const [status, setStatus] = useState('New');
+  const [status, setStatus] = useState('');
   const [source, setSource] = useState('');
-  const [priority, setPriority] = useState('Hot');
+  const [priority, setPriority] = useState('');
   const [owner, setOwner] = useState(''); // Assigned To Name
   const [ownerId, setOwnerId] = useState(''); // Assigned To ID
   const [fullname, setFullname] = useState(''); // Name
@@ -152,17 +150,17 @@ export default function AddLeadScreen() {
 
   // Sync default status & source from backend if not set
   React.useEffect(() => {
-    if (statusesData && statusesData.length > 0 && !status && !routeParams?.status) {
+    if (statusesData && statusesData.length > 0 && !status) {
       const defaultStatus = statusesData.find((s: any) => s.is_default) || statusesData[0];
       setStatus(defaultStatus.name);
     }
-  }, [statusesData, routeParams?.status]);
+  }, [statusesData]);
 
   React.useEffect(() => {
-    if (sourcesData && sourcesData.length > 0 && !source && !routeParams?.source) {
+    if (sourcesData && sourcesData.length > 0 && !source) {
       setSource(sourcesData[0].name);
     }
-  }, [sourcesData, routeParams?.source]);
+  }, [sourcesData]);
 
   // Fetch Country, State, City options from API
   const { data: countriesData } = useCountries(activePicker === 'country' ? debouncedSearchQuery : '');
@@ -180,109 +178,6 @@ export default function AddLeadScreen() {
   const { data: citiesData } = useCities(effectiveStateId, activePicker === 'city' ? debouncedSearchQuery : '');
   const citiesList = React.useMemo(() => Array.isArray(citiesData) ? citiesData : (citiesData?.data || []), [citiesData]);
 
-  // Ref to track last parsed routeParams string to prevent reset loops on typing
-  const lastParamsStringRef = React.useRef('');
-  const currentParamsString = JSON.stringify(routeParams || {});
-
-  React.useEffect(() => {
-    if (currentParamsString !== lastParamsStringRef.current) {
-      lastParamsStringRef.current = currentParamsString;
-
-      if (routeParams.owner !== undefined) {
-        setOwner(prev => routeParams.owner !== prev ? routeParams.owner : prev);
-      }
-      if (routeParams.ownerId !== undefined) {
-        setOwnerId(prev => routeParams.ownerId !== prev ? routeParams.ownerId : prev);
-      }
-      if (routeParams.company !== undefined) {
-        setCompany(prev => routeParams.company !== prev ? routeParams.company : prev);
-      }
-      if (routeParams.fullname !== undefined) {
-        setFullname(prev => routeParams.fullname !== prev ? routeParams.fullname : prev);
-      }
-      if (routeParams.email !== undefined) {
-        setEmail(prev => routeParams.email !== prev ? routeParams.email : prev);
-      }
-      if (routeParams.phone !== undefined) {
-        setPhone(prev => routeParams.phone !== prev ? routeParams.phone : prev);
-      }
-      if (routeParams.status !== undefined) {
-        setStatus(prev => routeParams.status !== prev ? routeParams.status : prev);
-      }
-      if (routeParams.source !== undefined) {
-        setSource(prev => routeParams.source !== prev ? routeParams.source : prev);
-      }
-      if (routeParams.priority !== undefined) {
-        setPriority(prev => routeParams.priority !== prev ? routeParams.priority : prev);
-      }
-      if (routeParams.tags !== undefined) {
-        const parsed = typeof routeParams.tags === 'string'
-          ? routeParams.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
-          : Array.isArray(routeParams.tags) ? routeParams.tags : [];
-        setSelectedTags(prev => {
-          const isSame = parsed.length === prev.length && parsed.every((val: string, index: number) => val === prev[index]);
-          return isSame ? prev : parsed;
-        });
-      }
-      if (routeParams.whatsapp !== undefined) {
-        setWhatsapp(prev => routeParams.whatsapp !== prev ? routeParams.whatsapp : prev);
-      }
-      if (routeParams.country !== undefined) {
-        setCountry(prev => routeParams.country !== prev ? routeParams.country : prev);
-      }
-      if (routeParams.stateName !== undefined) {
-        setStateName(prev => routeParams.stateName !== prev ? routeParams.stateName : prev);
-      }
-      if (routeParams.cityName !== undefined) {
-        setCityName(prev => routeParams.cityName !== prev ? routeParams.cityName : prev);
-      }
-      if (routeParams.pincode !== undefined) {
-        setPincode(prev => routeParams.pincode !== prev ? routeParams.pincode : prev);
-      }
-      if (routeParams.propertyType !== undefined) {
-        setPropertyType(prev => routeParams.propertyType !== prev ? routeParams.propertyType : prev);
-      }
-      if (routeParams.businessType !== undefined) {
-        setBusinessType(prev => routeParams.businessType !== prev ? routeParams.businessType : prev);
-      }
-      if (routeParams.designation !== undefined) {
-        setDesignation(prev => routeParams.designation !== prev ? routeParams.designation : prev);
-      }
-      if (routeParams.website !== undefined) {
-        setWebsite(prev => routeParams.website !== prev ? routeParams.website : prev);
-      }
-      if (routeParams.gstNo !== undefined) {
-        setGstNo(prev => routeParams.gstNo !== prev ? routeParams.gstNo : prev);
-      }
-      if (routeParams.interestedCategory !== undefined) {
-        setInterestedCategory(prev => routeParams.interestedCategory !== prev ? routeParams.interestedCategory : prev);
-      }
-      if (routeParams.panNo !== undefined) {
-        setPanNo(prev => routeParams.panNo !== prev ? routeParams.panNo : prev);
-      }
-      if (routeParams.addressLine1 !== undefined) {
-        setAddressLine1(prev => routeParams.addressLine1 !== prev ? routeParams.addressLine1 : prev);
-      }
-      if (routeParams.addressLine2 !== undefined) {
-        setAddressLine2(prev => routeParams.addressLine2 !== prev ? routeParams.addressLine2 : prev);
-      }
-      if (routeParams.expectedRevenue !== undefined) {
-        setExpectedRevenue(prev => routeParams.expectedRevenue !== prev ? routeParams.expectedRevenue : prev);
-      }
-      if (routeParams.remark !== undefined) {
-        setRemark(prev => routeParams.remark !== prev ? routeParams.remark : prev);
-      }
-      if (routeParams.emailOptOut !== undefined) {
-        const val = routeParams.emailOptOut === 'true' || routeParams.emailOptOut === true;
-        setEmailOptOut(prev => val !== prev ? val : prev);
-      }
-      if (routeParams.showAllFields !== undefined) {
-        const val = routeParams.showAllFields === 'true' || routeParams.showAllFields === true;
-        setShowAllFields(prev => val !== prev ? val : prev);
-      }
-    }
-  }, [currentParamsString]);
-
 
 
 
@@ -293,12 +188,12 @@ export default function AddLeadScreen() {
       case 'status':
         rawOptions = statusesData && statusesData.length > 0
           ? statusesData
-          : ['New', 'Contacted', 'Qualified', 'Unqualified', 'Lost'];
+          : [` `];
         break;
       case 'source':
         rawOptions = sourcesData && sourcesData.length > 0
           ? sourcesData
-          : ['Website', 'Referral', 'Social Media', 'Cold Call', 'Exhibition', 'Self', 'Reference'];
+          : [` `];
         break;
       case 'priority':
         rawOptions = ['Hot', 'Warm', 'Cold'];
@@ -355,40 +250,6 @@ export default function AddLeadScreen() {
       setInterestedCategory(val);
     }
     setActivePicker(null);
-  };
-
-  const getNavigationParams = (extra: any = {}) => {
-    return {
-      owner,
-      ownerId,
-      company,
-      fullname,
-      email,
-      phone,
-      status,
-      source,
-      priority,
-      tags: selectedTags.join(', '),
-      whatsapp,
-      country,
-      stateName,
-      cityName,
-      pincode,
-      propertyType,
-      businessType,
-      designation,
-      website,
-      gstNo,
-      interestedCategory,
-      panNo,
-      addressLine1,
-      addressLine2,
-      expectedRevenue,
-      remark,
-      emailOptOut,
-      showAllFields: showAllFields ? 'true' : 'false',
-      ...extra
-    };
   };
 
   const handleAddTag = () => {
@@ -477,8 +338,7 @@ export default function AddLeadScreen() {
       console.log('Sending lead creation payload:', JSON.stringify(payload, null, 2));
       await createLead(payload);
       Alert.alert('Success', 'Lead created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/leads') }
-      ]);
+        { text: 'OK', onPress: () => navigation.navigate('index' as any) }]);
     } catch (error: any) {
       console.error('Error creating lead:', error);
       if (error.response?.data) {
@@ -496,7 +356,7 @@ export default function AddLeadScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.replace('/(tabs)/leads')}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -571,9 +431,8 @@ export default function AddLeadScreen() {
             <Text style={styles.inputLabel}>Assigned To <Text style={{ color: primaryColor }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/select-owner',
-                params: { currentOwner: owner, currentOwnerId: ownerId }
+              onPress={() => navigation.navigate('select-owner' as any, {
+                currentOwner: owner, currentOwnerId: ownerId
               })}
               activeOpacity={0.85}
             >
@@ -627,9 +486,8 @@ export default function AddLeadScreen() {
             <Text style={styles.inputLabel}>Company <Text style={{ color: primaryColor }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
-              onPress={() => router.push({
-                pathname: '/(tabs)/leads/select-company',
-                params: { currentCompany: company }
+              onPress={() => navigation.navigate('select-company' as any, {
+                currentCompany: company
               })}
               activeOpacity={0.85}
             >
@@ -917,9 +775,8 @@ export default function AddLeadScreen() {
                 <Text style={styles.inputLabel}>Interested Category</Text>
                 <TouchableOpacity
                   style={styles.pickerTrigger}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/leads/select-category',
-                    params: { currentCategory: interestedCategory }
+                  onPress={() => navigation.navigate('select-category' as any, {
+                    currentCategory: interestedCategory
                   })}
                   activeOpacity={0.85}
                 >

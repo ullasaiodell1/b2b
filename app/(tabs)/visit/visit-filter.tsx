@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,8 +49,9 @@ export default function VisitFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string; dateRange?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { status?: string; company?: string; dateRange?: string }) || {};
   const insets = useSafeAreaInsets();
 
   // State values initialized from route params
@@ -118,13 +119,10 @@ export default function VisitFilterScreen() {
     if (fromDate && toDate) {
       finalRange = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
     }
-    router.push({
-      pathname: '/(tabs)/visit',
-      params: {
-        status: selectedStatus || '',
-        company: selectedCompany !== 'Select Company' ? selectedCompany : '',
-        dateRange: finalRange,
-      },
+    navigation.navigate('index', {
+      status: selectedStatus || '',
+      company: selectedCompany !== 'Select Company' ? selectedCompany : '',
+      dateRange: finalRange,
     });
   };
 
@@ -136,7 +134,7 @@ export default function VisitFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -270,7 +268,7 @@ export default function VisitFilterScreen() {
       <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelButtonText}>Cancel</Text>

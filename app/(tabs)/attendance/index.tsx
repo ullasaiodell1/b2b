@@ -1,28 +1,28 @@
+import {
+  attendanceState,
+  AttendanceState,
+  subscribeToAttendance,
+  updateAttendanceState,
+} from '@/components/attendance/AttendanceState';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAttendanceStatus } from '@/hooks/useAttendance';
-import {
-  attendanceState,
-  subscribeToAttendance,
-  updateAttendanceState,
-  AttendanceState,
-} from '@/components/attendance/AttendanceState';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  KeyboardAvoidingView
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,7 +101,7 @@ export default function AttendanceScreen() {
   const styles = getStyles(theme);
 
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const navigation = useNavigation<any>();
 
   const statusQuery = useAttendanceStatus();
 
@@ -121,24 +121,18 @@ export default function AttendanceScreen() {
 
   const handlePunchIn = () => {
     if (attState.stampedIn) return;
-    router.push({
-      pathname: '/camera-capture',
-      params: {
-        sourceScreen: 'Attendance',
-        attendanceAction: 'in',
-      },
-    } as any);
+    navigation.navigate('camera-capture' as never, {
+      sourceScreen: 'Attendance',
+      attendanceAction: 'in',
+    } as never);
   };
 
   const handlePunchOut = () => {
     if (!attState.stampedIn || attState.stampedOut) return;
-    router.push({
-      pathname: '/camera-capture',
-      params: {
-        sourceScreen: 'Attendance',
-        attendanceAction: 'out',
-      },
-    } as any);
+    navigation.navigate('camera-capture' as never, {
+      sourceScreen: 'Attendance',
+      attendanceAction: 'out',
+    } as never);
   };
 
   const todayStatus: AttendanceStatus = attState.stampedOut

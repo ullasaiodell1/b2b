@@ -2,22 +2,22 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { activeOrderFilter, subscribeToOrders, updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useOrders } from '@/hooks/useOrders';
+import { cleanOrderParams } from '@/utils/orderHelper';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cleanOrderParams } from '@/utils/orderHelper';
 
 const STATUS_MAP_UI = {
   'Complete': 'Complete',
@@ -29,7 +29,7 @@ const STATUS_MAP_UI = {
 
 export default function OrderScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const navigation = useNavigation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterState, setFilterState] = useState(activeOrderFilter);
@@ -112,7 +112,7 @@ export default function OrderScreen() {
 
         <TouchableOpacity
           style={[s.filterBtn, !!filterState.status && s.filterBtnActive]}
-          onPress={() => router.push('/Order/order-filter')}
+          onPress={() => (navigation as any).navigate('order-filter')}
           activeOpacity={0.8}
         >
           <Ionicons
@@ -184,10 +184,7 @@ export default function OrderScreen() {
                 style={s.card}
                 activeOpacity={0.9}
                 onPress={() => {
-                  router.push({
-                    pathname: '/Order/order-details',
-                    params: { id: order.id },
-                  });
+                  (navigation as any).navigate('order-details', { id: order.id });
                 }}
               >
                 {/* Header: ID and Date */}
@@ -201,20 +198,21 @@ export default function OrderScreen() {
 
                 {/* Details Block */}
                 <View style={s.cardBody}>
-                  {/* Company */}
-                  <View style={s.metaRow}>
-                    <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={s.metaIcon} />
-                    <Text style={s.metaTextCompany}>{order.clientName}</Text>
-                  </View>
-                  {/* Contact Person */}
-                  <View style={s.metaRow}>
-                    <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={s.metaIcon} />
-                    <Text style={s.metaText}>{order.contactPerson}</Text>
+                  {/* Company & Lead (Contact Person) side-by-side */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={[s.metaRow, { flex: 1, marginRight: 8 }]}>
+                      <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={s.metaIcon} />
+                      <Text style={s.metaTextCompany} numberOfLines={1}>{order.clientName}</Text>
+                    </View>
+                    <View style={[s.metaRow, { flex: 1, justifyContent: 'flex-end' }]}>
+                      <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={s.metaIcon} />
+                      <Text style={s.metaText} numberOfLines={1}>{order.contactPerson}</Text>
+                    </View>
                   </View>
                   {/* Location Address */}
                   <View style={s.metaRow}>
                     <Ionicons name="home-outline" size={14} color={COLORS.textMuted} style={s.metaIcon} />
-                    <Text style={s.metaText}>{order.hotelLocation}</Text>
+                    <Text style={[s.metaText, { flex: 1 }]} numberOfLines={1}>{order.hotelLocation}</Text>
                   </View>
                 </View>
 
@@ -279,7 +277,7 @@ export default function OrderScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         style={[s.fab, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => router.push('/(tabs)/Order/add-order' as any)}
+        onPress={() => (navigation as any).navigate('add-order')}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
@@ -378,7 +376,7 @@ const s = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 10,
     marginBottom: 1,
-    gap: 10,
+    gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.01,

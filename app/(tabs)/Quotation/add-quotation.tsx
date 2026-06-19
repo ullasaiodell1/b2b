@@ -10,6 +10,7 @@ import { useCreateQuotation } from '@/hooks/useQuotations';
 import { getCompanyDetails } from '@/services/api/company';
 import { CreateQuotationPayload, QuotationItem } from '@/types/quotation';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -145,6 +146,7 @@ export default function AddQuotationScreen() {
     });
   };
 
+  const navigation = useNavigation();
   const router = useRouter();
   const params = useLocalSearchParams<{
     referrer?: string;
@@ -328,12 +330,9 @@ export default function AddQuotationScreen() {
 
   const handleBack = () => {
     if (referrer === 'lead-details' && leadId) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
-        params: { id: leadId }
-      });
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
     } else {
-      router.back();
+      navigation.goBack();
     }
   };
 
@@ -341,10 +340,7 @@ export default function AddQuotationScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (referrer === 'lead-details' && leadId) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
-            params: { id: leadId }
-          });
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
           return true;
         }
         return false;

@@ -2,7 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -25,7 +25,7 @@ export default function TaskFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [priority, setPriority] = useState<PriorityType>('High');
@@ -58,7 +58,7 @@ export default function TaskFilterScreen() {
     Alert.alert(
       'Apply Filters',
       `Filters Applied:\n- Priority: ${priority}\n- Date: ${rangeStr}\n- Status: ${status}`,
-      [{ text: 'OK', onPress: () => router.back() }]
+      [{ text: 'OK', onPress: () => navigation.goBack() }]
     );
   };
 
@@ -70,7 +70,7 @@ export default function TaskFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
@@ -201,7 +201,7 @@ export default function TaskFilterScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
         <TouchableOpacity
           style={styles.cancelBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>

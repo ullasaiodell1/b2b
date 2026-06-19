@@ -1,11 +1,15 @@
 import { COLORS } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   Image,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -26,8 +30,9 @@ export default function VisitScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as {
     status?: string;
     company?: string;
     dateRange?: string;
@@ -35,8 +40,39 @@ export default function VisitScreen() {
     leadName?: string;
     phone?: string;
     email?: string;
-  }>();
+    referrer?: string;
+  }) || {};
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (params.referrer === 'lead-details' && params.leadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: params.leadId, activeTab: 'Overview', expandSection: 'visit' }
+      });
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (params.referrer === 'lead-details' && params.leadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: params.leadId, activeTab: 'Overview', expandSection: 'visit' }
+          });
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [params.referrer, params.leadId])
+  );
 
   const apiFilterParams = React.useMemo(() => {
     const p: any = {};
@@ -191,7 +227,7 @@ export default function VisitScreen() {
         title="Visit"
         showSearch={false}
         showBack={!!params.leadId}
-        onBackPress={() => router.back()}
+        onBackPress={handleBack}
       />
 
       {/* SEARCH AND FILTERS */}
@@ -214,13 +250,10 @@ export default function VisitScreen() {
 
         <TouchableOpacity
           style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
-          onPress={() => router.push({
-            pathname: '/(tabs)/visit/visit-filter',
-            params: {
-              status: params.status || '',
-              company: params.company || '',
-              dateRange: params.dateRange || '',
-            }
+          onPress={() => navigation.navigate('visit-filter', {
+            status: params.status || '',
+            company: params.company || '',
+            dateRange: params.dateRange || '',
           })}
           activeOpacity={0.8}
         >
@@ -308,7 +341,7 @@ export default function VisitScreen() {
           </ScrollView>
           <TouchableOpacity
             style={styles.clearBtn}
-            onPress={() => router.push('/(tabs)/visit')}
+            onPress={() => navigation.navigate('index', { status: undefined, company: undefined, dateRange: undefined })}
             activeOpacity={0.7}
           >
             <Text style={styles.clearBtnText}>Clear All</Text>
@@ -342,12 +375,9 @@ export default function VisitScreen() {
               key={visit.id}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => router.push({
-                pathname: '/(tabs)/visit/visit-details',
-                params: {
-                  id: visit.id,
-                  leadId: visit.lead_id || params.leadId || '',
-                }
+              onPress={() => navigation.navigate('visit-details', {
+                id: visit.id,
+                leadId: visit.lead_id || params.leadId || '',
               })}
             >
               {imgUri ? (
@@ -362,17 +392,44 @@ export default function VisitScreen() {
 
                 <View style={styles.cardRow}>
                   <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>
+                  <Text style={[styles.cardText, { flex: 1 }]} numberOfLines={1}>
                     {visit.company || visit.lead_company_name || visit.visit_type || 'Site Visit'}
                   </Text>
                 </View>
 
-                <View style={styles.cardRow}>
-                  <Ionicons name="location-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.cardText} numberOfLines={1}>
-                    {visit.location_address || 'Address Not Provided'}
-                  </Text>
-                </View>
+                {visit.contact_person_name ? (
+                  <View style={styles.cardRow}>
+                    <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                    <Text style={[styles.cardText, { flex: 1 }]} numberOfLines={1}>
+                      {visit.contact_person_name}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {visit.location_address && visit.location_address !== 'Address Not Provided' ? (
+                  <TouchableOpacity
+                    style={[styles.cardRow, { alignItems: 'flex-start' }]}
+                    activeOpacity={0.7}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      const query = encodeURIComponent(visit.location_address);
+                      const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                      Linking.openURL(url);
+                    }}
+                  >
+                    <Ionicons name="location-outline" size={14} color={theme.primaryColor} style={{ marginRight: 6, marginTop: 1 }} />
+                    <Text style={[styles.cardText, { color: theme.primaryColor, textDecorationLine: 'underline', flex: 1 }]} numberOfLines={1}>
+                      {visit.location_address}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.cardRow, { alignItems: 'flex-start' }]}>
+                    <Ionicons name="location-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6, marginTop: 1 }} />
+                    <Text style={[styles.cardText, { flex: 1 }]} numberOfLines={1}>
+                      Address Not Provided
+                    </Text>
+                  </View>
+                )}
 
                 {/* Status Row with outline circle */}
                 <View style={styles.cardRow}>
@@ -380,18 +437,6 @@ export default function VisitScreen() {
                     <View style={[styles.statusCircleDot, { backgroundColor: statusColor }]} />
                   </View>
                   <Text style={[styles.statusText, { color: statusColor }]}>{displayStatus}</Text>
-                </View>
-
-                {/* Geo Coordinates */}
-                <View style={styles.coordinatesContainer}>
-                  <View style={styles.coordinateItem}>
-                    <Ionicons name="globe-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                    <Text style={styles.coordinateText}>{formatLatitude(visit.location_latitude)}</Text>
-                  </View>
-                  <View style={styles.coordinateItem}>
-                    <Ionicons name="globe-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                    <Text style={styles.coordinateText}>{formatLongitude(visit.location_longitude)}</Text>
-                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -410,10 +455,7 @@ export default function VisitScreen() {
       {/* FLOATING ACTION BUTTON */}
       <TouchableOpacity
         style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => router.push({
-          pathname: '/(tabs)/visit/add-visit',
-          params: { leadId: params.leadId || '' }
-        })}
+        onPress={() => navigation.navigate('add-visit', { leadId: params.leadId || '' })}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
@@ -600,18 +642,18 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 12,
+    padding: 10,
   },
   cardAvatar: {
-    width: 95,
-    height: 110,
+    width: 90,
+    height: 100,
     borderRadius: 10,
     backgroundColor: '#F3F4F6',
   },
   cardInfo: {
     flex: 1,
-    marginLeft: 14,
-    gap: 4.5,
+    marginLeft: 10,
+    gap: 2.5,
   },
   cardName: {
     fontSize: 14,

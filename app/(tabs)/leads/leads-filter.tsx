@@ -2,7 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadSources, useUsers } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -25,8 +25,9 @@ export default function LeadsFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{ priority?: string; tag?: string; owner?: string; dateRange?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { priority?: string; tag?: string; owner?: string; dateRange?: string }) ?? {};
   const insets = useSafeAreaInsets();
 
   // State values initialized from active filters
@@ -71,16 +72,12 @@ export default function LeadsFilterScreen() {
   };
 
   const handleApply = () => {
-    // Navigate back to the index screen with the active filter params
-    router.push({
-      pathname: '/(tabs)/leads',
-      params: {
-        priority: priority,
-        tag: selectedIndustries.join(','),
-        owner: owner !== 'Select Owner' ? owner : '',
-        dateRange: dateRange !== 'Select Date' ? dateRange : '',
-      }
-    });
+    navigation.navigate('leads' as never, {
+      priority: priority,
+      tag: selectedIndustries.join(','),
+      owner: owner !== 'Select Owner' ? owner : '',
+      dateRange: dateRange !== 'Select Date' ? dateRange : '',
+    } as never);
   };
 
   return (
@@ -91,7 +88,7 @@ export default function LeadsFilterScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -221,7 +218,7 @@ export default function LeadsFilterScreen() {
       <View style={[styles.bottomStickyBar, { paddingBottom: Math.max(insets.bottom + 10, 16) }]}>
         <TouchableOpacity
           style={styles.cancelBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>

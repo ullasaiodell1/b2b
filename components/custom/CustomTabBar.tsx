@@ -53,13 +53,15 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const hiddenTabBarScreens = [
     'add-meeting', 'meeting-details',
     'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner', 'edit-lead', 'select-category',
+    'lead-activity', 'interested-products', 'lead-attachments', 'lead-contacts', 'add-reminder',
     'add-order', 'order-details', 'order-filter',
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
     'add-visit', 'visit-details', 'visit-filter',
     'call-filter', 'call-history',
     'edit-profile', 'change-password',
-    'theme-settings', 'notification-settings', 'help-support'
+    'theme-settings', 'notification-settings', 'help-support',
+    'ledger-filter', 'lead-ledger'
   ];
 
   if (

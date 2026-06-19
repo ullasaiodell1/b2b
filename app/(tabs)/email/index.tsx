@@ -2,7 +2,7 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView, Platform,
@@ -60,8 +60,9 @@ export default function EmailScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string; company?: string; searchQuery?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params ?? {}) as { status?: string; company?: string; searchQuery?: string };
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState(params.searchQuery || '');
@@ -126,13 +127,13 @@ export default function EmailScreen() {
 
         <TouchableOpacity
           style={[styles.filterBtn, hasActiveFilters && styles.filterBtnActive]}
-          onPress={() => router.push({
-            pathname: '/(tabs)/email/email-filter',
+          onPress={() => navigation.navigate('email', {
+            screen: 'EmailFilter',
             params: {
               status: params.status || '',
               company: params.company || '',
             }
-          })}
+          } as any)}
           activeOpacity={0.8}
         >
           <Ionicons
@@ -259,7 +260,7 @@ export default function EmailScreen() {
       {/* FAB */}
       <TouchableOpacity
         style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
-        onPress={() => router.push('/(tabs)/email/add-email')}
+        onPress={() => navigation.navigate('email', { screen: 'AddEmail' } as any)}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />

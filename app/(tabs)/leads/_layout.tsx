@@ -12,6 +12,12 @@ export default function LeadsLayout() {
       <Stack.Screen name="select-owner" options={{ title: 'Select Lead Owner' }} />
       <Stack.Screen name="select-company" options={{ title: 'Select Company' }} />
       <Stack.Screen name="select-category" options={{ title: 'Select Category' }} />
+      <Stack.Screen name="lead-activity"   options={{ title: 'Activity Log' }} />
+      <Stack.Screen name="interested-products" options={{ title: 'Interested Products' }} />
+      <Stack.Screen name="lead-attachments" options={{ title: 'Attachments' }} />
+      <Stack.Screen name="lead-contacts"    options={{ title: 'Contacts' }} />
+      <Stack.Screen name="lead-ledger"      options={{ title: 'Ledger' }} />
+      <Stack.Screen name="ledger-filter"    options={{ title: 'Ledger Filter' }} />
     </Stack>
   );
 }

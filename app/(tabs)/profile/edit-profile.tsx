@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,7 +31,7 @@ export default function EditProfileScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { profile: backendProfile, updateProfile: mutateProfile, isLoading } = useProfile();
@@ -125,12 +125,9 @@ export default function EditProfileScreen() {
   };
 
   const launchCamera = () => {
-    router.push({
-      pathname: '/camera-capture',
-      params: {
-        sourceScreen: 'edit-profile',
-        target: 'profile',
-      },
+    navigation.navigate('CameraCapture', {
+      sourceScreen: 'edit-profile',
+      target: 'profile',
     });
   };
 
@@ -235,7 +232,7 @@ export default function EditProfileScreen() {
           onSuccess: () => {
             setUpdating(false);
             Alert.alert('Success', 'Profile updated successfully!');
-            router.back();
+            navigation.goBack();
           },
           onError: (err: any) => {
             setUpdating(false);
@@ -275,7 +272,7 @@ export default function EditProfileScreen() {
 
       {/* ── HEADER ────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

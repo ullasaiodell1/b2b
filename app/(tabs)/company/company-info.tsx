@@ -3,7 +3,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { getCompanyDetails } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +23,9 @@ export default function CompanyInfoScreen() {
   const styles = getStyles(theme);
 
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { id } = route.params ?? {};
 
   const { data: companyDetails, isLoading, error } = useQuery({
     queryKey: ['companyDetails', id],
@@ -40,10 +42,10 @@ export default function CompanyInfoScreen() {
   });
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
     } else {
-      router.replace('/(tabs)/company');
+      navigation.navigate('company');
     }
   };
 

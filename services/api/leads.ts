@@ -48,7 +48,7 @@ export const getLeadStatuses = () => {
   return axios({
     method: 'GET',
     url: `/leads/lead-status`,
-    params: { combobox: true }
+    params: { offset: 0, limit: 20 }
   });
 };
 

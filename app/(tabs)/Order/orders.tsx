@@ -80,14 +80,21 @@ export default function OrderListScreen() {
         </View>
 
         <View style={styles.clientBlock}>
-          <Text style={styles.clientName}>{item.clientName}</Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.metaText}>{item.contactPerson}</Text>
+          {/* Company & Lead (Contact Person) side-by-side */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={[styles.metaRow, { flex: 1, marginRight: 8 }]}>
+              <Ionicons name="business-outline" size={13} color={COLORS.textMuted} />
+              <Text style={styles.clientName} numberOfLines={1}>{item.clientName}</Text>
+            </View>
+            <View style={[styles.metaRow, { flex: 1, justifyContent: 'flex-end' }]}>
+              <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
+              <Text style={styles.metaText} numberOfLines={1}>{item.contactPerson}</Text>
+            </View>
           </View>
+          {/* Location Address */}
           <View style={styles.metaRow}>
             <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.metaText}>{item.hotelLocation}</Text>
+            <Text style={[styles.metaText, { flex: 1 }]} numberOfLines={1}>{item.hotelLocation}</Text>
           </View>
         </View>
 
@@ -296,7 +303,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 12,
+    gap: 6,
   },
   cardHeader: {
     flexDirection: 'row',

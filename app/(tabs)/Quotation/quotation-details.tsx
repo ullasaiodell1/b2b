@@ -5,13 +5,15 @@ import { useQuotationDetails, useUpdateQuotationStatus } from '@/hooks/useQuotat
 import { QuotationItem } from '@/types/quotation';
 import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -59,9 +61,33 @@ export default function QuotationDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
+  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, referrer, leadId } = useLocalSearchParams<{ id: string; referrer?: string; leadId?: string }>();
+
+  const handleBack = () => {
+    if (referrer === 'lead-details' && leadId) {
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
+    } else {
+      (navigation as any).goBack();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (referrer === 'lead-details' && leadId) {
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [referrer, leadId])
+  );
 
   const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
   const updateStatusMutation = useUpdateQuotationStatus();
@@ -167,7 +193,7 @@ export default function QuotationDetailsScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>No quotation ID provided.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnSmall}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtnSmall}>
           <Text style={styles.backBtnSmallText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -190,7 +216,7 @@ export default function QuotationDetailsScreen() {
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
         <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
         <Text style={styles.errorText}>Failed to load quotation details.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnSmall}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtnSmall}>
           <Text style={styles.backBtnSmallText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -223,7 +249,7 @@ export default function QuotationDetailsScreen() {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={24} color={COLORS.textDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>

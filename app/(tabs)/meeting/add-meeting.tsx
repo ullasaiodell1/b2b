@@ -1,13 +1,14 @@
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
+import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCreateMeeting } from '@/hooks/useMeetings';
-import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
 import { scheduleMeetingNotification } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -38,7 +39,7 @@ export default function AddMeetingScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ leadId?: string; leadName?: string; company?: string }>();
   const insets = useSafeAreaInsets();
   const createMeetingMutation = useCreateMeeting();
@@ -150,7 +151,7 @@ export default function AddMeetingScreen() {
         console.warn('Failed to schedule meeting notification:', notiErr);
       }
 
-      router.back();
+      navigation.goBack();
     } catch (err: any) {
       console.error('[AddMeeting] save error:', err);
       Alert.alert('Error', err?.message || 'Failed to save meeting. Please try again.');
@@ -167,7 +168,7 @@ export default function AddMeetingScreen() {
       <View style={[styles.header, {
         paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16),
       }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

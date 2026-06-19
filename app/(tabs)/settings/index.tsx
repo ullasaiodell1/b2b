@@ -5,19 +5,19 @@ import { useLogout } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { clearAuthData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -27,7 +27,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { profile: backendProfile } = useProfile();
 
@@ -60,12 +60,11 @@ export default function SettingsScreen() {
           logoutMutation.mutate(undefined, {
             onSuccess: async () => {
               await clearAuthData();
-              router.replace('/sign-in' as any);
+              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
             },
             onError: async () => {
-              // Always clean local storage and redirect even if network request fails
               await clearAuthData();
-              router.replace('/sign-in' as any);
+              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
             }
           });
         },
@@ -84,7 +83,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           style={styles.profileCard}
           activeOpacity={0.9}
-          onPress={() => router.push('/(tabs)/profile' as any)}
+          onPress={() => navigation.navigate('profile'  as any)}
         >
           <View style={styles.avatarContainer}>
             <Image
@@ -108,7 +107,7 @@ export default function SettingsScreen() {
           {/* Change Password Card */}
           <TouchableOpacity
             style={styles.optionCard}
-            onPress={() => router.push('/(tabs)/settings/change-password' as any)}
+            onPress={() => navigation.navigate('change-password' as any)}
             activeOpacity={0.8}
           >
             <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
@@ -124,7 +123,7 @@ export default function SettingsScreen() {
           {/* Notification Card */}
           <TouchableOpacity
             style={styles.optionCard}
-            onPress={() => router.push('/(tabs)/settings/notification-settings' as any)}
+            onPress={() => navigation.navigate('notification-settings' as any)}
             activeOpacity={0.8}
           >
             <View style={[styles.iconBox, { backgroundColor: '#FFFBEB' }]}>
@@ -140,7 +139,7 @@ export default function SettingsScreen() {
           {/* Theme Colour Card */}
           <TouchableOpacity
             style={styles.optionCard}
-            onPress={() => router.push('/(tabs)/settings/theme-settings' as any)}
+            onPress={() => navigation.navigate('theme-settings' as any)}
             activeOpacity={0.8}
           >
             <View style={[styles.iconBox, { backgroundColor: theme.primaryLight }]}>
@@ -161,7 +160,7 @@ export default function SettingsScreen() {
           {/* Help & Support Card */}
           <TouchableOpacity
             style={styles.optionCard}
-            onPress={() => router.push('/(tabs)/settings/help-support' as any)}
+            onPress={() => navigation.navigate('help-support' as any)}
             activeOpacity={0.8}
           >
             <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>

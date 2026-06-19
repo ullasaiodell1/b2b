@@ -3,7 +3,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTask } from '@/hooks/useTasks';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -32,8 +32,9 @@ export default function TaskDetailsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const router = useRouter();
-  const params = useLocalSearchParams();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { [key: string]: any }) || {};
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<'RELATED' | 'DETAILS'>('RELATED');
@@ -121,20 +122,17 @@ export default function TaskDetailsScreen() {
   };
 
   const handleEditTask = () => {
-    router.push({
-      pathname: '/(tabs)/task/add-task',
-      params: {
-        id: (params.id as string) || task?.id || '',
-        title: taskTitle,
-        description: taskDescription,
-        due_date: task?.due_date || (params.due_date as string) || '',
-        priority: task?.priority || (params.priority as string) || '',
-        status: task?.status || (params.status as string) || '',
-        assignedTo: task?.assigned_to || (params.assigned_to as string) || '',
-        assignedToName: taskAssignedToName,
-        leadId: task?.lead_id || (params.lead_id as string) || '',
-      }
-    } as any);
+    navigation.navigate('AddTask', {
+      id: (params.id as string) || task?.id || '',
+      title: taskTitle,
+      description: taskDescription,
+      due_date: task?.due_date || (params.due_date as string) || '',
+      priority: task?.priority || (params.priority as string) || '',
+      status: task?.status || (params.status as string) || '',
+      assignedTo: task?.assigned_to || (params.assigned_to as string) || '',
+      assignedToName: taskAssignedToName,
+      leadId: task?.lead_id || (params.lead_id as string) || '',
+    });
   };
 
   return (
@@ -145,7 +143,7 @@ export default function TaskDetailsScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />

@@ -3,25 +3,26 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getCompanies } from '@/services/api/company';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView, Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView, Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CompanyListScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const navigation = useNavigation<any>();
 
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
@@ -54,10 +55,7 @@ export default function CompanyListScreen() {
         style={styles.card}
         activeOpacity={0.7}
         onPress={() =>
-          router.push({
-            pathname: '/(tabs)/company/company-info',
-            params: { id: item.id },
-          })
+          navigation.navigate('company-info' as any, { id: item.id })
         }
       >
         <View style={styles.cardHeader}>

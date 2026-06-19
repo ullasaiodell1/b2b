@@ -3,7 +3,8 @@ import { COLORS } from '@/constants/theme';
 import { useMeetings } from '@/hooks/useMeetings';
 import { MeetingRecord, MeetingStatus } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,7 +28,7 @@ const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SINGLE = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function MeetingScreen() {
-  const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     leadId?: string;
     leadName?: string;
@@ -204,25 +205,19 @@ export default function MeetingScreen() {
 
   // Card Press
   const handleMeetingPress = (id: string) => {
-    router.push({
-      pathname: '/(tabs)/meeting/meeting-details',
-      params: { id },
-    } as any);
+    (navigation as any).navigate('meeting-details', { id });
   };
 
   // FAB Press
   const handleAddMeetingPress = () => {
     if (params.leadId) {
-      router.push({
-        pathname: '/(tabs)/meeting/add-meeting',
-        params: {
-          leadId: params.leadId,
-          leadName: params.leadName,
-          company: params.company,
-        },
-      } as any);
+      (navigation as any).navigate('add-meeting', {
+        leadId: params.leadId,
+        leadName: params.leadName,
+        company: params.company,
+      });
     } else {
-      router.push('/(tabs)/meeting/add-meeting' as any);
+      (navigation as any).navigate('add-meeting');
     }
   };
 
@@ -274,8 +269,8 @@ export default function MeetingScreen() {
         {params.leadId && (
           <TouchableOpacity
             onPress={() => {
-              router.push({
-                pathname: '/(tabs)/leads/lead-details',
+              (navigation as any).navigate('leads', {
+                screen: 'lead-details',
                 params: {
                   id: params.leadId,
                   name: params.leadName,
@@ -283,7 +278,7 @@ export default function MeetingScreen() {
                   phone: params.phone,
                   email: params.email,
                 }
-              } as any);
+              });
             }}
             style={[s.backBtn, { top: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) + 2 }]}
             activeOpacity={0.7}

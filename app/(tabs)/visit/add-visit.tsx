@@ -11,11 +11,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -43,8 +45,10 @@ export default function AddVisitScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params as { leadId?: string; referrer?: string }) || {};
   const router = useRouter();
-  const params = useLocalSearchParams<{ leadId?: string }>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const createVisitMutation = useCreateVisit();
@@ -93,6 +97,39 @@ export default function AddVisitScreen() {
 
   // Keyboard visibility state
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  const handleBack = () => {
+    const referrer = params.referrer;
+    const targetLeadId = selectedLeadId || params.leadId;
+    if (referrer === 'lead-details' && targetLeadId) {
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: { id: targetLeadId, activeTab: 'Overview', expandSection: 'visit' }
+      });
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        const referrer = params.referrer;
+        const targetLeadId = selectedLeadId || params.leadId;
+        if (referrer === 'lead-details' && targetLeadId) {
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: { id: targetLeadId, activeTab: 'Overview', expandSection: 'visit' }
+          });
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [params.referrer, selectedLeadId, params.leadId])
+  );
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -152,12 +189,9 @@ export default function AddVisitScreen() {
 
   const handleImagePick = async (useCamera: boolean) => {
     if (useCamera) {
-      router.push({
-        pathname: '/camera-capture',
-        params: {
-          sourceScreen: 'add-visit',
-          target: 'visit',
-        },
+      navigation.navigate('CameraCapture', {
+        sourceScreen: 'add-visit',
+        target: 'visit',
       });
       return;
     }
@@ -300,7 +334,7 @@ export default function AddVisitScreen() {
       });
 
       Alert.alert('Success', 'Visit detail saved successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => handleBack() }
       ]);
     } catch (err: any) {
       console.error('[AddVisit] save error:', err);
@@ -318,7 +352,7 @@ export default function AddVisitScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />

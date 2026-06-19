@@ -3,6 +3,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   BackHandler,
@@ -24,6 +25,7 @@ export default function QuotationFilterScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
 
+  const navigation = useNavigation();
   const router = useRouter();
   const { referrer, leadId, qStartDate, qEndDate } = useLocalSearchParams<{
     referrer?: string;
@@ -35,12 +37,9 @@ export default function QuotationFilterScreen() {
 
   const handleBack = () => {
     if (referrer === 'lead-details' && leadId) {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
-        params: { id: leadId }
-      });
+      router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
     } else {
-      router.back();
+      navigation.goBack();
     }
   };
 
@@ -48,10 +47,7 @@ export default function QuotationFilterScreen() {
     React.useCallback(() => {
       const onBackPress = () => {
         if (referrer === 'lead-details' && leadId) {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
-            params: { id: leadId }
-          });
+          router.navigate({ pathname: '/(tabs)/leads/lead-details', params: { id: leadId, activeTab: 'Quotation' } });
           return true;
         }
         return false;
@@ -109,20 +105,18 @@ export default function QuotationFilterScreen() {
         pathname: '/(tabs)/leads/lead-details',
         params: {
           id: leadId,
+          activeTab: 'Quotation',
           qStartDate: startDate ? startDate.toISOString() : '',
           qEndDate: endDate ? endDate.toISOString() : '',
           qFilterApplied: isApplied ? 'true' : ''
         }
       });
     } else {
-      router.navigate({
-        pathname: '/(tabs)/Quotation',
-        params: {
-          qStartDate: startDate ? startDate.toISOString() : '',
-          qEndDate: endDate ? endDate.toISOString() : '',
-          qFilterApplied: isApplied ? 'true' : ''
-        }
-      });
+      (navigation as any).navigate('Quotation', {
+            qStartDate: startDate ? startDate.toISOString() : '',
+            qEndDate: endDate ? endDate.toISOString() : '',
+            qFilterApplied: isApplied ? 'true' : ''
+          });
     }
   };
 
