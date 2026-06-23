@@ -21,12 +21,14 @@ interface SelectProductModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectProduct: (product: any) => void;
+  companyId?: string;
 }
 
 export default function SelectProductModal({
   visible,
   onClose,
   onSelectProduct,
+  companyId,
 }: SelectProductModalProps) {
   const theme = useTheme();
   const primaryColor = theme.primaryColor;
@@ -34,7 +36,7 @@ export default function SelectProductModal({
 
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts({ search: productSearchQuery });
+  const { data: products = [], isLoading: isLoadingProducts } = useProducts({ search: productSearchQuery, company_id: companyId });
 
   const handleSelectProduct = (product: any) => {
     onSelectProduct(product);

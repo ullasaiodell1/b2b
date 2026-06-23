@@ -11,18 +11,17 @@ export const orderKeys = {
   detail: (id: string) => [...orderKeys.all, 'detail', id] as const,
 };
 
-
 export function useOrders(params?: Partial<OrderFilterState>) {
   return useQuery({
     queryKey: orderKeys.orderFilter(params),
     queryFn: async () => {
       const res = await getOrders(params);
       const raw = Array.isArray(res) ? res : (res?.data?.data || res?.data || []);
-      return (Array.isArray(raw) ? raw : []).map(getOrderField);
+      const mapped = (Array.isArray(raw) ? raw : []).map(getOrderField);
+      return mapped;
     },
   });
 }
-
 
 // ── BARCODES ──────────────────────────────────────────────────────
 export function useOrderBarcodes(id?: string) {
@@ -31,9 +30,10 @@ export function useOrderBarcodes(id?: string) {
     queryFn: async () => {
       if (!id) throw new Error('Order ID is required');
       const res = await getOrderBarcodes(id);
-      return Array.isArray(res) ? res :
+      const data = Array.isArray(res) ? res :
         (Array.isArray(res?.data) ? res.data :
           (Array.isArray(res?.data?.data) ? res.data.data : []));
+      return data;
     },
     enabled: !!id,
   });
@@ -46,13 +46,15 @@ export function useInventoryReservations(refId?: string) {
     queryFn: async () => {
       if (!refId) throw new Error('Reference ID is required');
       const res = await getInventoryReservations(refId);
-      return Array.isArray(res) ? res :
+      const data = Array.isArray(res) ? res :
         (Array.isArray(res?.data) ? res.data :
           (Array.isArray(res?.data?.data) ? res.data.data : []));
+      return data;
     },
     enabled: !!refId,
   });
 }
+
 // ── DETAILS ───────────────────────────────────────────────────────
 export function useOrderDetails(id?: string, limit = 10, offset = 0) {
   return useQuery({
@@ -73,19 +75,20 @@ export function useOrderDetails(id?: string, limit = 10, offset = 0) {
           }
         }
       }
-      return raw ? getOrderField(raw) : null;
+      const mapped = raw ? getOrderField(raw) : null;
+      return mapped;
     },
     enabled: !!id,
   });
 }
-
 
 // ── CREATE ────────────────────────────────────────────────────────
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: any) => {
-      return createOrder(data);
+      const response = await createOrder(data);
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -98,7 +101,8 @@ export function useUpdateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return updateOrder(id, data);
+      const response = await updateOrder(id, data);
+      return response;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -112,11 +116,11 @@ export function useDeleteOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      return deleteOrder(id);
+      const response = await deleteOrder(id);
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
   });
 }
-

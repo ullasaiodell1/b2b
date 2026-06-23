@@ -220,15 +220,7 @@ export default function ReminderScreen() {
         </View>
       </View>
 
-      {/* ── LEAD CONTEXT BANNER (no ID, just name) ──── */}
-      {isLeadFiltered && (
-        <View style={[s.leadBanner, { backgroundColor: primaryLight }]}>
-          <Ionicons name="person-circle-outline" size={16} color={primaryColor} />
-          <Text style={[s.leadBannerText, { color: primaryColor }]} numberOfLines={1}>
-            {filterLeadName}
-          </Text>
-        </View>
-      )}
+
 
       {/* ── REMINDER CARDS LIST ─────────────────────── */}
       <ScrollView
@@ -391,17 +383,7 @@ const s = StyleSheet.create({
   countBadge: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20 },
   countBadgeText: { fontSize: 12, fontWeight: '900' },
 
-  // Lead banner (name only, no ID)
-  leadBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 120,
-    paddingVertical: 4,
-    gap: 2,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  leadBannerText: { flex: 1, fontSize: 13, fontWeight: '800' },
+
 
   // Scroll
   scrollContent: { padding: 5, gap: 5 },

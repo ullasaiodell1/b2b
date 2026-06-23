@@ -1,6 +1,6 @@
-import { accountLogin, accountLogout, otpVerification, deleteSession } from "@/services/api/auth";
+import { accountLogin, accountLogout, otpVerification, deleteSession, forgotPassword, verifyForgotPasswordOTP, resetPassword } from "@/services/api/auth";
 import { useMutation } from "@tanstack/react-query";
-import type { LoginCredentials, OTPVerificationCredentials } from "@/types/user";
+import type { LoginCredentials, OTPVerificationCredentials, ForgotPasswordPayload, VerifyForgotOTPPayload, ResetPasswordPayload } from "@/types/user";
 
 // ── CREATE ────────────────────────────────────────────────────────
 export function useLogin() {
@@ -31,5 +31,24 @@ export function useLogout() {
 export function useDeleteSession() {
   return useMutation({
     mutationFn: ({ sessionId, token }: { sessionId: string; token: string }) => deleteSession(sessionId, token),
+  });
+}
+
+// ── PASSWORD RESET ───────────────────────────────────────────────
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (data: ForgotPasswordPayload) => forgotPassword(data),
+  });
+}
+
+export function useVerifyForgotPasswordOTP() {
+  return useMutation({
+    mutationFn: (data: VerifyForgotOTPPayload) => verifyForgotPasswordOTP(data),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: ResetPasswordPayload) => resetPassword(data),
   });
 }

@@ -19,6 +19,7 @@ export const ALL_TAB_MODULES: TabModule[] = [
   { id: 'meeting', title: 'Meetings', icon: 'videocam', iconOutline: 'videocam-outline' },
   { id: 'task', title: 'Tasks', icon: 'checkmark-done-circle', iconOutline: 'checkmark-done-circle-outline' },
   { id: 'attendance', title: 'Attendance', icon: 'finger-print', iconOutline: 'finger-print-outline' },
+  { id: 'leave', title: 'Leave', icon: 'calendar-clear', iconOutline: 'calendar-clear-outline' },
   { id: 'profile', title: 'Profile', icon: 'person', iconOutline: 'person-outline' },
   { id: 'settings', title: 'Settings', icon: 'settings', iconOutline: 'settings-outline' },
   { id: 'visit', title: 'Visits', icon: 'location', iconOutline: 'location-outline' },

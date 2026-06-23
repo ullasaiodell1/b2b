@@ -24,6 +24,7 @@ export default function TabLayout() {
         {/* New folder-based CRM screens */}
         <Tabs.Screen name="calendar" options={{ href: null }} />
         <Tabs.Screen name="attendance" options={{ href: null }} />
+        <Tabs.Screen name="leave" options={{ href: null }} />
         <Tabs.Screen name="call" options={{ href: null }} />
         <Tabs.Screen name="company" options={{ href: null }} />
         <Tabs.Screen name="meeting" options={{ href: null }} />

@@ -1,5 +1,5 @@
 {
-  "name": "myproject",
+  "name": "B2B_Application",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -22,6 +22,7 @@
     "@react-navigation/stack": "^7.10.5",
     "@tanstack/react-query": "^5.101.0",
     "axios": "^1.17.0",
+    "canvas-confetti": "^1.9.4",
     "date-fns": "^4.4.0",
     "expo": "~54.0.34",
     "expo-audio": "~1.1.1",
@@ -63,6 +64,7 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",

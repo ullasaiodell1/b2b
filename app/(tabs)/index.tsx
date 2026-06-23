@@ -3,6 +3,7 @@ import QuickBall from '@/components/custom/QuickBall';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import { useHolidays } from '@/hooks/useHolidays';
 import { useAppPermissions } from '@/hooks/useAppPermissions';
 import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
@@ -158,6 +159,12 @@ export default function HomeScreen() {
 
   // Fetch analysis data from API using hook
   const { data: rawData, isLoading, isFetching, refetch } = useAnalysis();
+  const { data: holidaysData, refetch: refetchHolidays } = useHolidays();
+
+  const handleRefresh = () => {
+    refetch();
+    refetchHolidays();
+  };
 
   const apiData = React.useMemo(() => {
     return formatAnalysisData(rawData);
@@ -261,6 +268,29 @@ export default function HomeScreen() {
     datasets: [{ data: [barPending, barConfirmed, barCompleted] }],
   };
 
+  const upcomingHolidays = React.useMemo(() => {
+    if (!holidaysData || !Array.isArray(holidaysData)) return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return holidaysData
+      .filter((h: any) => {
+        if (!h?.date) return false;
+        const hDate = new Date(h.date);
+        return !isNaN(hDate.getTime()) && hDate >= today;
+      })
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3);
+  }, [holidaysData]);
+
+  const formatHolidayDate = (dateStr: string) => {
+    if (!dateStr) return '----';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
@@ -274,7 +304,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
-            onRefresh={refetch}
+            onRefresh={handleRefresh}
             colors={[primaryColor]}
           />
         }
@@ -285,6 +315,41 @@ export default function HomeScreen() {
           <View style={styles.heroCircle2} />
           <Text style={styles.heroLabel}>Total Visit</Text>
           <Text style={styles.heroValue}>{totalVisits}</Text>
+        </View>
+
+        {/* Upcoming Holidays Card */}
+        <View style={styles.card}>
+          <View style={styles.holidayHeader}>
+            <Ionicons name="gift-outline" size={18} color={primaryColor} style={{ marginRight: 6 }} />
+            <Text style={styles.cardTitle}>UPCOMING HOLIDAYS</Text>
+          </View>
+
+          {upcomingHolidays.length > 0 ? (
+            <View style={styles.holidayList}>
+              {upcomingHolidays.map((holiday: any, index: number) => (
+                <View
+                  key={holiday.id || index}
+                  style={[
+                    styles.holidayItem,
+                    index < upcomingHolidays.length - 1 && styles.holidayItemBorder
+                  ]}
+                >
+                  <View style={styles.holidayInfo}>
+                    <Text style={styles.holidayName} numberOfLines={1}>{holiday.name}</Text>
+                    <Text style={styles.holidayDate}>{formatHolidayDate(holiday.date)}</Text>
+                  </View>
+                  <View style={styles.holidayBadge}>
+                    <Text style={styles.holidayBadgeText}>Holiday</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.holidayEmpty}>
+              <Ionicons name="calendar-outline" size={24} color="#94A3B8" />
+              <Text style={styles.holidayEmptyText}>No upcoming holidays scheduled</Text>
+            </View>
+          )}
         </View>
 
         {/* ── Total Lead Created – Line Chart ── */}
@@ -647,6 +712,61 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: COLORS.textMuted,
+  },
+  // ── Holidays Card Styles ──
+  holidayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  holidayList: {
+    gap: 2,
+  },
+  holidayItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  holidayItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  holidayInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  holidayName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  holidayDate: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  holidayBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#FEF2F2',
+  },
+  holidayBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  holidayEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  holidayEmptyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 });
 

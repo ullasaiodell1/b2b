@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     RefreshControl,
     ScrollView,
@@ -311,7 +312,7 @@ export default function CallHistoryScreen() {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing || isFetching} onRefresh={handleRefresh} colors={[theme.primaryColor]} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.primaryColor]} />
         }
       >
         {isLoading && calls.length === 0 ? (
@@ -340,7 +341,13 @@ export default function CallHistoryScreen() {
 
                     <View style={[styles.detailRow, { marginTop: 3 }]}>
                       <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} />
-                      <Text style={styles.detailText}>{item.phoneNumber}</Text>
+                      {item.phoneNumber ? (
+                        <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phoneNumber}`)} activeOpacity={0.7}>
+                          <Text style={[styles.detailText, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '800' }]}>{item.phoneNumber}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.detailText}>No number</Text>
+                      )}
                       <Ionicons name="time-outline" size={14} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
                       <Text style={styles.detailText}>{item.duration}</Text>
                     </View>

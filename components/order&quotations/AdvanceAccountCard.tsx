@@ -64,7 +64,7 @@ export const AdvanceAccountCard: React.FC<AdvanceAccountCardProps> = ({
         <View style={styles.advanceCard}>
           {/* Account selector */}
           <View style={styles.formField}>
-            <Text style={styles.inputLabel}>Account *</Text>
+            <Text style={styles.inputLabel}>Account <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TouchableOpacity
               style={styles.selectTrigger}
               onPress={onPressSelectAccount}
@@ -81,7 +81,7 @@ export const AdvanceAccountCard: React.FC<AdvanceAccountCardProps> = ({
           <View style={styles.gridRow}>
             {/* Date Picker */}
             <View style={[styles.formField, { flex: 1 }]}>
-              <Text style={styles.inputLabel}>Date *</Text>
+              <Text style={styles.inputLabel}>Date <Text style={{ color: COLORS.danger }}>*</Text></Text>
               <TouchableOpacity
                 style={styles.selectTrigger}
                 onPress={onPressSelectDate}
@@ -98,7 +98,7 @@ export const AdvanceAccountCard: React.FC<AdvanceAccountCardProps> = ({
 
             {/* Amount Input */}
             <View style={[styles.formField, { flex: 1 }]}>
-              <Text style={styles.inputLabel}>Amount *</Text>
+              <Text style={styles.inputLabel}>Amount <Text style={{ color: COLORS.danger }}>*</Text></Text>
               <TextInput
                 style={styles.textInputBox}
                 placeholder="Amount"

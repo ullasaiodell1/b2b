@@ -93,7 +93,7 @@ export default function ChangePasswordScreen() {
         <View style={styles.form}>
           {/* Current Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Current Password *</Text>
+            <Text style={styles.inputLabel}>Current Password <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <View style={styles.passInputWrapper}>
               <TextInput
                 style={styles.passInput}
@@ -123,7 +123,7 @@ export default function ChangePasswordScreen() {
 
           {/* New Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>New Password *</Text>
+            <Text style={styles.inputLabel}>New Password <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <View style={styles.passInputWrapper}>
               <TextInput
                 style={styles.passInput}
@@ -141,7 +141,7 @@ export default function ChangePasswordScreen() {
 
           {/* Confirm Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Confirm Password *</Text>
+            <Text style={styles.inputLabel}>Confirm Password <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <View style={styles.passInputWrapper}>
               <TextInput
                 style={styles.passInput}

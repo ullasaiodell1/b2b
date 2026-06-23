@@ -61,7 +61,13 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'call-filter', 'call-history',
     'edit-profile', 'change-password',
     'theme-settings', 'notification-settings', 'help-support',
-    'ledger-filter', 'lead-ledger'
+    'ledger-filter', 'lead-ledger',
+    'lead-task', 'lead-add-task', 'lead-task-details', 'lead-task-filter',
+    'lead-quotation', 'lead-add-quotation', 'lead-quotation-details', 'lead-quotation-filter',
+    'lead-order', 'lead-add-order', 'lead-order-details', 'lead-order-filter',
+    'lead-visit', 'lead-add-visit', 'lead-visit-details', 'lead-visit-filter',
+    'lead-meeting', 'lead-add-meeting', 'lead-meeting-details', 'lead-meeting-filter',
+    'apply', 'approvals'
   ];
 
   if (

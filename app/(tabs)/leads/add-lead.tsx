@@ -73,6 +73,7 @@ export default function AddLeadScreen() {
   const [cityId, setCityId] = useState('');
   const [pincode, setPincode] = useState('');
   const [company, setCompany] = useState(''); // Company Name
+  const [companyId, setCompanyId] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [designation, setDesignation] = useState('');
@@ -116,6 +117,9 @@ export default function AddLeadScreen() {
         }
         if (selection.company !== undefined) {
           setCompany(selection.company);
+        }
+        if (selection.companyId !== undefined) {
+          setCompanyId(selection.companyId);
         }
         if (selection.interestedCategory !== undefined) {
           setInterestedCategory(selection.interestedCategory);
@@ -278,6 +282,16 @@ export default function AddLeadScreen() {
       return;
     }
 
+    if (phone.trim().length !== 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
+
+    if (whatsapp.trim() && whatsapp.trim().length !== 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit whatsapp number.');
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (email.trim() && !emailRegex.test(email.trim())) {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
@@ -322,6 +336,7 @@ export default function AddLeadScreen() {
       country_id: effectiveCountryId || selectedCountryObj?.id || null,
       assigned_to: ownerId ? ownerId : (selectedUserObj?.id || null),
       priority: (priority.toUpperCase() === 'HOT' || priority.toUpperCase() === 'HIGH') ? 'HOT' : (priority.toUpperCase() === 'WARM' || priority.toUpperCase() === 'NORMAL') ? 'WARM' : 'COLD',
+      company_id: companyId || null,
       company_name: company.trim() || null,
       designation: designation.trim() || null,
       website: website.trim() || null,
@@ -400,7 +415,7 @@ export default function AddLeadScreen() {
         <View style={styles.formContainer}>
           {/* Status */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Status <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Status <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('status')}
@@ -413,7 +428,7 @@ export default function AddLeadScreen() {
 
           {/* Source */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Source <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Source <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => setActivePicker('source')}
@@ -428,7 +443,7 @@ export default function AddLeadScreen() {
 
           {/* Assigned To */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Assigned To <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Assigned To <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => navigation.navigate('select-owner' as any, {
@@ -445,7 +460,7 @@ export default function AddLeadScreen() {
 
           {/* Fullname */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Fullname <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Fullname <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Full Name"
@@ -457,7 +472,7 @@ export default function AddLeadScreen() {
 
           {/* Phone */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Phone <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Phone Number"
@@ -465,12 +480,13 @@ export default function AddLeadScreen() {
               keyboardType="phone-pad"
               value={phone}
               onChangeText={setPhone}
+              maxLength={10}
             />
           </View>
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Email <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TextInput
               style={styles.textInput}
               placeholder="Enter Email"
@@ -483,7 +499,7 @@ export default function AddLeadScreen() {
 
           {/* Company */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Company <Text style={{ color: primaryColor }}>*</Text></Text>
+            <Text style={styles.inputLabel}>Company <Text style={{ color: COLORS.danger }}>*</Text></Text>
             <TouchableOpacity
               style={styles.pickerTrigger}
               onPress={() => navigation.navigate('select-company' as any, {
@@ -524,6 +540,7 @@ export default function AddLeadScreen() {
                 keyboardType="phone-pad"
                 value={whatsapp}
                 onChangeText={setWhatsapp}
+                maxLength={10}
               />
             </View>
           )}

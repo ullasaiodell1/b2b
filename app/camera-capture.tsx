@@ -2,15 +2,18 @@ import { attendanceState, updateAttendanceState } from "@/components/attendance/
 import { setCameraResult } from "@/components/custom/CameraState";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { usePunchIn, usePunchOut } from "@/hooks/useAttendance";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
+import { uploadFile } from "@/services/api/file";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 export default function CameraCaptureScreen() {
   const router = useRouter();
@@ -18,7 +21,7 @@ export default function CameraCaptureScreen() {
     sourceScreen?: string;
     target?: string;
     attendanceAction?: "in" | "out";
-    extra?: string; // serialized JSON or raw string
+    extra?: string;
   }>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() ?? "light";
@@ -37,6 +40,10 @@ export default function CameraCaptureScreen() {
     sourceScreen === "Attendance" ? "front" : "back"
   );
 
+  // Attendance API mutations
+  const punchIn = usePunchIn();
+  const punchOut = usePunchOut();
+
   const requestCameraAccess = async () => {
     const result = await requestPermission();
     if (!result.granted) {
@@ -48,19 +55,16 @@ export default function CameraCaptureScreen() {
     if (!cameraRef.current || isCapturing) return;
     try {
       setIsCapturing(true);
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.75,
-      });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.75 });
       if (photo?.uri) {
         const compressed = await ImageManipulator.manipulateAsync(
           photo.uri,
           [{ resize: { width: 800 } }],
           { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
         );
-
         setPhotoUri(compressed.uri);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Capture Failed", "Could not capture photo. Please try again.");
     } finally {
       setIsCapturing(false);
@@ -72,89 +76,121 @@ export default function CameraCaptureScreen() {
 
     if (sourceScreen === "Attendance") {
       setIsCapturing(true);
-      // 1. Fetch location
-      let locationStr = "Simulated Location";
+
+      // ── 1. Get location ──────────────────────────────────────────
+      let locationStr: string | undefined;
+      let lat = 0;
+      let lng = 0;
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === "granted") {
           const locResult = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
-          const coords = locResult.coords;
-          const geocode = await Location.reverseGeocodeAsync({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-          });
-
-          if (geocode && geocode.length > 0) {
-            const address = geocode[0];
-            locationStr = `${address.city || address.subregion || "Surat"}, ${address.region || "Gujarat"}`;
+          lat = locResult.coords.latitude;
+          lng = locResult.coords.longitude;
+          const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+          if (geocode?.length) {
+            const addr = geocode[0];
+            locationStr = `${addr.city || addr.subregion || "Surat"}, ${addr.region || "Gujarat"}`;
           } else {
-            locationStr = `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+            locationStr = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
           }
         }
-      } catch (locErr) {
-        console.log("Location lookup failed in camera-capture:", locErr);
-        locationStr = "Location Unresolved";
+      } catch {
+        locationStr = undefined;
       }
 
-      // 2. Set times
+      // ── 2. Compute local time string ─────────────────────────────
       const now = new Date();
-      const h = String(now.getHours()).padStart(2, "0");
-      const m = String(now.getMinutes()).padStart(2, "0");
-      const timeStr = `${h}:${m}`;
+      const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-      if (attendanceAction === "in") {
-        updateAttendanceState({
-          stampedIn: true,
-          inTime: timeStr,
-          inPhoto: photoUri,
-          inLocation: locationStr,
-        });
-      } else {
-        // Calculate workTime
-        let workTimeStr = "8h 45m";
-        if (attendanceState.inTime && attendanceState.inTime !== "--:--") {
-          try {
-            const [inH, inM] = attendanceState.inTime.split(":").map(Number);
-            const inDate = new Date();
-            inDate.setHours(inH, inM, 0, 0);
+      try {
+        // Upload photoUri first to get S3 URL
+        console.log('[CameraCapture] Uploading photoUri to S3...', photoUri);
+        const uploadResult = await uploadFile(photoUri);
+        console.log('[CameraCapture] Upload result:', JSON.stringify(uploadResult));
 
-            const outDate = new Date();
-            let diffMs = outDate.getTime() - inDate.getTime();
-            if (diffMs < 0) {
-              diffMs += 24 * 60 * 60 * 1000;
-            }
-            const diffMins = Math.floor(diffMs / 1000 / 60);
-            const diffHours = Math.floor(diffMins / 60);
-            const remainingMins = diffMins % 60;
-            if (diffHours === 0) {
-              workTimeStr = `${remainingMins} Min`;
-            } else {
-              workTimeStr = `${diffHours}h ${remainingMins}m`;
-            }
-          } catch (e) {
-            workTimeStr = "8h 45m";
-          }
+        const uploadedUrl =
+          (typeof uploadResult === 'string' ? uploadResult : null) ||
+          uploadResult?.url ||
+          uploadResult?.file_url ||
+          uploadResult?.location ||
+          uploadResult?.path ||
+          uploadResult?.key ||
+          uploadResult?.data?.url ||
+          uploadResult?.data?.file_url ||
+          uploadResult?.data?.location ||
+          uploadResult?.data?.path ||
+          uploadResult?.data?.key ||
+          null;
+
+        if (!uploadedUrl) {
+          throw new Error('Failed to retrieve S3 upload URL');
         }
 
-        updateAttendanceState({
-          stampedOut: true,
-          outTime: timeStr,
-          outPhoto: photoUri,
-          outLocation: locationStr,
-          workTime: workTimeStr,
-        });
-      }
+        console.log('[CameraCapture] Uploaded S3 URL:', uploadedUrl);
 
-      setIsCapturing(false);
-      Alert.alert("Success", `Punched ${attendanceAction === "in" ? "In" : "Out"} Successfully!`, [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+        if (attendanceAction === "in") {
+          // Call API
+          await punchIn.mutateAsync({ checkin_image: uploadedUrl, latitude: lat, longitude: lng, location: locationStr });
+          // Optimistic local update (hook's onSuccess will also sync from server)
+          updateAttendanceState({
+            stampedIn: true,
+            inTime: timeStr,
+            inPhoto: uploadedUrl,
+            inLocation: locationStr ?? null,
+          });
+        } else {
+          // Call API
+          await punchOut.mutateAsync({ checkout_image: uploadedUrl, latitude: lat, longitude: lng, location: locationStr });
+
+          // Calculate work duration
+          let workTimeStr = "--";
+          if (attendanceState.inTime && attendanceState.inTime !== "--:--") {
+            try {
+              const [inH, inM] = attendanceState.inTime.split(":").map(Number);
+              const inDate = new Date();
+              inDate.setHours(inH, inM, 0, 0);
+              let diffMs = now.getTime() - inDate.getTime();
+              if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
+              const diffMins = Math.floor(diffMs / 60000);
+              const diffHours = Math.floor(diffMins / 60);
+              const remainingMins = diffMins % 60;
+              workTimeStr = diffHours === 0 ? `${remainingMins}m` : `${diffHours}h ${remainingMins}m`;
+            } catch {
+              workTimeStr = "--";
+            }
+          }
+
+          updateAttendanceState({
+            stampedOut: true,
+            outTime: timeStr,
+            outPhoto: uploadedUrl,
+            outLocation: locationStr ?? null,
+            workTime: workTimeStr,
+          });
+        }
+
+        Toast.show({
+          type: "success",
+          text1: attendanceAction === "in" ? "Punched In!" : "Punched Out!",
+          text2: "Attendance recorded successfully.",
+        });
+        router.back();
+      } catch (error: any) {
+        Toast.show({
+          type: "error",
+          text1: attendanceAction === "in" ? "Punch In Failed" : "Punch Out Failed",
+          text2: error?.message ?? "Please try again.",
+        });
+      } finally {
+        setIsCapturing(false);
+      }
       return;
     }
 
-    // Set standard camera result for other forms
+    // ── Standard result for other screens (e.g. expense forms) ──────
     let parsedExtra = undefined;
     if (params.extra) {
       try {
@@ -163,16 +199,11 @@ export default function CameraCaptureScreen() {
         parsedExtra = params.extra;
       }
     }
-
-    setCameraResult({
-      uri: photoUri,
-      target: target,
-      extra: parsedExtra,
-    });
+    setCameraResult({ uri: photoUri, target, extra: parsedExtra });
     router.back();
   };
 
-  const previewActionLabel = useMemo(() => (isCapturing ? "Capturing..." : "Capture"), [isCapturing]);
+  const captureLabel = useMemo(() => (isCapturing ? "Capturing..." : "Capture"), [isCapturing]);
 
   if (!permission) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
@@ -183,15 +214,13 @@ export default function CameraCaptureScreen() {
       <View style={[styles.permissionContainer, { backgroundColor: colors.background, paddingTop: insets.top + 24 }]}>
         <StatusBar barStyle={colorScheme === "dark" ? "light-content" : "dark-content"} />
         <Ionicons name="camera-outline" size={48} color={colors.icon} />
-        <Text style={[styles.permissionTitle, { color: colors.text, fontWeight: "700" }]}>
-          Camera access is required
-        </Text>
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>Camera access is required</Text>
         <Text style={[styles.permissionText, { color: colors.tabIconDefault }]}>
           Allow camera permission to continue capturing photos.
         </Text>
         <TouchableOpacity
           onPress={requestCameraAccess}
-          style={[styles.permissionButton, { backgroundColor: "#346556", borderRadius: 12 }]}
+          style={[styles.permissionButton, { backgroundColor: "#346556" }]}
         >
           <Text style={styles.permissionButtonText}>Allow Camera</Text>
         </TouchableOpacity>
@@ -210,12 +239,15 @@ export default function CameraCaptureScreen() {
         <CameraView ref={cameraRef} style={styles.camera} facing={cameraFacing} />
       )}
 
-      <View style={[styles.topBar, { paddingTop: insets.top + 8, backgroundColor: "rgba(0,0,0,0.35)" }]}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
           <Ionicons name="arrow-back" size={26} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: "#FFFFFF", fontWeight: "700" }]}>
-          {sourceScreen === "Attendance" ? "Punch-In / Punch-Out Selfie" : "Capture Photo"}
+        <Text style={styles.topBarTitle}>
+          {sourceScreen === "Attendance"
+            ? attendanceAction === "in" ? "Punch In Selfie" : "Punch Out Selfie"
+            : "Capture Photo"}
         </Text>
         {!photoUri ? (
           <TouchableOpacity
@@ -229,28 +261,28 @@ export default function CameraCaptureScreen() {
         )}
       </View>
 
-      <View
-        style={[
-          styles.bottomBar,
-          {
-            paddingBottom: Math.max(insets.bottom, 14),
-            backgroundColor: "rgba(0,0,0,0.45)",
-          },
-        ]}
-      >
+      {/* Bottom bar */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
         {photoUri ? (
           <View style={styles.previewActions}>
-            <TouchableOpacity onPress={() => setPhotoUri(null)} style={[styles.actionButton, styles.secondaryButton]}>
+            <TouchableOpacity
+              onPress={() => setPhotoUri(null)}
+              style={[styles.actionButton, styles.secondaryButton]}
+            >
               <Text style={styles.actionButtonText}>Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onConfirm} style={[styles.actionButton, styles.primaryButton]}>
-              <Text style={styles.actionButtonText}>Use Photo</Text>
+            <TouchableOpacity
+              onPress={onConfirm}
+              disabled={isCapturing}
+              style={[styles.actionButton, styles.primaryButton, isCapturing && { opacity: 0.6 }]}
+            >
+              <Text style={styles.actionButtonText}>{isCapturing ? "Saving..." : "Use Photo"}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity disabled={isCapturing} onPress={onCapture} style={styles.captureButton}>
             <View style={styles.captureInnerCircle}>
-              <Text style={styles.captureText}>{previewActionLabel}</Text>
+              <Text style={styles.captureText}>{captureLabel}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -272,9 +304,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 10,
+    backgroundColor: "rgba(0,0,0,0.35)",
     zIndex: 10,
   },
-  topBarTitle: { fontSize: 16 },
+  topBarTitle: { fontSize: 16, color: "#FFFFFF", fontWeight: "700", flex: 1, textAlign: "center" },
   iconButton: { width: 36, alignItems: "center", justifyContent: "center" },
   bottomBar: {
     position: "absolute",
@@ -284,6 +317,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
     zIndex: 10,
   },
   captureButton: {
@@ -305,11 +339,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   captureText: { color: "#1A1A1A", fontSize: 11, fontWeight: "700", textAlign: "center" },
-  previewActions: {
-    width: "100%",
-    flexDirection: "row",
-    gap: 12,
-  },
+  previewActions: { width: "100%", flexDirection: "row", gap: 12 },
   actionButton: {
     flex: 1,
     minHeight: 48,
@@ -331,7 +361,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
   },
-  permissionTitle: { fontSize: 20, textAlign: "center" },
+  permissionTitle: { fontSize: 20, textAlign: "center", fontWeight: "700" },
   permissionText: { fontSize: 14, textAlign: "center" },
   permissionButton: {
     marginTop: 6,
@@ -340,6 +370,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
+    borderRadius: 12,
   },
   permissionButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
 });

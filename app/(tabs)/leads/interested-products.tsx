@@ -6,6 +6,7 @@ import {
   useRemoveLeadInterestedProduct,
 } from '@/hooks/useInterestedProducts';
 import { useProducts } from '@/hooks/useProducts';
+import { useLeadDetails } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -52,8 +53,11 @@ export default function InterestedProductsScreen() {
   const addMutation = useAddLeadInterestedProduct(leadId);
   const removeMutation = useRemoveLeadInterestedProduct(leadId);
 
+  const { data: leadDetails } = useLeadDetails(leadId);
+  const companyId = leadDetails?.company_id;
+
   // All products for the selection modal
-  const { data: allProductsList = [], isLoading: isAllProductsLoading } = useProducts();
+  const { data: allProductsList = [], isLoading: isAllProductsLoading } = useProducts({ company_id: companyId });
 
   // ── Handlers ───────────────────────────────────────────────────
   const handleAddProduct = (product: any) => {
@@ -298,21 +302,25 @@ export default function InterestedProductsScreen() {
       </ScrollView>
 
       {/* SELECTION MODAL */}
+      {/* SELECTION MODAL */}
       <Modal
         visible={productModalVisible}
         transparent
         animationType="slide"
         onRequestClose={() => setProductModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContent,
-              {
-                paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16),
-              },
-            ]}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setProductModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalContent}
+            activeOpacity={1}
           >
+            {/* Drag Handle */}
+            <View style={styles.modalDragHandle} />
+
             {/* MODAL HEADER */}
             <View style={styles.modalHeader}>
               <TouchableOpacity
@@ -408,8 +416,8 @@ export default function InterestedProductsScreen() {
                 )}
               </ScrollView>
             )}
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -585,23 +593,33 @@ const getStyles = (theme: any) =>
     // Modal styling
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
       justifyContent: 'flex-end',
     },
     modalContent: {
       backgroundColor: COLORS.bgPage,
       height: '80%',
-      borderTopLeftRadius: 10,
-      borderTopRightRadius: 10,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
       overflow: 'hidden',
+    },
+    modalDragHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: '#CBD5E1',
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginTop: 8,
+      marginBottom: 8,
     },
     modalHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 19,
+      paddingHorizontal: 20,
       backgroundColor: COLORS.bgWhite,
-      paddingBottom: 5,
+      paddingTop: 8,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },

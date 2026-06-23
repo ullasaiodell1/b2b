@@ -5,11 +5,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLeads } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -26,11 +27,40 @@ export default function LeadsScreen() {
   const styles = getStyles(theme);
 
   const router = useRouter();
-  const params = useLocalSearchParams<{ priority?: string; tag?: string; owner?: string }>();
+  const params = useLocalSearchParams<{
+    priority?: string;
+    tag?: string;
+    owner?: string;
+    assigned_to?: string;
+    source?: string;
+    source_id?: string;
+    status?: string;
+    dateRange?: string;
+    from_date?: string;
+    to_date?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const leadsQuery = useLeads();
+
+  const apiParams = React.useMemo(() => {
+    const p: any = {};
+    if (params.priority) p.priority = params.priority;
+    if (params.source_id) p.source_id = params.source_id;
+    if (params.assigned_to) p.assigned_to = params.assigned_to;
+    if (params.from_date) p.from_date = params.from_date;
+    if (params.to_date) p.to_date = params.to_date;
+    if (params.tag === 'Verified') {
+      p.is_verified = 'true';
+    } else if (params.tag === 'Customer') {
+      p.is_customer = 'true';
+    } else if (params.tag) {
+      p.tag = params.tag;
+    }
+    return p;
+  }, [params.priority, params.source_id, params.assigned_to, params.from_date, params.to_date, params.tag]);
+
+  const leadsQuery = useLeads(apiParams);
   const { data: rawLeads = [], isLoading, isFetching, refetch } = leadsQuery;
 
   useEffect(() => {
@@ -62,15 +92,15 @@ export default function LeadsScreen() {
 
       return {
         id: String(item.id),
-        name: item.name || '',
-        company: item.company_name || item.company || '',
-        email: item.email || '',
-        phone: item.phone || '',
-        tag: tag,
+        name: item.name || '----',
+        company: item.company_name || item.company || '----',
+        email: item.email || '----',
+        phone: item.phone || '----',
+        tag: tag || '----',
         priority: priority,
-        owner: item.assigned_to_name || item.owner || '',
-        status: item.status_name || item.status || '',
-        source: item.source_name || item.source || '',
+        owner: item.assigned_to_name || item.owner || '----',
+        status: item.status_name || item.status || '----',
+        source: item.source_name || item.source || '----',
         ...item,
       } as any;
     });
@@ -91,9 +121,15 @@ export default function LeadsScreen() {
     // 2. Tag Filter
     let matchesTag = true;
     if (params.tag) {
-      const activeTags = params.tag.split(',');
-      if (activeTags.length > 0 && activeTags[0] !== '') {
-        matchesTag = activeTags.includes(lead.tag);
+      if (params.tag === 'Verified') {
+        matchesTag = lead.is_verified === true || lead.is_verified === 1 || String(lead.is_verified) === 'true' || lead.tag === 'Verified';
+      } else if (params.tag === 'Customer') {
+        matchesTag = lead.is_customer === true || lead.is_customer === 1 || String(lead.is_customer) === 'true' || lead.tag === 'Customer';
+      } else {
+        const activeTags = params.tag.split(',');
+        if (activeTags.length > 0 && activeTags[0] !== '') {
+          matchesTag = activeTags.includes(lead.tag);
+        }
       }
     }
 
@@ -109,10 +145,71 @@ export default function LeadsScreen() {
       matchesOwner = lead.owner === params.owner;
     }
 
-    return matchesSearch && matchesTag && matchesPriority && matchesOwner;
+    // 5. Source Filter
+    let matchesSource = true;
+    if (params.source) {
+      matchesSource = lead.source === params.source;
+    }
+
+    // 6. Status/Stage Filter
+    let matchesStatus = true;
+    if (params.status) {
+      if (params.status === '__NONE__') {
+        matchesStatus = false;
+      } else {
+        const activeStatuses = params.status.split(',').filter(Boolean);
+        if (activeStatuses.length > 0) {
+          matchesStatus = activeStatuses.some(
+            (statusName) => (lead.status || '').toLowerCase() === statusName.toLowerCase()
+          );
+        }
+      }
+    }
+
+    // 7. Date Range Filter
+    let matchesDate = true;
+    if (params.dateRange && params.dateRange !== 'Select date range') {
+      const createdDate = new Date(lead.created_at || lead.createdAt);
+      if (!isNaN(createdDate.getTime())) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (params.dateRange === 'Today') {
+          matchesDate = createdDate >= today;
+        } else if (params.dateRange === 'Yesterday') {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          matchesDate = createdDate >= yesterday && createdDate < today;
+        } else if (params.dateRange === 'Last 7 Days') {
+          const last7 = new Date(today);
+          last7.setDate(last7.getDate() - 7);
+          matchesDate = createdDate >= last7;
+        } else if (params.dateRange === 'Last 30 Days') {
+          const last30 = new Date(today);
+          last30.setDate(last30.getDate() - 30);
+          matchesDate = createdDate >= last30;
+        } else if (params.dateRange === 'This Month') {
+          const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          matchesDate = createdDate >= firstDayThisMonth;
+        } else if (params.dateRange === 'Last Month') {
+          const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+          matchesDate = createdDate >= firstDayLastMonth && createdDate <= lastDayLastMonth;
+        } else if (params.dateRange === 'Custom Range') {
+          if (params.from_date && params.to_date) {
+            const fromD = new Date(params.from_date);
+            const toD = new Date(params.to_date);
+            toD.setHours(23, 59, 59, 999);
+            matchesDate = createdDate >= fromD && createdDate <= toD;
+          }
+        }
+      }
+    }
+
+    return matchesSearch && matchesTag && matchesPriority && matchesOwner && matchesSource && matchesStatus && matchesDate;
   });
 
-  const hasActiveFilters = !!(params.priority || params.tag || params.owner);
+  const hasActiveFilters = !!(params.priority || params.tag || params.owner || params.source || params.status || params.dateRange || params.from_date || params.to_date);
 
   const isNavigatingRef = React.useRef(false);
 
@@ -177,6 +274,13 @@ export default function LeadsScreen() {
                 priority: params.priority || '',
                 tag: params.tag || '',
                 owner: params.owner || '',
+                assigned_to: params.assigned_to || '',
+                source: params.source || '',
+                source_id: params.source_id || '',
+                status: params.status || '',
+                dateRange: params.dateRange || '',
+                from_date: params.from_date || '',
+                to_date: params.to_date || '',
               }
             });
             setTimeout(() => {
@@ -209,12 +313,33 @@ export default function LeadsScreen() {
             )}
             {params.tag && (
               <View style={styles.filterBadgeChip}>
-                <Text style={styles.filterBadgeText}>Tags: {params.tag}</Text>
+                <Text style={styles.filterBadgeText}>
+                  {params.tag === 'Verified' || params.tag === 'Customer' ? `Type: ${params.tag}` : `Tags: ${params.tag}`}
+                </Text>
               </View>
             )}
             {params.owner && (
               <View style={styles.filterBadgeChip}>
                 <Text style={styles.filterBadgeText}>Owner: {params.owner}</Text>
+              </View>
+            )}
+            {params.source && (
+              <View style={styles.filterBadgeChip}>
+                <Text style={styles.filterBadgeText}>Source: {params.source}</Text>
+              </View>
+            )}
+            {params.status && (
+              <View style={styles.filterBadgeChip}>
+                <Text style={styles.filterBadgeText}>Stages: {params.status === '__NONE__' ? 'None' : params.status}</Text>
+              </View>
+            )}
+            {params.dateRange && (
+              <View style={styles.filterBadgeChip}>
+                <Text style={styles.filterBadgeText}>
+                  Date: {params.dateRange === 'Custom Range' && params.from_date && params.to_date
+                    ? `${params.from_date} to ${params.to_date}`
+                    : params.dateRange}
+                </Text>
               </View>
             )}
           </ScrollView>
@@ -282,15 +407,35 @@ export default function LeadsScreen() {
 
               {/* Contacts Row */}
               <View style={styles.contactsRow}>
-                <View style={styles.contactItem}>
-                  <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.contactText} numberOfLines={1}>{lead.email}</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.contactItem}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    if (lead.email) {
+                      Linking.openURL(`mailto:${lead.email}`);
+                    }
+                  }}
+                >
+                  <Ionicons name="mail-outline" size={14} color="#2563EB" style={{ marginRight: 6 }} />
+                  <Text style={[styles.contactText, lead.email ? styles.contactLink : null]} numberOfLines={1}>
+                    {lead.email || '—'}
+                  </Text>
+                </TouchableOpacity>
 
-                <View style={styles.contactItem}>
-                  <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={styles.contactText} numberOfLines={1}>{lead.phone}</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.contactItem}
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    if (lead.phone) {
+                      Linking.openURL(`tel:${lead.phone}`);
+                    }
+                  }}
+                >
+                  <Ionicons name="call-outline" size={14} color="#16A34A" style={{ marginRight: 6 }} />
+                  <Text style={[styles.contactText, lead.phone ? styles.contactLinkGreen : null]} numberOfLines={1}>
+                    {lead.phone || '—'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))}
@@ -515,6 +660,16 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     fontWeight: '600',
+  },
+  contactLink: {
+    color: '#2563EB',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  contactLinkGreen: {
+    color: '#16A34A',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   emptyState: {
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import { OrderFilterState, OrderRecord } from '@/types/order';
+import { OrderRecord } from '@/types/order';
 import axios from './httpRequest';
 
 // GET /orders — list orders
@@ -41,6 +41,8 @@ export const getInventoryReservations = (refId: string) => {
 
 // POST /orders — create order
 export const createOrder = (data: Partial<OrderRecord>) => {
+  console.log('[API createOrder] Sending company_id:', data?.company_id);
+  console.log('[API createOrder] Request Payload:', JSON.stringify(data, null, 2));
   return axios({
     method: 'POST',
     url: `/orders`,
@@ -59,6 +61,8 @@ export const updateOrder = (id: string, data: Partial<OrderRecord>) => {
 
 // DELETE /orders/:id — delete order
 export const deleteOrder = (id: string) => {
-  return axios({ method: 'DELETE', url: `/orders/${id}` });
+  return axios({
+    method: 'DELETE',
+    url: `/orders/${id}`
+  });
 };
-

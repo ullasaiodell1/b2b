@@ -8,6 +8,21 @@ export interface OTPVerificationCredentials {
   code: string;
 }
 
+export interface ForgotPasswordPayload {
+  identifier: string;
+}
+
+export interface VerifyForgotOTPPayload {
+  identifier: string;
+  otp: string;
+}
+
+export interface ResetPasswordPayload {
+  identifier: string;
+  otp: string;
+  new_password: string;
+}
+
 export interface RoleAssignment {
   role: string;
   company: string;

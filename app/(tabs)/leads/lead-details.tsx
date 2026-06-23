@@ -1,3 +1,7 @@
+import { MeetingCard } from '@/components/meeting/MeetingCard';
+import { OrderCard } from '@/components/order&quotations/OrderCard';
+import { QuotationCard } from '@/components/order&quotations/QuotationCard';
+import { TaskCard } from '@/components/task/TaskCard';
 import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,7 +15,7 @@ import { useLeadLedger } from '@/hooks/useLedger';
 import { useMeetings } from '@/hooks/useMeetings';
 import { useQuotations } from '@/hooks/useQuotations';
 import { useReminders } from '@/hooks/useReminders';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { useVisits } from '@/hooks/useVisits';
 import { getOrders } from '@/services/api/order';
 import { getOrderField } from '@/utils/orderHelper';
@@ -19,13 +23,17 @@ import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
+import confetti from 'canvas-confetti';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   BackHandler,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -47,18 +55,65 @@ interface DetailRowProps {
   label: string;
   value: string;
   required?: boolean;
+  onPress?: () => void;
 }
 
-const DetailRow: React.FC<DetailRowProps> = ({ label, value, required }) => {
+const DetailRow: React.FC<DetailRowProps> = ({ label, value, required, onPress }) => {
   const theme = useTheme();
   const styles = getStyles(theme);
+
+  const cleanLabel = label.trim().toLowerCase();
+  const cleanValue = value ? value.trim() : '';
+  const isLinkable =
+    cleanValue &&
+    cleanValue !== '----' &&
+    cleanValue !== '—' &&
+    (!!onPress ||
+      cleanLabel.includes('email') ||
+      cleanLabel.includes('phone') ||
+      cleanLabel.includes('mobile'));
+
+  const handlePress = () => {
+    if (!isLinkable) return;
+    if (onPress) {
+      onPress();
+    } else if (cleanLabel.includes('email')) {
+      Linking.openURL(`mailto:${cleanValue}`).catch((err) =>
+        console.error('Failed to open email:', err)
+      );
+    } else if (cleanLabel.includes('phone') || cleanLabel.includes('mobile')) {
+      Linking.openURL(`tel:${cleanValue}`).catch((err) =>
+        console.error('Failed to open phone:', err)
+      );
+    }
+  };
+
   return (
     <View style={styles.detailRow}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={styles.detailLabel}>{label}</Text>
         {required && <Text style={{ color: '#EF4444', marginLeft: 2, fontWeight: 'bold' }}>*</Text>}
       </View>
-      <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
+      {isLinkable ? (
+        <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+          <Text
+            style={[
+              styles.detailValue,
+              {
+                color: cleanLabel.includes('phone') || cleanLabel.includes('mobile') ? '#16A34A' : '#2563EB',
+                textDecorationLine: 'underline',
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {value}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <Text style={styles.detailValue} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
     </View>
   );
 };
@@ -116,9 +171,282 @@ function formatDate(dateStr?: string | null) {
   }
 }
 
+const triggerConfetti = () => {
+  if (Platform.OS !== 'web') {
+    console.log('[Confetti] Skipped on non-web platform');
+    return;
+  }
+  try {
+    const duration = 5 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    // 1. Staggered 5 big firecracker bursts
+    const bursts = [
+      { x: 0.5, y: 0.45, delay: 800 },
+      { x: 0.25, y: 0.3, delay: 1000 },
+      { x: 0.75, y: 0.35, delay: 1600 },
+      { x: 0.35, y: 0.6, delay: 2000 },
+      { x: 0.65, y: 0.55, delay: 2800 },
+    ];
+
+    bursts.forEach((burst) => {
+      setTimeout(() => {
+        if (Date.now() < animationEnd) {
+          confetti({
+            ...defaults,
+            particleCount: 50,
+            origin: { x: burst.x, y: burst.y },
+          });
+        }
+      }, burst.delay);
+    });
+
+    // 2. 250 falling particles staggered over 1.5 seconds
+    for (let i = 0; i < 250; i++) {
+      setTimeout(() => {
+        if (Date.now() < animationEnd) {
+          confetti({
+            ...defaults,
+            startVelocity: 0,
+            gravity: 0.8,
+            spread: 0,
+            ticks: 200,
+            particleCount: 1,
+            origin: {
+              x: Math.random(),
+              y: -0.1,
+            },
+          });
+        }
+      }, Math.random() * 1500);
+    }
+  } catch (err) {
+    console.error('[Confetti] Error running confetti:', err);
+  }
+};
+
+const CONFETTI_COLORS = [
+  '#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff'
+];
+
+interface ParticleProps {
+  type: 'falling' | 'burst';
+  delay: number;
+  containerWidth: number;
+  containerHeight: number;
+  centerX?: number;
+  centerY?: number;
+}
+
+const FirecrackerParticle: React.FC<ParticleProps> = ({
+  type,
+  delay,
+  containerWidth,
+  containerHeight,
+  centerX = 0,
+  centerY = 0,
+}) => {
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: type === 'falling'
+          ? 2000 + Math.random() * 1500
+          : 1200 + Math.random() * 800,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [animatedValue, delay, type]);
+
+  // Dimensions & styling
+  const size = React.useRef(6 + Math.random() * 6).current;
+  const aspectRatio = React.useRef(1 + Math.random() * 0.8).current;
+  const width = size;
+  const height = size * aspectRatio;
+  const color = React.useRef(CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)]).current;
+  const isCircle = React.useRef(Math.random() > 0.4).current;
+
+  // Rotation speeds
+  const rotateXSpeed = React.useRef(Math.random() * 1080 - 540).current;
+  const rotateYSpeed = React.useRef(Math.random() * 1080 - 540).current;
+  const rotateZSpeed = React.useRef(Math.random() * 720 - 360).current;
+
+  // Falling particle state
+  const startX = React.useRef(Math.random() * containerWidth).current;
+  const startY = React.useRef(-80 - Math.random() * 80).current;
+  const endY = containerHeight + 50;
+  const swayAmount = React.useRef(Math.random() * 80 - 40).current;
+
+  // Burst particle state
+  const angle = React.useRef(Math.random() * 2 * Math.PI).current;
+  const speed = React.useRef(80 + Math.random() * 140).current;
+  const gravity = React.useRef(40 + Math.random() * 40).current;
+
+  // Interpolations based on type
+  let translateX;
+  let translateY;
+  let scale;
+  let opacity;
+
+  if (type === 'falling') {
+    translateX = animatedValue.interpolate({
+      inputRange: [0, 0.3, 0.6, 1],
+      outputRange: [startX, startX + swayAmount * 0.3, startX - swayAmount * 0.3, startX + swayAmount],
+    });
+    translateY = animatedValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [startY, endY],
+    });
+    scale = new Animated.Value(1);
+    opacity = animatedValue.interpolate({
+      inputRange: [0, 0.15, 0.8, 1],
+      outputRange: [0, 1, 1, 0],
+    });
+  } else {
+    // Burst interpolation
+    translateX = animatedValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [centerX, centerX + Math.cos(angle) * speed],
+    });
+    translateY = animatedValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [centerY, centerY + Math.sin(angle) * speed + gravity],
+    });
+    scale = animatedValue.interpolate({
+      inputRange: [0, 0.1, 0.8, 1],
+      outputRange: [0, 1.2, 0.8, 0],
+    });
+    opacity = animatedValue.interpolate({
+      inputRange: [0, 0.1, 0.7, 1],
+      outputRange: [0, 1, 0.9, 0],
+    });
+  }
+
+  const rotateX = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', rotateXSpeed + 'deg'],
+  });
+
+  const rotateY = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', rotateYSpeed + 'deg'],
+  });
+
+  const rotate = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', rotateZSpeed + 'deg'],
+  });
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: type === 'falling' ? 0 : -width / 2,
+        top: type === 'falling' ? 0 : -height / 2,
+        width,
+        height,
+        backgroundColor: color,
+        borderRadius: isCircle ? size : 0,
+        transform: [
+          { translateX },
+          { translateY },
+          { rotateX },
+          { rotateY },
+          { rotate },
+          { scale }
+        ],
+        opacity,
+      }}
+    />
+  );
+};
+
+const FirecrackerOverlay: React.FC = () => {
+  const [layout, setLayout] = React.useState({ width: 0, height: 0 });
+
+  const particles = React.useMemo(() => {
+    if (layout.width === 0) return [];
+
+    const list: Array<{
+      key: string;
+      type: 'falling' | 'burst';
+      delay: number;
+      centerX?: number;
+      centerY?: number;
+    }> = [];
+
+    // 1. Generate 250 falling particles
+    for (let i = 0; i < 250; i++) {
+      list.push({
+        key: `falling-${i}`,
+        type: 'falling',
+        delay: Math.random() * 1500,
+      });
+    }
+
+    // 2. Generate 5 burst points (staggered delay)
+    const burstCount = 5;
+    const burstConfig = [
+      { x: layout.width * 0.5, y: layout.height * 0.45, delay: 800 },
+      { x: layout.width * 0.25, y: layout.height * 0.3, delay: 1000 },
+      { x: layout.width * 0.75, y: layout.height * 0.35, delay: 1600 },
+      { x: layout.width * 0.35, y: layout.height * 0.6, delay: 2000 },
+      { x: layout.width * 0.65, y: layout.height * 0.55, delay: 2800 },
+    ];
+
+    burstConfig.forEach((config, bIdx) => {
+      // 35 particles per burst
+      for (let p = 0; p < 35; p++) {
+        list.push({
+          key: `burst-${bIdx}-${p}`,
+          type: 'burst',
+          delay: config.delay + Math.random() * 100,
+          centerX: config.x,
+          centerY: config.y,
+        });
+      }
+    });
+
+    return list;
+  }, [layout]);
+
+  return (
+    <View
+      pointerEvents="none"
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setLayout({ width, height });
+      }}
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          zIndex: 99999,
+          overflow: 'hidden',
+        },
+      ]}
+    >
+      {layout.width > 0 && particles.map((p) => (
+        <FirecrackerParticle
+          key={p.key}
+          type={p.type}
+          delay={p.delay}
+          containerWidth={layout.width}
+          containerHeight={layout.height}
+          centerX={p.centerX}
+          centerY={p.centerY}
+        />
+      ))}
+    </View>
+  );
+};
+
 export default function LeadDetailsScreen() {
   const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles: any = getStyles(theme);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const params = (route.params ?? {}) as {
@@ -169,6 +497,7 @@ export default function LeadDetailsScreen() {
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [ledgerDownloading, setLedgerDownloading] = useState(false);
 
   const handleDownloadLedger = async () => {
@@ -309,6 +638,7 @@ export default function LeadDetailsScreen() {
   }, [meetingsQuery.data, params.id]);
 
   const tasksQuery = useTasks({ lead_id: params.id || '' });
+  const updateTaskMutation = useUpdateTask();
   const dbTasks = React.useMemo(() => {
     const raw = tasksQuery.data as any;
     if (!raw) return [];
@@ -468,6 +798,12 @@ export default function LeadDetailsScreen() {
 
   const isFocused = useIsFocused();
 
+  React.useEffect(() => {
+    if (isFocused) {
+      handleRefresh();
+    }
+  }, [isFocused]);
+
   // State
   const [activeTab, setActiveTab] = useState<TabType>('Overview');
 
@@ -519,27 +855,37 @@ export default function LeadDetailsScreen() {
 
   const [isNavigating, setIsNavigating] = useState(false);
   const isNavigatingRef = React.useRef(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const handleViewList = (type: 'Call' | 'Meeting' | 'Task' | 'Visit') => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
-    const screenMap: Record<string, string> = {
-      Call: 'call',
-      Meeting: 'meeting',
-      Task: 'task',
-      Visit: 'visit',
-    };
-    navigation.navigate(screenMap[type] as never, {
-      screen: 'index',
-      params: {
+    if (type === 'Call') {
+      navigation.navigate('call' as never, {
+        screen: 'index',
+        params: {
+          leadId,
+          leadName,
+          company: leadCompany !== '----' ? leadCompany : '',
+          phone: leadPhone !== '----' ? leadPhone : '',
+          email: leadEmail !== '----' ? leadEmail : '',
+          referrer: 'lead-details',
+        }
+      } as never);
+    } else {
+      const localScreenMap: Record<string, string> = {
+        Meeting: 'lead-meeting',
+        Task: 'lead-task',
+        Visit: 'lead-visit',
+      };
+      navigation.navigate(localScreenMap[type] as never, {
         leadId,
         leadName,
-        company: leadCompany !== '----' ? leadCompany : '',
         phone: leadPhone !== '----' ? leadPhone : '',
         email: leadEmail !== '----' ? leadEmail : '',
         referrer: 'lead-details',
-      }
-    } as never);
+      } as never);
+    }
     setTimeout(() => {
       isNavigatingRef.current = false;
     }, 1000);
@@ -558,40 +904,35 @@ export default function LeadDetailsScreen() {
         }
       } as never);
     } else if (type === 'Meeting') {
-      navigation.navigate('meeting' as never, {
-        screen: 'add-meeting',
-        params: {
-          leadId,
-          leadName,
-          company: leadCompany !== '----' ? leadCompany : '',
-        }
+      navigation.navigate('lead-add-meeting' as never, {
+        leadId,
+        leadName,
+        company: leadCompany !== '----' ? leadCompany : '',
       } as never);
     } else if (type === 'Task') {
-      navigation.navigate('task' as never, {
-        screen: 'add-task',
-        params: {
-          leadId,
-          leadName,
-        }
+      navigation.navigate('lead-add-task' as never, {
+        leadId,
+        leadName,
       } as never);
     } else if (type === 'Visit') {
-      navigation.navigate('visit' as never, {
-        screen: 'add-visit',
-        params: {
-          leadId,
-          referrer: 'lead-details',
-        }
+      navigation.navigate('lead-add-visit' as never, {
+        leadId,
+        leadName,
+        company: leadCompany !== '----' ? leadCompany : '',
       } as never);
     } else if (type === 'Quotation') {
-      navigation.navigate('Quotation' as never, {
-        screen: 'add-quotation',
-        params: {
-          leadId,
-          companyName: leadCompany !== '----' ? leadCompany : '',
-          contactName: leadName !== '----' ? leadName : '',
-          contactPhone: leadPhone !== '----' ? leadPhone : '',
-          contactEmail: leadEmail !== '----' ? leadEmail : '',
-        }
+      navigation.navigate('lead-add-quotation' as never, {
+        leadId,
+        companyName: leadCompany !== '----' ? leadCompany : '',
+        contactName: leadName !== '----' ? leadName : '',
+        contactPhone: leadPhone !== '----' ? leadPhone : '',
+        contactEmail: leadEmail !== '----' ? leadEmail : '',
+      } as never);
+    } else if (type === 'Order') {
+      navigation.navigate('lead-add-order' as never, {
+        leadId,
+        companyName: leadCompany !== '----' ? leadCompany : '',
+        contactName: leadName !== '----' ? leadName : '',
       } as never);
     } else if (type === 'Reminder') {
       navigation.navigate('Reminder' as never, {
@@ -702,11 +1043,32 @@ export default function LeadDetailsScreen() {
     );
   };
 
+  const handleOpenMap = () => {
+    const parts = [
+      dbLead?.address_line1,
+      dbLead?.address_line2,
+      dbLead?.city_name || dbLead?.city,
+      dbLead?.state_name || dbLead?.state,
+      dbLead?.country_name || dbLead?.country,
+      dbLead?.pincode
+    ];
+    const query = parts
+      .map(part => part ? String(part).trim() : '')
+      .filter(part => part && part !== '----' && part !== '—')
+      .join(', ');
+    if (query) {
+      Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(query)}`).catch((err) =>
+        console.error('Failed to open maps:', err)
+      );
+    }
+  };
+
   // Mock data for Order Tab
   const ORDERS: any[] = [];
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+      {showConfetti && <FirecrackerOverlay />}
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
 
       {/* HEADER */}
@@ -970,6 +1332,16 @@ export default function LeadDetailsScreen() {
                                 });
                                 await refetch();
                                 setStatusModalVisible(false);
+                                if (statusLabel.toLowerCase().includes('won')) {
+                                  if (Platform.OS === 'web') {
+                                    triggerConfetti();
+                                  } else {
+                                    setShowConfetti(true);
+                                    setTimeout(() => {
+                                      setShowConfetti(false);
+                                    }, 5000);
+                                  }
+                                }
                               } catch (err: any) {
                                 Alert.alert('Error', err?.message || 'Failed to update status.');
                               } finally {
@@ -1087,12 +1459,36 @@ export default function LeadDetailsScreen() {
 
               {addressExpanded && (
                 <View style={styles.accordionContent}>
-                  <DetailRow label="Address Line 1" value={dbLead?.address_line1 || "----"} />
-                  <DetailRow label="Address Line 2" value={dbLead?.address_line2 || "----"} />
-                  <DetailRow label="Country" value={dbLead?.country_name || dbLead?.country || "----"} />
-                  <DetailRow label="State" value={dbLead?.state_name || dbLead?.state || "----"} />
-                  <DetailRow label="City" value={dbLead?.city_name || dbLead?.city || "----"} />
-                  <DetailRow label="Pincode" value={dbLead?.pincode || "----"} />
+                  <DetailRow
+                    label="Address Line 1"
+                    value={dbLead?.address_line1 || "----"}
+                    onPress={dbLead?.address_line1 && dbLead?.address_line1 !== '----' && dbLead?.address_line1 !== '—' ? handleOpenMap : undefined}
+                  />
+                  <DetailRow
+                    label="Address Line 2"
+                    value={dbLead?.address_line2 || "----"}
+                    onPress={dbLead?.address_line2 && dbLead?.address_line2 !== '----' && dbLead?.address_line2 !== '—' ? handleOpenMap : undefined}
+                  />
+                  <DetailRow
+                    label="Country"
+                    value={dbLead?.country_name || dbLead?.country || "----"}
+                    onPress={(dbLead?.country_name || dbLead?.country) && (dbLead?.country_name || dbLead?.country) !== '----' && (dbLead?.country_name || dbLead?.country) !== '—' ? handleOpenMap : undefined}
+                  />
+                  <DetailRow
+                    label="State"
+                    value={dbLead?.state_name || dbLead?.state || "----"}
+                    onPress={(dbLead?.state_name || dbLead?.state) && (dbLead?.state_name || dbLead?.state) !== '----' && (dbLead?.state_name || dbLead?.state) !== '—' ? handleOpenMap : undefined}
+                  />
+                  <DetailRow
+                    label="City"
+                    value={dbLead?.city_name || dbLead?.city || "----"}
+                    onPress={(dbLead?.city_name || dbLead?.city) && (dbLead?.city_name || dbLead?.city) !== '----' && (dbLead?.city_name || dbLead?.city) !== '—' ? handleOpenMap : undefined}
+                  />
+                  <DetailRow
+                    label="Pincode"
+                    value={dbLead?.pincode || "----"}
+                    onPress={dbLead?.pincode && dbLead?.pincode !== '----' && dbLead?.pincode !== '—' ? handleOpenMap : undefined}
+                  />
                 </View>
               )}
             </View>
@@ -1240,28 +1636,57 @@ export default function LeadDetailsScreen() {
               </TouchableOpacity>
 
               {attachmentsExpanded && (
-                <View style={styles.accordionContent}>
+                <View style={[styles.accordionContent, { paddingHorizontal: 12 }]}>
                   {attachments.length === 0 ? (
                     <Text style={styles.noDataText}>No attachments found.</Text>
                   ) : (
-                    attachments.map((item: any, index: number) => {
-                      const dateLabel = new Date(item.uploadedAt).toLocaleDateString('en-IN', {
-                        year: 'numeric', month: '2-digit', day: '2-digit'
-                      });
-                      return (
-                        <View key={item.id || index} style={styles.miniItemRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.miniItemTitle}>{item.name}</Text>
-                            <Text style={styles.miniItemSub}>
-                              {item.size} · {item.uploadedBy} · {dateLabel}
-                            </Text>
-                          </View>
-                          <Text style={[styles.miniItemStatus, { color: COLORS.blue }]}>
-                            {item.type}
-                          </Text>
-                        </View>
-                      );
-                    })
+                    <View style={styles.attachmentsGrid}>
+                      {attachments.map((item: any, index: number) => {
+                        const isPdf = item.type.toUpperCase() === 'PDF';
+                        const isImage = ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF'].includes(
+                          item.type.toUpperCase()
+                        );
+                        const iconName = isPdf
+                          ? 'document-text'
+                          : isImage
+                            ? 'image'
+                            : 'document';
+                        const iconColor = isPdf ? '#EF4444' : isImage ? '#10B981' : '#6B7280';
+
+                        return (
+                          <TouchableOpacity
+                            key={item.id || index}
+                            style={styles.gridAttachmentCard}
+                            onPress={() => {
+                              const isImg = ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF'].includes(
+                                item.type.toUpperCase()
+                              );
+                              if (isImg) {
+                                setPreviewImageUrl(item.url);
+                              } else {
+                                Linking.openURL(item.url).catch(() => {
+                                  Alert.alert('Cannot Open', 'No handler found for this attachment link.');
+                                });
+                              }
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {isImage ? (
+                              <Image
+                                source={{ uri: item.url }}
+                                style={styles.gridCardImage}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <View style={[styles.gridCardIconBg, { backgroundColor: iconColor + '10' }]}>
+                                <Ionicons name={iconName} size={28} color={iconColor} />
+                                <Text style={[styles.gridCardExtensionText, { color: iconColor, marginTop: 4, fontWeight: '800' }]}>{item.type.toUpperCase()}</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
               )}
@@ -1352,17 +1777,21 @@ export default function LeadDetailsScreen() {
                           </View>
                           <View style={styles.contactMiniDetailsRow}>
                             {item.email ? (
-                              <Text style={[styles.contactMiniText, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                                {item.email}
-                              </Text>
+                              <TouchableOpacity onPress={() => Linking.openURL(`mailto:${item.email}`)} activeOpacity={0.7} style={{ flexShrink: 1 }}>
+                                <Text style={[styles.contactMiniText, { color: '#2563EB', textDecorationLine: 'underline', fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
+                                  {item.email}
+                                </Text>
+                              </TouchableOpacity>
                             ) : null}
                             {item.email && item.phone ? (
                               <View style={styles.contactMiniDivider} />
                             ) : null}
                             {item.phone ? (
-                              <Text style={[styles.contactMiniText, { flexShrink: 0 }]} numberOfLines={1}>
-                                {item.phone}
-                              </Text>
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phone}`)} activeOpacity={0.7} style={{ flexShrink: 0 }}>
+                                <Text style={[styles.contactMiniText, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '700' }]} numberOfLines={1}>
+                                  {item.phone}
+                                </Text>
+                              </TouchableOpacity>
                             ) : null}
                             {!item.email && !item.phone ? (
                               <Text style={styles.contactMiniText}>—</Text>
@@ -1435,9 +1864,8 @@ export default function LeadDetailsScreen() {
                           onPress={() => {
                             if (isNavigatingRef.current) return;
                             isNavigatingRef.current = true;
-                            navigation.navigate('visit' as never, {
-                              screen: 'visit-details',
-                              params: { id: visit.id, referrer: 'lead-details', leadId }
+                            navigation.navigate('lead-visit-details' as never, {
+                              id: visit.id, referrer: 'lead-details', leadId
                             } as never);
                             setTimeout(() => { isNavigatingRef.current = false; }, 1000);
                           }}
@@ -1513,29 +1941,21 @@ export default function LeadDetailsScreen() {
                   {dbMeetings.length === 0 ? (
                     <Text style={styles.noDataText}>No meetings found.</Text>
                   ) : (
-                    dbMeetings.map((meeting: any, index: number) => {
-                      const dateObj = meeting.scheduled_at ? new Date(meeting.scheduled_at) : null;
-                      const dateStr = dateObj
-                        ? dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
-                        ' ' +
-                        dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-                        : '—';
-                      const statusColor = meeting.status === 'COMPLETED' ? COLORS.green : COLORS.orange;
-
-                      return (
-                        <View key={meeting.id || index} style={styles.miniItemRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.miniItemTitle}>{meeting.purpose || 'Follow-up'}</Text>
-                            <Text style={styles.miniItemSub}>
-                              Method: {meeting.follow_up_method || 'Video Meeting'} · {dateStr}
-                            </Text>
-                          </View>
-                          <Text style={[styles.miniItemStatus, { color: statusColor }]}>
-                            {meeting.status || 'Pending'}
-                          </Text>
-                        </View>
-                      );
-                    })
+                    dbMeetings.map((meeting: any, index: number) => (
+                      <MeetingCard
+                        key={meeting.id || index}
+                        meeting={meeting}
+                        isCompact={true}
+                        onPress={() => {
+                          if (isNavigatingRef.current) return;
+                          isNavigatingRef.current = true;
+                          navigation.navigate('lead-meeting-details' as never, {
+                            id: String(meeting.id)
+                          } as never);
+                          setTimeout(() => { isNavigatingRef.current = false; }, 1000);
+                        }}
+                      />
+                    ))
                   )}
                 </View>
               )}
@@ -1591,27 +2011,38 @@ export default function LeadDetailsScreen() {
                   {dbTasks.length === 0 ? (
                     <Text style={styles.noDataText}>No tasks found.</Text>
                   ) : (
-                    dbTasks.map((task: any, index: number) => {
-                      const isCompleted = task.status?.toUpperCase() === 'COMPLETED';
-                      const statusColor = isCompleted ? COLORS.green : COLORS.orange;
-                      const dateStr = formatDate(task.due_date);
-
-                      return (
-                        <View key={task.id || index} style={styles.miniItemRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.miniItemTitle, isCompleted && { textDecorationLine: 'line-through', color: COLORS.textMuted }]}>
-                              {task.title || 'Task'}
-                            </Text>
-                            <Text style={styles.miniItemSub}>
-                              Due: {dateStr || '—'} · Priority: {task.priority || 'Normal'}
-                            </Text>
-                          </View>
-                          <Text style={[styles.miniItemStatus, { color: statusColor }]}>
-                            {task.status || 'Pending'}
-                          </Text>
-                        </View>
-                      );
-                    })
+                    dbTasks.map((task: any, index: number) => (
+                      <TaskCard
+                        key={task.id || index}
+                        task={task}
+                        onToggleCompletion={async () => {
+                          try {
+                            const currentStatus = String(task.status || '').toUpperCase();
+                            const nextStatus = currentStatus === 'COMPLETED' ? 'TODO' : 'COMPLETED';
+                            await updateTaskMutation.mutateAsync({ id: task.id, data: { status: nextStatus } });
+                          } catch (err) {
+                            console.error('Failed to toggle task completion from lead details:', err);
+                          }
+                        }}
+                        onPress={() => {
+                          if (isNavigatingRef.current) return;
+                          isNavigatingRef.current = true;
+                          navigation.navigate('lead-task-details' as never, {
+                            id: task.id,
+                            title: task.title,
+                            due: task.due_date ? new Date(task.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+                            due_date: task.due_date,
+                            priority: task.priority,
+                            status: task.status,
+                            description: task.description || '',
+                            assigned_to: task.assigned_to || '',
+                            assigned_to_name: task.assigned_to_fullname || task.assigned_to_name || '',
+                            lead_id: task.lead_id || '',
+                          } as never);
+                          setTimeout(() => { isNavigatingRef.current = false; }, 1000);
+                        }}
+                      />
+                    ))
                   )}
                 </View>
               )}
@@ -2008,79 +2439,23 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.placeholderTabText}>No quotations found for this lead.</Text>
               </View>
             ) : (
-              dbQuotations.map((item: any, idx: number) => {
-                const prefix = item.prefix || 'QT';
-                const qNumber = item.quotation_number ? `${prefix}-${item.quotation_number}` : item.id.slice(0, 8).toUpperCase();
-                const statusColor = STATUS_COLORS[item.status] || '#6B7280';
-                const clientName = item.company_name || item.lead_company_name || '—';
-                const contactName = item.contact_name || item.lead_name || '—';
-                const dateStr = formatDate(item.quotation_date);
-                const itemsCount = Array.isArray(item.items) ? item.items.length : item.total_items || 0;
-
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.quotationCard}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      if (isNavigatingRef.current) return;
-                      isNavigatingRef.current = true;
-                      navigation.navigate('Quotation' as never, {
-                        screen: 'quotation-details',
-                        params: { id: item.id, referrer: 'lead-details', leadId }
-                      } as never);
-                      setTimeout(() => {
-                        isNavigatingRef.current = false;
-                      }, 1000);
-                    }}
-                  >
-                    <View style={styles.quotationTopRow}>
-                      <View style={styles.quotationTypeRow}>
-                        <View style={[styles.dot, { backgroundColor: COLORS.blue }]} />
-                        <Text style={styles.quotationTypeText}>Product Quotation</Text>
-                      </View>
-                      <Text style={[styles.statusTextLabel, { color: statusColor }]}>
-                        • {item.status}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.quotationTitle}># {qNumber}</Text>
-
-                    <View style={styles.cardDetailsList}>
-                      {/* Company & Contact side-by-side */}
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={[styles.cardDetailItem, { flex: 1, marginRight: 8 }]}>
-                          <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                          <Text style={[styles.cardDetailText, { fontWeight: '800', color: COLORS.textDark }]} numberOfLines={1}>
-                            {clientName}
-                          </Text>
-                        </View>
-                        <View style={[styles.cardDetailItem, { flex: 1, justifyContent: 'flex-end' }]}>
-                          <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                          <Text style={styles.cardDetailText} numberOfLines={1}>
-                            {contactName}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardDivider} />
-
-                    <View style={styles.quotationBottomRow}>
-                      <View style={styles.leftMetrics}>
-                        <View style={styles.metricItem}>
-                          <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-                          <Text style={styles.metricText}>{dateStr}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.rightAmountCol}>
-                        <Text style={styles.amountLabel}>Amount</Text>
-                        <Text style={styles.amountValue}>{formatAmount(item.grand_total)}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              dbQuotations.map((item: any) => (
+                <QuotationCard
+                  key={item.id}
+                  quotation={item}
+                  isCompact={true}
+                  onPress={() => {
+                    if (isNavigatingRef.current) return;
+                    isNavigatingRef.current = true;
+                    navigation.navigate('lead-quotation-details' as never, {
+                      id: item.id, referrer: 'lead-details', leadId
+                    } as never);
+                    setTimeout(() => {
+                      isNavigatingRef.current = false;
+                    }, 1000);
+                  }}
+                />
+              ))
             )}
           </View>
         )}
@@ -2181,90 +2556,23 @@ export default function LeadDetailsScreen() {
                 <Text style={styles.placeholderTabText}>No orders found for this lead.</Text>
               </View>
             ) : (
-              dbOrders.map((item: any, idx: number) => {
-                const orderNumber = item.orderNo || item.id;
-                const clientName = item.clientName || leadCompany;
-                const contactPerson = item.contactPerson || leadName;
-                const location = item.hotelLocation || '—';
-                const statusColor = STATUS_COLORS[item.status] || '#6B7280';
-                const dateStr = item.date;
-                const itemsCount = Array.isArray(item.items) ? item.items.length : item.itemsCount || 0;
-                const paymentMethod = item.paymentType || '—';
-
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.orderCard}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      if (isNavigatingRef.current) return;
-                      isNavigatingRef.current = true;
-                      navigation.navigate('Order' as never, {
-                        screen: 'order-details',
-                        params: { id: item.id, referrer: 'lead-details', leadId }
-                      } as never);
-                      setTimeout(() => {
-                        isNavigatingRef.current = false;
-                      }, 1000);
-                    }}
-                  >
-                    <View style={styles.orderTopRow}>
-                      <Text style={styles.orderTitle}># {orderNumber}</Text>
-                      <View style={styles.orderDateRow}>
-                        <Ionicons name="calendar-outline" size={14} color={COLORS.blue} style={{ marginRight: 5 }} />
-                        <Text style={styles.orderDateText}>{dateStr}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardDetailsList}>
-                      {/* Company & Lead side-by-side */}
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={[styles.cardDetailItem, { flex: 1, marginRight: 8 }]}>
-                          <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                          <Text style={[styles.cardDetailText, { fontWeight: '800', color: COLORS.textDark }]} numberOfLines={1}>
-                            {clientName}
-                          </Text>
-                        </View>
-                        <View style={[styles.cardDetailItem, { flex: 1, justifyContent: 'flex-end' }]}>
-                          <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                          <Text style={styles.cardDetailText} numberOfLines={1}>
-                            {contactPerson}
-                          </Text>
-                        </View>
-                      </View>
-                      {/* Location Address */}
-                      <View style={styles.cardDetailItem}>
-                        <Ionicons name="home-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                        <Text style={[styles.cardDetailText, { flex: 1 }]}>{location}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardDivider} />
-
-                    <View style={styles.orderStatusItemsRow}>
-                      <View style={styles.orderStatusContainer}>
-                        <View style={[styles.statusCircleOutline, { borderColor: statusColor }]}>
-                          <View style={[styles.statusCircleDot, { backgroundColor: statusColor }]} />
-                        </View>
-                        <Text style={[styles.orderStatusText, { color: statusColor }]}>{item.status}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardDivider} />
-
-                    <View style={styles.orderBottomPaymentRow}>
-                      <View style={styles.paymentCol}>
-                        <Text style={styles.paymentLabel}>Order By</Text>
-                        <Text style={styles.paymentValue}>{paymentMethod}</Text>
-                      </View>
-                      <View style={styles.rightAmountCol}>
-                        <Text style={styles.amountLabel}>Amount</Text>
-                        <Text style={styles.amountValue}>{item.amount}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              dbOrders.map((item: any, idx: number) => (
+                <OrderCard
+                  key={item.id}
+                  order={item}
+                  isCompact={true}
+                  onPress={() => {
+                    if (isNavigatingRef.current) return;
+                    isNavigatingRef.current = true;
+                    navigation.navigate('lead-order-details' as never, {
+                      id: item.id, referrer: 'lead-details', leadId
+                    } as never);
+                    setTimeout(() => {
+                      isNavigatingRef.current = false;
+                    }, 1000);
+                  }}
+                />
+              ))
             )}
           </View>
         )}
@@ -2561,29 +2869,23 @@ export default function LeadDetailsScreen() {
             if (isNavigatingRef.current) return;
             isNavigatingRef.current = true;
             if (activeTab === 'Quotation') {
-              navigation.navigate('Quotation' as never, {
-                screen: 'add-quotation',
-                params: {
-                  referrer: 'lead-details',
-                  leadId: params.id || '',
-                  contactName: leadName !== '----' ? leadName : '',
-                  companyName: leadCompany !== '----' ? leadCompany : '',
-                  contactPhone: leadPhone !== '----' ? leadPhone : '',
-                  contactEmail: leadEmail !== '----' ? leadEmail : '',
-                  gstNumber: dbLead?.gst_number || '',
-                  panNumber: dbLead?.pan_number || '',
-                  notes: dbLead?.remarks || '',
-                }
+              navigation.navigate('lead-add-quotation' as never, {
+                referrer: 'lead-details',
+                leadId: params.id || '',
+                contactName: leadName !== '----' ? leadName : '',
+                companyName: leadCompany !== '----' ? leadCompany : '',
+                contactPhone: leadPhone !== '----' ? leadPhone : '',
+                contactEmail: leadEmail !== '----' ? leadEmail : '',
+                gstNumber: dbLead?.gst_number || '',
+                panNumber: dbLead?.pan_number || '',
+                notes: dbLead?.remarks || '',
               } as never);
             } else if (activeTab === 'Order') {
-              navigation.navigate('Order' as never, {
-                screen: 'add-order',
-                params: {
-                  referrer: 'lead-details',
-                  leadId: params.id || '',
-                  companyName: leadCompany !== '----' ? leadCompany : '',
-                  contactName: leadName !== '----' ? leadName : '',
-                }
+              navigation.navigate('lead-add-order' as never, {
+                referrer: 'lead-details',
+                leadId: params.id || '',
+                companyName: leadCompany !== '----' ? leadCompany : '',
+                contactName: leadName !== '----' ? leadName : '',
               } as never);
             }
             setTimeout(() => {
@@ -2595,6 +2897,31 @@ export default function LeadDetailsScreen() {
           <Ionicons name="add" size={26} color="#FFFFFF" />
         </TouchableOpacity>
       )}
+
+      {/* FULL SCREEN IMAGE PREVIEW MODAL */}
+      <Modal
+        visible={!!previewImageUrl}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPreviewImageUrl(null)}
+      >
+        <View style={styles.previewModalOverlay}>
+          <TouchableOpacity
+            style={styles.previewCloseBtn}
+            onPress={() => setPreviewImageUrl(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          {previewImageUrl && (
+            <Image
+              source={{ uri: previewImageUrl }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -3288,6 +3615,66 @@ const getStyles = (theme: any) => StyleSheet.create({
   miniItemStatus: {
     fontSize: 11,
     fontWeight: '800',
+  },
+  attachmentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    paddingVertical: 8,
+  },
+  gridAttachmentCard: {
+    width: '31.3%',
+    aspectRatio: 1,
+    marginHorizontal: '1%',
+    marginBottom: 12,
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  gridCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridCardIconBg: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridCardExtensionText: {
+    fontSize: 8,
+    fontWeight: '800',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
   searchBarContainer: {
     flex: 1,

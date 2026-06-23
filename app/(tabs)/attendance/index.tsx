@@ -2,20 +2,21 @@ import {
   attendanceState,
   AttendanceState,
   subscribeToAttendance,
-  updateAttendanceState,
 } from '@/components/attendance/AttendanceState';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAttendanceStatus } from '@/hooks/useAttendance';
+import { useAttendanceHistory, useAttendanceStatus } from '@/hooks/useAttendance';
+import { AttendanceRecord, AttendanceStatus } from '@/types/attendance';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -26,42 +27,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
 
-type AttendanceStatus = 'present' | 'absent' | 'late' | 'not_marked';
-type FilterType = 'Present' | 'Absent' | 'Late';
+type StatusFilter = 'All' | 'Present' | 'Absent' | 'Leave';
 
-// Hardcoded historical data
-const HISTORY_DATA = [
-  {
-    id: 1, day: 'Monday', date: 'FEB 24',
-    status: 'present' as AttendanceStatus,
-    inTime: '09:12', outTime: '18:48', workTime: '9h 36m',
-    inPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-    outPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-  },
-  {
-    id: 2, day: 'Tuesday', date: 'FEB 25',
-    status: 'present' as AttendanceStatus,
-    inTime: '09:05', outTime: '18:02', workTime: '8h 57m',
-    inPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-    outPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-  },
-  {
-    id: 3, day: 'Wednesday', date: 'FEB 26',
-    status: 'late' as AttendanceStatus,
-    inTime: '10:45', outTime: '19:00', workTime: '8h 15m',
-    inPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-    outPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-  },
-  {
-    id: 4, day: 'Thursday', date: 'FEB 27',
-    status: 'absent' as AttendanceStatus,
-    inTime: '--:--', outTime: '--:--', workTime: '--',
-    inPhoto: null,
-    outPhoto: null,
-  },
-];
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
   const theme = useTheme();
@@ -70,7 +38,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
   const config = {
     present: { label: 'Present', bg: '#DCFCE7', text: '#15803D' },
     absent: { label: 'Absent', bg: '#FEE2E2', text: '#B91C1C' },
-    late: { label: 'Late', bg: '#FEF3C7', text: '#92400E' },
+    leave: { label: 'Leave', bg: '#E0F2FE', text: '#0369A1' },
     not_marked: { label: 'Not Marked', bg: '#F3F4F6', text: '#6B7280' },
   }[status];
 
@@ -92,7 +60,6 @@ function useAttendance() {
 
   return {
     attendance,
-    updateAttendance: updateAttendanceState,
   };
 }
 
@@ -101,38 +68,40 @@ export default function AttendanceScreen() {
   const styles = getStyles(theme);
 
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
+  const router = useRouter();
 
-  const statusQuery = useAttendanceStatus();
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
-  useEffect(() => {
-    if (statusQuery.data) {
-      updateAttendanceState(statusQuery.data);
-    }
-  }, [statusQuery.data]);
+  // Status query syncs local AttendanceState automatically via the hook's onSuccess
+  useAttendanceStatus();
+  const historyQuery = useAttendanceHistory(
+    selectedMonth.getMonth() + 1,
+    selectedMonth.getFullYear(),
+    statusFilter === 'All' ? undefined : statusFilter,
+  );
 
   const { attendance: attState } = useAttendance();
-  const [activeFilter, setActiveFilter] = useState<FilterType>('Present');
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const formattedMonth = `${monthNames[selectedMonth.getMonth()]} ${selectedMonth.getFullYear()}`;
 
   const handlePunchIn = () => {
     if (attState.stampedIn) return;
-    navigation.navigate('camera-capture' as never, {
-      sourceScreen: 'Attendance',
-      attendanceAction: 'in',
-    } as never);
+    router.push({
+      pathname: '/camera-capture',
+      params: { sourceScreen: 'Attendance', attendanceAction: 'in' },
+    });
   };
 
   const handlePunchOut = () => {
     if (!attState.stampedIn || attState.stampedOut) return;
-    navigation.navigate('camera-capture' as never, {
-      sourceScreen: 'Attendance',
-      attendanceAction: 'out',
-    } as never);
+    router.push({
+      pathname: '/camera-capture',
+      params: { sourceScreen: 'Attendance', attendanceAction: 'out' },
+    });
   };
 
   const todayStatus: AttendanceStatus = attState.stampedOut
@@ -141,12 +110,19 @@ export default function AttendanceScreen() {
       ? 'present'
       : 'not_marked';
 
-  const filteredHistory = HISTORY_DATA.filter((item) => {
-    if (activeFilter === 'Present') return item.status === 'present';
-    if (activeFilter === 'Absent') return item.status === 'absent';
-    if (activeFilter === 'Late') return item.status === 'late';
-    return true;
-  });
+  const historyData: AttendanceRecord[] = historyQuery.data ?? [];
+
+  const STATUS_OPTIONS: StatusFilter[] = ['All', 'Present', 'Absent', 'Leave'];
+
+  const statusBadgeColor = (s: StatusFilter) => {
+    switch (s) {
+      case 'Present': return { bg: '#DCFCE7', text: '#15803D' };
+      case 'Absent':  return { bg: '#FEE2E2', text: '#B91C1C' };
+      case 'Leave':   return { bg: '#E0F2FE', text: '#0369A1' };
+      default:        return { bg: '#F3F4F6', text: '#6B7280' };
+    }
+  };
+
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
@@ -299,41 +275,41 @@ export default function AttendanceScreen() {
           {/* Section Header */}
           <View style={styles.historyHeader}>
             <Text style={styles.historySectionTitle}>ATTENDANCE HISTORY</Text>
-            <TouchableOpacity style={styles.monthPicker} onPress={() => setPickerVisible(true)}>
-              <Ionicons name="calendar-outline" size={14} color={theme.primaryColor} />
-              <Text style={styles.monthPickerText}>{formattedMonth}</Text>
-              <Ionicons name="chevron-down" size={12} color={theme.primaryColor} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {/* Status Filter Button */}
+              <TouchableOpacity style={styles.monthPicker} onPress={() => setStatusModalVisible(true)}>
+                <Ionicons name="filter-outline" size={14} color={theme.primaryColor} />
+                <Text style={styles.monthPickerText}>{statusFilter}</Text>
+                <Ionicons name="chevron-down" size={12} color={theme.primaryColor} />
+              </TouchableOpacity>
+              {/* Month Picker Button */}
+              <TouchableOpacity style={styles.monthPicker} onPress={() => setPickerVisible(true)}>
+                <Ionicons name="calendar-outline" size={14} color={theme.primaryColor} />
+                <Text style={styles.monthPickerText}>{formattedMonth}</Text>
+                <Ionicons name="chevron-down" size={12} color={theme.primaryColor} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Filters Row */}
-          <View style={styles.filtersContainer}>
-            {(['Present', 'Absent', 'Late'] as FilterType[]).map((f) => {
-              const isActive = activeFilter === f;
-              return (
-                <TouchableOpacity
-                  key={f}
-                  onPress={() => setActiveFilter(f)}
-                  style={[styles.filterTab, isActive && styles.filterTabActive]}
-                >
-                  <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
-                    {f}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+
 
           {/* History Cards List */}
-          {filteredHistory.map((item) => (
+          {historyQuery.isLoading ? (
+            <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginTop: 24 }} />
+          ) : historyData.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <Ionicons name="calendar-outline" size={32} color={COLORS.textMuted} />
+              <Text style={{ color: COLORS.textMuted, marginTop: 8, fontSize: 13, fontWeight: '600' }}>
+                No {statusFilter === 'All' ? 'attendance' : statusFilter.toLowerCase()} records found
+              </Text>
+            </View>
+          ) : historyData.map((item) => (
             <View key={item.id} style={styles.historyCard}>
               <View style={styles.historyCardHeader}>
                 <Text style={styles.historyDateText}>
                   {item.day} — {item.date}
                 </Text>
-                <TouchableOpacity style={styles.presentIndicatorBtn}>
-                  <Text style={styles.presentIndicatorText}>+ {item.status === 'present' ? 'Present' : item.status === 'late' ? 'Late' : 'Absent'}</Text>
-                </TouchableOpacity>
+                <StatusBadge status={item.status} />
               </View>
 
               {/* Photos comparison inside history card */}
@@ -393,6 +369,56 @@ export default function AttendanceScreen() {
           setPickerVisible(false);
         }}
       />
+
+      {/* ── STATUS FILTER MODAL ── */}
+      <Modal visible={statusModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity onPress={() => setStatusModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Options List */}
+            {STATUS_OPTIONS.map((opt) => {
+              const isSelected = statusFilter === opt;
+              const colors = statusBadgeColor(opt);
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[
+                    styles.statusOptionRow,
+                    isSelected && styles.statusOptionRowActive,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setStatusFilter(opt);
+                    setStatusModalVisible(false);
+                  }}
+                >
+                  <View style={[styles.statusOptionDot, { backgroundColor: colors.bg }]}>
+                    <Text style={[styles.statusOptionDotText, { color: colors.text }]}>
+                      {opt === 'All' ? '●' : opt[0]}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.statusOptionText,
+                    isSelected && { color: theme.primaryColor, fontWeight: '800' },
+                  ]}>
+                    {opt}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={20} color={theme.primaryColor} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -603,34 +629,66 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.primaryColor,
   },
 
-  // Filters
-  filtersContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EAEFF1',
-    borderRadius: 10,
-    padding: 3,
-    gap: 5,
-  },
-  filterTab: {
+  // Status Filter Modal
+  modalOverlay: {
     flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 8,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  filterTabActive: {
+  modalSheet: {
     backgroundColor: COLORS.bgWhite,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+    overflow: 'hidden',
   },
-  filterTabText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  filterTabTextActive: {
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
     color: COLORS.textDark,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  statusOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+    gap: 12,
+  },
+  statusOptionRowActive: {
+    backgroundColor: '#F0FDF8',
+  },
+  statusOptionDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusOptionDotText: {
+    fontSize: 13,
     fontWeight: '800',
   },
+  statusOptionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
 
-  // History Card
   historyCard: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 16,

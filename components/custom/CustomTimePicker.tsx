@@ -4,7 +4,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 import WheelPicker from "react-native-wheel-picker-expo";
 
@@ -66,7 +67,29 @@ export function CustomTimePicker({ visible, onClose, selectedDate, onSelect }: C
     newDate.setMinutes(tempMinute);
     newDate.setSeconds(tempSecond);
     newDate.setMilliseconds(0);
-    
+
+    const now = new Date();
+    const isToday =
+      newDate.getDate() === now.getDate() &&
+      newDate.getMonth() === now.getMonth() &&
+      newDate.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+      const minAllowed = new Date(now);
+      minAllowed.setMinutes(now.getMinutes() + 5);
+
+      if (newDate < minAllowed) {
+        const formatTimeShort = (date: Date) =>
+          date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+        Alert.alert(
+          'Disabled Time',
+          `Times before ${formatTimeShort(minAllowed)} are disabled for today.`
+        );
+        return;
+      }
+    }
+
     onSelect(newDate);
   };
 

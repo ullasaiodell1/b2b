@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   StyleSheet,
   Text,
   TextInput,
@@ -160,17 +161,29 @@ export function LeadSelectCard({
             {(selectedLead.email || selectedLead.phone) ? (
               <View style={styles.contactsRow}>
                 {selectedLead.email ? (
-                  <View style={styles.contactItem}>
-                    <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.contactText} numberOfLines={1}>{selectedLead.email}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    activeOpacity={0.7}
+                    onPress={() => Linking.openURL(`mailto:${selectedLead.email}`)}
+                  >
+                    <Ionicons name="mail-outline" size={14} color="#2563EB" style={{ marginRight: 6 }} />
+                    <Text style={[styles.contactText, { color: '#2563EB', textDecorationLine: 'underline', fontWeight: '700' }]} numberOfLines={1}>
+                      {selectedLead.email}
+                    </Text>
+                  </TouchableOpacity>
                 ) : null}
 
                 {selectedLead.phone ? (
-                  <View style={styles.contactItem}>
-                    <Ionicons name="phone-portrait-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-                    <Text style={styles.contactText} numberOfLines={1}>{selectedLead.phone}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    activeOpacity={0.7}
+                    onPress={() => Linking.openURL(`tel:${selectedLead.phone}`)}
+                  >
+                    <Ionicons name="phone-portrait-outline" size={14} color="#16A34A" style={{ marginRight: 6 }} />
+                    <Text style={[styles.contactText, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '700' }]} numberOfLines={1}>
+                      {selectedLead.phone}
+                    </Text>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             ) : null}

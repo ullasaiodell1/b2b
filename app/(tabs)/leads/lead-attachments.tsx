@@ -174,17 +174,8 @@ export default function LeadAttachmentsScreen() {
           </Text>
         </View>
 
-        {/* Upload Button */}
-        <TouchableOpacity
-          style={styles.headerUploadBtn}
-          onPress={() => {
-            setUploadModalVisible(true);
-            setSelectedFile(null);
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add" size={24} color={theme.primaryColor} />
-        </TouchableOpacity>
+        {/* Balanced space placeholder */}
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -232,7 +223,33 @@ export default function LeadAttachmentsScreen() {
               const isDeleting = deletingId === item.id;
 
               return (
-                <View key={item.id} style={styles.attachmentCard}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.attachmentCard}
+                  onPress={() => handleViewAttachment(item)}
+                  activeOpacity={0.8}
+                >
+                  {/* Floating Delete Button */}
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAttachment(item.id, item.name);
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.cardDeleteFloatingBtn}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color={COLORS.danger || '#EF4444'} />
+                    ) : (
+                      <Ionicons
+                        name="trash-outline"
+                        size={16}
+                        color={COLORS.danger || '#EF4444'}
+                      />
+                    )}
+                  </TouchableOpacity>
+
                   {/* Card Info Area */}
                   <View style={styles.cardInfoRow}>
                     {/* Thumbnail/Icon Area */}
@@ -270,41 +287,7 @@ export default function LeadAttachmentsScreen() {
                       </Text>
                     </View>
                   </View>
-
-                  {/* Card Actions Area */}
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity
-                      onPress={() => handleViewAttachment(item)}
-                      activeOpacity={0.7}
-                      style={styles.cardActionBtn}
-                    >
-                      <Ionicons name="eye-outline" size={16} color={theme.primaryColor || '#1E5E48'} />
-                      <Text style={[styles.cardActionText, { color: theme.primaryColor || '#1E5E48' }]}>View</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.cardActionDivider} />
-
-                    <TouchableOpacity
-                      onPress={() => handleDeleteAttachment(item.id, item.name)}
-                      activeOpacity={0.7}
-                      style={styles.cardActionBtn}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? (
-                        <ActivityIndicator size="small" color={COLORS.danger || '#EF4444'} />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name="trash-outline"
-                            size={16}
-                            color={COLORS.danger || '#EF4444'}
-                          />
-                          <Text style={[styles.cardActionText, { color: COLORS.danger || '#EF4444' }]}>Delete</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )}
@@ -534,6 +517,21 @@ const getStyles = (theme: any) =>
       shadowRadius: 6,
       elevation: 2,
       marginBottom: 4,
+      position: 'relative',
+    },
+    cardDeleteFloatingBtn: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#FEF2F2',
+      borderWidth: 1,
+      borderColor: '#FEE2E2',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10,
     },
     cardInfoRow: {
       flexDirection: 'row',

@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -32,7 +33,7 @@ export default function LeadContactsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles: any = getStyles(theme);
 
   const params = useLocalSearchParams<{
     leadId?: string;
@@ -148,6 +149,10 @@ export default function LeadContactsScreen() {
       Alert.alert('Validation Error', 'Phone is required.');
       return;
     }
+    if (phone.trim().length !== 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -229,9 +234,8 @@ export default function LeadContactsScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.headerAddBtn} onPress={openAddModal} activeOpacity={0.7}>
-          <Ionicons name="add" size={24} color={theme.primaryColor} />
-        </TouchableOpacity>
+        {/* Balanced space placeholder */}
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -255,7 +259,7 @@ export default function LeadContactsScreen() {
             <Ionicons name="people-outline" size={38} color={COLORS.textMuted} />
             <Text style={styles.emptyText}>No contacts found</Text>
             <Text style={styles.emptySubText}>
-              Tap the "+" button in header to add lead contacts
+              Tap the "+" button at the bottom to add lead contacts
             </Text>
           </View>
         ) : (
@@ -305,15 +309,35 @@ export default function LeadContactsScreen() {
 
                 {/* Email & Phone */}
                 <View style={styles.cardGridRow}>
-                  <View style={{ flex: 1.1, paddingRight: 8 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1.1, paddingRight: 8 }}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (item.email && item.email !== '----') {
+                        Linking.openURL(`mailto:${item.email}`);
+                      }
+                    }}
+                  >
                     <Text style={styles.fieldLabel}>Email</Text>
-                    <Text style={styles.fieldValue} numberOfLines={2}>{item.email || '----'}</Text>
-                  </View>
+                    <Text style={[styles.fieldValue, item.email ? { color: '#2563EB', textDecorationLine: 'underline', fontWeight: '700' } : null]} numberOfLines={2}>
+                      {item.email || '----'}
+                    </Text>
+                  </TouchableOpacity>
                   <View style={{ width: 1, backgroundColor: COLORS.border, alignSelf: 'stretch' }} />
-                  <View style={{ flex: 0.9, paddingLeft: 12 }}>
+                  <TouchableOpacity
+                    style={{ flex: 0.9, paddingLeft: 12 }}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (item.phone && item.phone !== '----') {
+                        Linking.openURL(`tel:${item.phone}`);
+                      }
+                    }}
+                  >
                     <Text style={styles.fieldLabel}>Phone Number</Text>
-                    <Text style={styles.fieldValue}>{item.phone || '----'}</Text>
-                  </View>
+                    <Text style={[styles.fieldValue, item.phone ? { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '700' } : null]}>
+                      {item.phone || '----'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Divider */}
@@ -418,6 +442,7 @@ export default function LeadContactsScreen() {
                     keyboardType="phone-pad"
                     value={phone}
                     onChangeText={setPhone}
+                    maxLength={10}
                   />
                 </View>
               </View>
@@ -498,6 +523,15 @@ export default function LeadContactsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 24, 30) }]}
+        onPress={openAddModal}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -533,6 +567,21 @@ const getStyles = (theme: any) =>
       backgroundColor: '#F4F7F5',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    fab: {
+      position: 'absolute',
+      right: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.primaryColor,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4.65,
+      elevation: 8,
     },
     scrollContent: { padding: 5 },
     contactCard: {

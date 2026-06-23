@@ -60,11 +60,11 @@ export default function SettingsScreen() {
           logoutMutation.mutate(undefined, {
             onSuccess: async () => {
               await clearAuthData();
-              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+              navigation.reset({ index: 0, routes: [{ name: 'sign-in' }] });
             },
             onError: async () => {
               await clearAuthData();
-              navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+              navigation.reset({ index: 0, routes: [{ name: 'sign-in' }] });
             }
           });
         },

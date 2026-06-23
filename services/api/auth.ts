@@ -52,6 +52,29 @@ export const deleteSession = (sessionId: string, token: string) => {
     headers: { Authorization: token }
   });
 };
+// POST /auth/forgot-password — request OTP for password reset
+export const forgotPassword = (data: { identifier: string }) => {
+  return axios({
+    method: 'POST',
+    url: `/auth/forgot-password`,
+    data
+  });
+};
 
+// POST /auth/verify-forgot-otp — verify OTP for password reset
+export const verifyForgotPasswordOTP = (data: { identifier: string; otp: string }) => {
+  return axios({
+    method: 'POST',
+    url: `/auth/verify-forgot-otp`,
+    data
+  });
+};
 
-
+// POST /auth/reset-password — set new password
+export const resetPassword = (data: { identifier: string; otp: string; new_password: string }) => {
+  return axios({
+    method: 'POST',
+    url: `/auth/reset-password`,
+    data
+  });
+};

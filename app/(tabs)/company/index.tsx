@@ -9,7 +9,9 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
-    KeyboardAvoidingView, Platform,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -78,15 +80,37 @@ export default function CompanyListScreen() {
         <View style={styles.divider} />
 
         <View style={styles.cardBody}>
-          <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={14} color={theme.primaryColor} />
-            <Text style={styles.infoText}>{item.phone || 'No phone number'}</Text>
-          </View>
+          {item.phone ? (
+            <TouchableOpacity
+              style={styles.infoRow}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL(`tel:${item.phone}`)}
+            >
+              <Ionicons name="call-outline" size={14} color="#16A34A" />
+              <Text style={[styles.infoText, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '700' }]}>{item.phone}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={14} color={theme.primaryColor} />
+              <Text style={styles.infoText}>No phone number</Text>
+            </View>
+          )}
 
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={14} color={theme.primaryColor} />
-            <Text style={styles.infoText}>{item.email || 'No email address'}</Text>
-          </View>
+          {item.email ? (
+            <TouchableOpacity
+              style={styles.infoRow}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL(`mailto:${item.email}`)}
+            >
+              <Ionicons name="mail-outline" size={14} color="#2563EB" />
+              <Text style={[styles.infoText, { color: '#2563EB', textDecorationLine: 'underline', fontWeight: '700' }]}>{item.email}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.infoRow}>
+              <Ionicons name="mail-outline" size={14} color={theme.primaryColor} />
+              <Text style={styles.infoText}>No email address</Text>
+            </View>
+          )}
 
           {(item.city || item.state) && (
             <View style={styles.infoRow}>

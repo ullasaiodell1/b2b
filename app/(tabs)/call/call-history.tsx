@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StatusBar,
   StyleSheet,
@@ -165,7 +166,13 @@ export default function CallHistoryScreen() {
             </View>
             <View style={[styles.detailRow, { marginTop: 4 }]}>
               <Ionicons name="call-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.detailText}>{item.phoneNumber}</Text>
+              {item.phoneNumber ? (
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.phoneNumber}`)} activeOpacity={0.7}>
+                  <Text style={[styles.detailText, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '800' }]}>{item.phoneNumber}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.detailText}>No number</Text>
+              )}
               <Text style={styles.durationDivider}>•</Text>
               <Text style={styles.durationText}>{item.duration}</Text>
             </View>

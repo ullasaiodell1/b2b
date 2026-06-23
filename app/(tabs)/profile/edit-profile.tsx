@@ -157,6 +157,11 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (mobile.trim() && mobile.trim().length !== 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
     setUpdating(true);
     let finalPhotoUri = photoUri;
 
@@ -382,9 +387,10 @@ export default function EditProfileScreen() {
               style={styles.textInput}
               value={mobile}
               onChangeText={setMobile}
-              placeholder="e.g. +91 1234567890"
+              placeholder="e.g. 9876543210"
               placeholderTextColor="#9CA3AF"
               keyboardType="phone-pad"
+              maxLength={10}
             />
           </View>
 

@@ -8,6 +8,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StatusBar,
@@ -116,17 +117,33 @@ export default function CompanyInfoScreen() {
         <View style={styles.infoCard}>
           <View style={styles.detailInfoRow}>
             <Ionicons name="call-outline" size={18} color={theme.primaryColor} style={styles.infoIcon} />
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.infoLabel}>Phone Number</Text>
-              <Text style={styles.infoValue}>{details.phone || 'No phone number'}</Text>
+              {details.phone ? (
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${details.phone}`)} activeOpacity={0.7}>
+                  <Text style={[styles.infoValue, { color: '#16A34A', textDecorationLine: 'underline', fontWeight: '700' }]}>
+                    {details.phone}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.infoValue}>No phone number</Text>
+              )}
             </View>
           </View>
 
           <View style={styles.detailInfoRow}>
             <Ionicons name="mail-outline" size={18} color={theme.primaryColor} style={styles.infoIcon} />
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.infoLabel}>Email Address</Text>
-              <Text style={styles.infoValue}>{details.email || 'No email address'}</Text>
+              {details.email ? (
+                <TouchableOpacity onPress={() => Linking.openURL(`mailto:${details.email}`)} activeOpacity={0.7}>
+                  <Text style={[styles.infoValue, { color: '#2563EB', textDecorationLine: 'underline', fontWeight: '700' }]}>
+                    {details.email}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.infoValue}>No email address</Text>
+              )}
             </View>
           </View>
         </View>

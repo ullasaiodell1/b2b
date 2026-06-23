@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MyProject",
-    "slug": "MyProject",
+    "name": "B2B_Application",
+    "slug": "B2B_Application",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myproject",
+    "scheme": "b2b_application",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -63,9 +63,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0f38a402-67ca-4151-8ae4-a6c413b8029d"
+        "projectId": "430d5a88-3cff-446e-8965-aaa4df57bdb5"
       }
     },
-    "owner": "s_k_c"
+    "owner": "savansanghani"
   }
 }

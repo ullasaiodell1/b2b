@@ -80,10 +80,12 @@ export default function SelectCompanyScreen() {
       Alert.alert('Selection Required', 'Please select a company to proceed.');
       return;
     }
+    const matchedCompany = companiesToDisplay.find((c) => c.name === selectedCompany);
     // Save selection to global object and go back
     (global as any).leadSelection = {
       ...(global as any).leadSelection,
       company: selectedCompany,
+      companyId: matchedCompany ? matchedCompany.id : undefined,
     };
     navigation.goBack();
   };

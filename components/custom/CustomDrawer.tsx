@@ -483,6 +483,21 @@ export default function CustomDrawer() {
                     </TouchableOpacity>
                   )}
 
+                  {/* Leave */}
+                  {matchesSearch('Leave') && (
+                    <TouchableOpacity
+                      style={styles.listItemNested}
+                      onPress={() => handleRowPress('leave')}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <Ionicons name="calendar-clear-outline" size={18} color={COLORS.textMuted} style={styles.rowIcon} />
+                        <Text style={styles.rowLabel}>Leave</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={primaryColor} />
+                    </TouchableOpacity>
+                  )}
+
                   {/* Profile */}
                   {matchesSearch('Profile') && (
                     <TouchableOpacity
@@ -559,6 +574,7 @@ export default function CustomDrawer() {
               !matchesSearch('Tasks') &&
               !matchesSearch('Visits') &&
               !matchesSearch('Attendance') &&
+              !matchesSearch('Leave') &&
               !matchesSearch('Profile') &&
               !matchesSearch('Settings') &&
               !matchesSearch('Company Information') && (
