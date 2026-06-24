@@ -27,9 +27,9 @@ export default function AddNewScreen() {
   const { primaryColor, primaryLight } = useTheme();
 
   const options = [
-    { id: 'lead', label: 'New Lead', icon: 'person-add-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.push('/(tabs)/leads' as any); } },
+    { id: 'lead', label: 'New Lead', icon: 'person-add-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.navigate('/(tabs)/leads' as any); } },
     { id: 'contact', label: 'New Contact', icon: 'call-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Contact form will open here.'); } },
-    { id: 'order', label: 'New Order', icon: 'cart-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.push('/(tabs)/Order' as any); } },
+    { id: 'order', label: 'New Order', icon: 'cart-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); router.navigate('/(tabs)/Order' as any); } },
     { id: 'visit', label: 'New Visit', icon: 'location-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Register New Visit form will open here.'); } },
     { id: 'task', label: 'New Task', icon: 'checkbox-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Task form will open here.'); } },
     { id: 'quotation', label: 'New Quotation', icon: 'document-text-outline' as const, color: primaryColor, onPress: () => { setSheetVisible(false); alert('Create New Quotation form will open here.'); } },

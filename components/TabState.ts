@@ -73,14 +73,15 @@ export function updateConfiguredTabs(newTabs: string[]) {
 }
 
 export function setDynamicTab(tabId: string | null) {
-  if (tabId && !configuredTabs.includes(tabId)) {
-    dynamicTabId = tabId;
-    AsyncStorage.setItem(DYNAMIC_TAB_STORAGE_KEY, tabId).catch(() => {});
-  } else {
+  if (tabId === null) {
     dynamicTabId = null;
     AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
+    notifyTabs();
+  } else if (!configuredTabs.includes(tabId)) {
+    dynamicTabId = tabId;
+    AsyncStorage.setItem(DYNAMIC_TAB_STORAGE_KEY, tabId).catch(() => {});
+    notifyTabs();
   }
-  notifyTabs();
 }
 
 export function resetTabs() {

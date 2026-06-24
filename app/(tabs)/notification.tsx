@@ -109,7 +109,7 @@ export default function NotificationScreen() {
   };
 
   const handleConfirm = () => {
-    router.push('/(tabs)/Order' as any);
+    router.navigate('/(tabs)/Order' as any);
   };
 
   const handleUpdateNotes = () => {
@@ -117,23 +117,23 @@ export default function NotificationScreen() {
   };
 
   const handleLeadAssign = () => {
-    router.push('/(tabs)/leads' as any);
+    router.navigate('/(tabs)/leads' as any);
   };
 
   const handleMeetingDetail = () => {
-    router.push('/(tabs)/meeting' as any);
+    router.navigate('/(tabs)/meeting' as any);
   };
 
   const handleViewQuotation = () => {
-    router.push('/(tabs)/Quotation' as any);
+    router.navigate('/(tabs)/Quotation' as any);
   };
 
   const handleOpenTask = () => {
-    router.push('/(tabs)/task' as any);
+    router.navigate('/(tabs)/task' as any);
   };
 
   const handleViewClient = () => {
-    router.push('/(tabs)/company' as any);
+    router.navigate('/(tabs)/company' as any);
   };
 
   return (

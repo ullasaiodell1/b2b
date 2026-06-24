@@ -172,6 +172,7 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
 
   const [leadId, setLeadId] = useState(initialLeadId || '');
   const [companyId, setCompanyId] = useState<string>('');
+  const [operatingCompanyName, setOperatingCompanyName] = useState<string>('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
 
@@ -265,6 +266,7 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
     setGstNumber('');
     setPanNumber('');
     setCompanyId('');
+    setOperatingCompanyName('');
   };
 
   const handleQuickCreateLead = async () => {
@@ -408,7 +410,14 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
       setPanNumber((selectedLead as any).pan_number || (selectedLead as any).panNo || '');
 
       if ((selectedLead as any).company_id) {
-        setCompanyId(String((selectedLead as any).company_id));
+        const cid = String((selectedLead as any).company_id);
+        setCompanyId(cid);
+        const match = companies.find((c: any) => String(c.id) === cid);
+        if (match) {
+          setOperatingCompanyName(match.display_name || match.name || '');
+        } else {
+          setOperatingCompanyName('');
+        }
       } else {
         const cName = (selectedLead as any).company_name || selectedLead.company || '';
         if (cName.trim()) {
@@ -419,22 +428,26 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
           );
           if (match) {
             setCompanyId(String(match.id));
+            setOperatingCompanyName(match.display_name || match.name || '');
           } else {
             setCompanyId('');
+            setOperatingCompanyName('');
           }
         } else {
           setCompanyId('');
+          setOperatingCompanyName('');
         }
       }
     }
   }, [selectedLead, companies]);
 
-  // Fetch company details when companyId changes to auto-populate GST/PAN/phone/email
+  // Fetch customer's company details when selectedLead.company_id changes to auto-populate GST/PAN/phone/email
   React.useEffect(() => {
     const fetchCompanyDetailsData = async () => {
-      if (!companyId) return;
+      const customerCompanyId = selectedLead?.company_id;
+      if (!customerCompanyId) return;
       try {
-        const res = await getCompanyDetails(companyId) as any;
+        const res = await getCompanyDetails(customerCompanyId) as any;
         const data = res?.data?.[0] || (Array.isArray(res?.data) ? res.data[0] : res?.data) || res?.[0] || res;
         if (data) {
           setCompanyName(data.display_name || data.name || '');
@@ -452,12 +465,12 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
           }
         }
       } catch (err) {
-        console.error('Error fetching company details in useEffect:', err);
+        console.error('Error fetching customer company details in useEffect:', err);
       }
     };
 
     fetchCompanyDetailsData();
-  }, [companyId]);
+  }, [selectedLead?.company_id]);
 
   const updateItem = (idx: number, key: keyof ItemLine, val: any) => {
     setItems((prev) => {
@@ -635,17 +648,9 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
       return;
     }
 
-    const isDealer = selectedLead
-      ? (selectedLead.tag === 'DEALER' ||
-        (selectedLead.name || '').toLowerCase().includes('dealer') ||
-        (selectedLead.company || '').toLowerCase().includes('dealer') ||
-        (selectedLead.tag || '').toLowerCase().includes('dealer') ||
-        (selectedLead.status || '').toLowerCase().includes('dealer'))
-      : false;
-
     const payload: CreateQuotationPayload = {
-      lead_id: isDealer ? null : (leadId || null),
-      dealer_id: isDealer ? (leadId || null) : null,
+      lead_id: leadId || null,
+      dealer_id: null,
       company_id: companyId ? String(companyId) : null,
       quotation_date: quotationDate.toISOString(),
       status: 'DRAFT',
@@ -726,21 +731,6 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
         </View>
 
         <View style={styles.card}>
-          {/* Select Company Dropdown */}
-          <View style={styles.formField}>
-            <Text style={styles.inputLabel}>Company <Text style={{ color: COLORS.danger }}>*</Text></Text>
-            <TouchableOpacity
-              style={styles.selectTrigger}
-              onPress={() => setShowCompanyPicker(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.selectTriggerText, !companyId && !companyName && { color: '#9CA3AF' }]} numberOfLines={1}>
-                {selectedCompany ? (selectedCompany.display_name || selectedCompany.name) : (companyName || 'Select Company')}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.formField}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <Text style={styles.inputLabel}>Customer / Lead <Text style={{ color: COLORS.danger }}>*</Text></Text>
@@ -778,6 +768,21 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                 </TouchableOpacity>
               )}
             </View>
+          </View>
+
+          {/* Select Company Dropdown */}
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Company <Text style={{ color: COLORS.danger }}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.selectTrigger}
+              onPress={() => setShowCompanyPicker(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.selectTriggerText, !companyId && !operatingCompanyName && { color: '#9CA3AF' }]} numberOfLines={1}>
+                {selectedCompany ? (selectedCompany.display_name || selectedCompany.name) : (operatingCompanyName || 'Select Company')}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
 
           {(selectedLead || companyId) && (
@@ -1216,12 +1221,12 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                     (lead.phone || '').includes(query)
                   );
                 }).length === 0 && (
-                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
-                      No matches found
-                    </Text>
-                  </View>
-                )}
+                    <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                        No matches found
+                      </Text>
+                    </View>
+                  )}
               </ScrollView>
             )}
           </View>
@@ -1273,7 +1278,7 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                     style={styles.modalRowItem}
                     onPress={() => {
                       setCompanyId(String(comp.id));
-                      setCompanyName(comp.display_name || comp.name || '');
+                      setOperatingCompanyName(comp.display_name || comp.name || '');
                       setShowCompanyPicker(false);
                       setCompanySearchQuery('');
                     }}

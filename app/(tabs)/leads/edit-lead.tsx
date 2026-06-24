@@ -397,7 +397,6 @@ export default function EditLeadScreen() {
       country_id: effectiveCountryId || selectedCountryObj?.id || null,
       assigned_to: ownerId ? ownerId : (selectedUserObj?.id || null),
       priority: (priority.toUpperCase() === 'HOT' || priority.toUpperCase() === 'HIGH') ? 'HOT' : (priority.toUpperCase() === 'WARM' || priority.toUpperCase() === 'NORMAL') ? 'WARM' : 'COLD',
-      company_id: companyId || null,
       company_name: company.trim() || null,
       designation: designation.trim() || null,
       website: website.trim() || null,
@@ -574,18 +573,20 @@ export default function EditLeadScreen() {
           {/* Company */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Company <Text style={{ color: COLORS.danger }}>*</Text></Text>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => navigation.navigate('select-company' as any, {
-                currentCompany: company
-              })}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.pickerValueText, !company && styles.placeholderText]}>
-                {company || 'Select Company'}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter Company Name"
+              placeholderTextColor="#9CA3AF"
+              value={company}
+              onChangeText={(text) => {
+                setCompany(text);
+                if (text === (dbLead?.company_name || dbLead?.company || '')) {
+                  setCompanyId(dbLead?.company_id ? String(dbLead.company_id) : '');
+                } else {
+                  setCompanyId('');
+                }
+              }}
+            />
           </View>
 
           {/* Priority */}

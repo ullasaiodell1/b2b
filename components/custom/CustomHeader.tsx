@@ -63,7 +63,7 @@ export default function CustomHeader({
     if (onNotificationPress) {
       onNotificationPress();
     } else {
-      router.push('/(tabs)/notification' as any);
+      router.navigate('/(tabs)/notification' as any);
     }
   };
   return (

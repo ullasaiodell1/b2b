@@ -2,7 +2,6 @@ import { AdvanceAccountCard } from '@/components/order&quotations/AdvanceAccount
 import BulkItemActionsCard from '@/components/order&quotations/BulkItemActionsCard';
 import { FinancialAdjustmentsCard, LogisticsCard } from '@/components/order&quotations/LogisticsAndAdjustmentsCards';
 import { AdditionalChargesCard, OperationalInsightsCard } from '@/components/order&quotations/OperationalAndChargesCards';
-import { OrderRecord } from '@/components/order&quotations/OrderState';
 import SelectImagesModal from '@/components/order&quotations/SelectImagesModal';
 import SelectProductModal from '@/components/order&quotations/SelectProductModal';
 import { COLORS } from '@/constants/theme';
@@ -277,7 +276,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
     });
   }, [rawLeads]);
 
-  const [customerType, setCustomerType] = useState<'DEALER' | 'LEAD'>('DEALER');
+  const [customerType, setCustomerType] = useState<'DEALER' | 'LEAD'>('LEAD');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -409,7 +408,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
     if (targetId && leads.length > 0) {
       const match = leads.find(l => String(l.id) === String(targetId));
       if (match) {
-        setCustomerType(match.tag === 'DEALER' ? 'DEALER' : 'LEAD');
+        setCustomerType('LEAD');
         handleSelectCustomer(match);
       }
     }
@@ -424,7 +423,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
 
   const handleSelectCustomer = (customer: any) => {
     setSelectedCustomer(customer);
-    setCustomerSearchQuery(customer.company || customer.name || '');
+    setCustomerSearchQuery(customer.name || customer.company || '');
     setClientName(customer.company || customer.name || '');
     setContactPerson(customer.name || '');
     setHotelLocation(customer.address || customer.location || 'No address provided');
@@ -434,33 +433,27 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
 
     const cName = customer.company || customer.company_name || '';
     if (customer.company_id) {
-      setCompanyId(String(customer.company_id));
-      if (cName) {
-        setCompanyName(cName);
-      }
-      if (companies && companies.length > 0) {
-        const match = companies.find((c: any) => String(c.id) === String(customer.company_id));
-        if (match) {
-          setCompanyName(match.display_name || match.name || '');
-        }
+      const cid = String(customer.company_id);
+      setCompanyId(cid);
+      const match = companies.find((c: any) => String(c.id) === cid);
+      if (match) {
+        setCompanyName(match.display_name || match.name || '');
+      } else {
+        setCompanyName('');
       }
     } else {
       if (cName.trim()) {
-        setCompanyName(cName);
-        if (companies && companies.length > 0) {
-          const match = companies.find(
-            (c: any) =>
-              c.display_name?.toLowerCase().trim() === cName.trim().toLowerCase() ||
-              c.name?.toLowerCase().trim() === cName.trim().toLowerCase()
-          );
-          if (match) {
-            setCompanyId(String(match.id));
-            setCompanyName(match.display_name || match.name || '');
-          } else {
-            setCompanyId('');
-          }
+        const match = companies.find(
+          (c: any) =>
+            c.display_name?.toLowerCase().trim() === cName.trim().toLowerCase() ||
+            c.name?.toLowerCase().trim() === cName.trim().toLowerCase()
+        );
+        if (match) {
+          setCompanyId(String(match.id));
+          setCompanyName(match.display_name || match.name || '');
         } else {
           setCompanyId('');
+          setCompanyName('');
         }
       } else {
         setCompanyId('');
@@ -1096,6 +1089,32 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
           <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
               <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
+              <Text style={styles.inputLabelGrey}>CUSTOMER</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.selectTrigger}
+              onPress={() => setShowCustomerModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.selectTriggerText, !selectedCustomer && { color: '#9CA3AF' }]} numberOfLines={1}>
+                {selectedCustomer ? (selectedCustomer.name || selectedCustomer.company) : 'Select Customer'}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {selectedCustomer ? (
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleClearCustomer(); }} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ) : (
+                  <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
               <Text style={styles.inputLabelGrey}>COMPANY</Text>
             </View>
             <TouchableOpacity
@@ -1108,79 +1127,6 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
               </Text>
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
-              <Text style={styles.inputLabelGrey}>CUSTOMER</Text>
-            </View>
-
-            <View style={styles.pickerRowContainer}>
-              <TouchableOpacity
-                style={styles.dropdownSelectorBtn}
-                onPress={() => {
-                  setShowTypeDropdown((prev) => !prev);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.dropdownSelectorText}>{customerType}</Text>
-                <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
-              </TouchableOpacity>
-
-              <View style={styles.verticalSeparator} />
-
-              <TouchableOpacity
-                style={{ flex: 1, height: '100%', justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center', paddingLeft: 12, paddingRight: selectedCustomer ? 4 : 12 }}
-                onPress={() => {
-                  setShowCustomerModal(true);
-                  setShowTypeDropdown(false);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 13, color: selectedCustomer ? COLORS.textDark : '#9CA3AF', fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                  {selectedCustomer ? (selectedCustomer.company || selectedCustomer.name) : 'Select Customer'}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  {selectedCustomer ? (
-                    <TouchableOpacity onPress={handleClearCustomer} style={{ padding: 4 }}>
-                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  ) : (
-                    <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {showTypeDropdown && (
-              <View style={styles.typeDropdownPopup}>
-                <TouchableOpacity
-                  style={[styles.typeDropdownItem, customerType === 'DEALER' && styles.typeDropdownItemActive]}
-                  onPress={() => {
-                    setCustomerType('DEALER');
-                    setShowTypeDropdown(false);
-                    handleClearCustomer();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {customerType === 'DEALER' && <Ionicons name="checkmark" size={14} color="#8A1C30" style={{ marginRight: 6 }} />}
-                  <Text style={[styles.typeDropdownItemText, customerType === 'DEALER' && { color: '#8A1C30', fontWeight: '700' }]}>Dealer</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeDropdownItem, customerType === 'LEAD' && styles.typeDropdownItemActive]}
-                  onPress={() => {
-                    setCustomerType('LEAD');
-                    setShowTypeDropdown(false);
-                    handleClearCustomer();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {customerType === 'LEAD' && <Ionicons name="checkmark" size={14} color="#8A1C30" style={{ marginRight: 6 }} />}
-                  <Text style={[styles.typeDropdownItemText, customerType === 'LEAD' && { color: '#8A1C30', fontWeight: '700' }]}>Lead</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -2353,7 +2299,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
               <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
               <TextInput
                 style={styles.modalSearchInput}
-                placeholder={customerType === 'DEALER' ? 'Search by company or name...' : 'Search by name, company...'}
+                placeholder="Search by name, company..."
                 placeholderTextColor="#9CA3AF"
                 value={customerSearchQuery}
                 onChangeText={setCustomerSearchQuery}
@@ -2367,42 +2313,34 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
               )}
             </View>
 
-            {customerType === 'DEALER' && isLoadingDealers ? (
-              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <ActivityIndicator size="small" color={primaryColor} />
-              </View>
-            ) : (
-              <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
-                {filteredCustomerList.map((lead: any) => (
-                  <TouchableOpacity
-                    key={lead.id}
-                    style={styles.modalRowItem}
-                    onPress={() => {
-                      handleSelectCustomer(lead);
-                      setShowCustomerModal(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.modalRowText}>{lead.company || lead.name}</Text>
-                      {(lead.company || lead.name) && (
-                        <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
-                          {lead.name || 'No Contact'} • {lead.phone || 'No Phone'}
-                        </Text>
-                      )}
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                {filteredCustomerList.length === 0 && (
-                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
-                      No matches found
+            <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+              {filteredCustomerList.map((lead: any) => (
+                <TouchableOpacity
+                  key={lead.id}
+                  style={styles.modalRowItem}
+                  onPress={() => {
+                    handleSelectCustomer(lead);
+                    setShowCustomerModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalRowText}>{lead.name || 'No Contact'}</Text>
+                    <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
+                      {lead.company || 'No Company'} • {lead.phone || 'No Phone'}
                     </Text>
                   </View>
-                )}
-              </ScrollView>
-            )}
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+              {filteredCustomerList.length === 0 && (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                    No matches found
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>

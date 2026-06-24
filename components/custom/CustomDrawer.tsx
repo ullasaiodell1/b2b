@@ -134,9 +134,9 @@ export default function CustomDrawer() {
     setDynamicTab(route);
     closeDrawer();
     if (route === 'index') {
-      router.push('/(tabs)' as any);
+      router.navigate('/(tabs)' as any);
     } else {
-      router.push(`/(tabs)/${route}` as any);
+      router.navigate(`/(tabs)/${route}` as any);
     }
   };
 
@@ -162,9 +162,9 @@ export default function CustomDrawer() {
     if (!newConfigured.includes(activeTabId)) {
       const targetTab = newConfigured[0] || 'index';
       if (targetTab === 'index') {
-        router.push('/(tabs)' as any);
+        router.navigate('/(tabs)' as any);
       } else {
-        router.push(`/(tabs)/${targetTab}` as any);
+        router.navigate(`/(tabs)/${targetTab}` as any);
       }
     }
 
