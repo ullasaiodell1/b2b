@@ -6,11 +6,7 @@ export default function AddVisitScreen() {
   const params = useLocalSearchParams<{ leadId?: string; leadName?: string; company?: string }>();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+    router.replace('/(tabs)');
   };
 
   return (

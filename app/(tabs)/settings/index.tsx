@@ -172,6 +172,22 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
           </TouchableOpacity>
+
+          {/* Test Rich Text Editor Card */}
+          <TouchableOpacity
+            style={styles.optionCard}
+            onPress={() => navigation.navigate('test-editor' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconBox, { backgroundColor: '#F0FDFA' }]}>
+              <Ionicons name="create-outline" size={18} color="#0D9488" />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.optionTitle}>Rich Text Editor</Text>
+              <Text style={styles.optionSubtitle}>Test and Preview Rich Text Editor</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textDark} />
+          </TouchableOpacity>
         </View>
 
         {/* Log Out Button */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { TaskFilterComponent } from '@/components/task/TaskFilterComponent';
 
@@ -10,20 +10,30 @@ export default function LeadTaskFilterScreen() {
   return (
     <TaskFilterComponent
       onApplyFilters={(filters) => {
-        navigation.navigate('lead-task', {
-          leadId: params.leadId,
-          ...filters,
+        router.navigate({
+          pathname: '/(tabs)/leads/lead-task',
+          params: {
+            leadId: params.leadId || '',
+            priority: filters.priority || '',
+            status: filters.status || '',
+            startDate: filters.startDate ? filters.startDate.toISOString() : '',
+            endDate: filters.endDate ? filters.endDate.toISOString() : '',
+          },
         });
       }}
       onResetFilters={() => {
-        navigation.navigate('lead-task', {
-          leadId: params.leadId,
-          priority: undefined,
-          status: undefined,
-          startDate: undefined,
-          endDate: undefined,
+        router.navigate({
+          pathname: '/(tabs)/leads/lead-task',
+          params: {
+            leadId: params.leadId || '',
+            priority: '',
+            status: '',
+            startDate: '',
+            endDate: '',
+          },
         });
       }}
     />
   );
 }
+

@@ -178,7 +178,7 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
   // Filter by tab + search
   const filtered = leadQuotations.filter((q) => {
     const searchLower = searchQuery.toLowerCase();
-        const matchesSearch =
+    const matchesSearch =
       !searchQuery ||
       String(q.quotation_number || '').toLowerCase().includes(searchLower) ||
       (q.lead_name || '').toLowerCase().includes(searchLower) ||

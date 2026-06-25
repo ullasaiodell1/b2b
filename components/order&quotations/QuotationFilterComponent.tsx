@@ -2,8 +2,8 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   BackHandler,
@@ -111,18 +111,24 @@ export const QuotationFilterComponent: React.FC<QuotationFilterComponentProps> =
       return;
     }
     if (referrer === 'lead-details' && leadId) {
-      (navigation as any).navigate('lead-details', {
-        id: leadId,
-        activeTab: 'Quotation',
-        qStartDate: startDate ? startDate.toISOString() : '',
-        qEndDate: endDate ? endDate.toISOString() : '',
-        qFilterApplied: isApplied ? 'true' : ''
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          id: leadId,
+          activeTab: 'Quotation',
+          qStartDate: startDate ? startDate.toISOString() : '',
+          qEndDate: endDate ? endDate.toISOString() : '',
+          qFilterApplied: isApplied ? 'true' : ''
+        }
       });
     } else {
-      (navigation as any).navigate('Quotation', {
-        qStartDate: startDate ? startDate.toISOString() : '',
-        qEndDate: endDate ? endDate.toISOString() : '',
-        qFilterApplied: isApplied ? 'true' : ''
+      router.navigate({
+        pathname: '/(tabs)/Quotation',
+        params: {
+          qStartDate: startDate ? startDate.toISOString() : '',
+          qEndDate: endDate ? endDate.toISOString() : '',
+          qFilterApplied: isApplied ? 'true' : ''
+        }
       });
     }
   };

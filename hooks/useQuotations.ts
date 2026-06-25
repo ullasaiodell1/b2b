@@ -31,8 +31,9 @@ export const useQuotationDetails = (id: string) => {
     queryKey: quotationKeys.details(id),
     queryFn: async (): Promise<QuotationRecord | null> => {
       if (!id) return null;
-      const res = await getQuotationDetails(id) as any;
-      const detail = res?.data || res || null;
+      const res = await getQuotationDetails(id, { limit: 10, offset: 0 }) as any;
+      // Handle various response shapes: res.data, res.data.data, or res itself
+      const detail = res?.data?.data || res?.data || res || null;
       return detail as QuotationRecord;
     },
     enabled: !!id,

@@ -54,6 +54,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
               <Stack.Screen name="camera-capture"  options={{ headerShown: false }} />
               <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
+              <Stack.Screen name="test-editor"     options={{ headerShown: false }} />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

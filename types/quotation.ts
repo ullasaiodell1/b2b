@@ -64,6 +64,7 @@ export interface QuotationRecord {
   items?: QuotationItem[];
   total_items?: number;
   prefix?: string | null;
+  terms?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -103,6 +104,7 @@ export interface CreateQuotationPayload {
   discount_percentage?: number;
   discount_amount?: number;
   additional_charges?: { name: string; amount: number }[] | null;
+  terms?: string | null;
   subtotal: number;
   sub_total?: number;
   tax_total?: number;

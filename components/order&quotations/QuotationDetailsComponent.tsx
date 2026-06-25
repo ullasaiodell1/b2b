@@ -1,13 +1,14 @@
+import RichTextEditor from '@/components/RichTextEditor';
 import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useQuotationDetails, useUpdateQuotationStatus } from '@/hooks/useQuotations';
+import { useQuotationDetails, useUpdateQuotation, useUpdateQuotationStatus } from '@/hooks/useQuotations';
 import { QuotationItem } from '@/types/quotation';
 import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React from 'react';
 import {
@@ -102,10 +103,38 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
 
   const { data: quotation, isLoading, isError, refetch } = useQuotationDetails(id || '');
   const updateStatusMutation = useUpdateQuotationStatus();
+  const updateQuotationMutation = useUpdateQuotation();
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   const [downloading, setDownloading] = React.useState(false);
   const [downloadSuccess, setDownloadSuccess] = React.useState(false);
+
+  // Terms edit modal state
+  const [termsModalVisible, setTermsModalVisible] = React.useState(false);
+  const [termsHTML, setTermsHTML] = React.useState('');
+  const [termsSaving, setTermsSaving] = React.useState(false);
+
+  const handleOpenTermsEdit = () => {
+    setTermsHTML(quotation?.terms || '');
+    setTermsModalVisible(true);
+  };
+
+  const handleSaveTerms = async (html: string) => {
+    if (!id) return;
+    setTermsSaving(true);
+    try {
+      await updateQuotationMutation.mutateAsync({
+        id,
+        data: { terms: html } as any,
+      });
+      await refetch();
+      setTermsModalVisible(false);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to save terms.');
+    } finally {
+      setTermsSaving(false);
+    }
+  };
 
   const handleDownload = async () => {
     if (!id || !quotation) return;
@@ -419,7 +448,6 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
           </>
         )}
 
-        {/* Notes */}
         {!!quotation.notes && (
           <>
             <View style={styles.sectionHeaderRow}>
@@ -436,6 +464,74 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
             </View>
           </>
         )}
+
+        {/* Terms & Conditions Card */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionIndicatorBar} />
+          <Text style={styles.sectionTitle}>TERMS & CONDITIONS</Text>
+          <View style={styles.sectionHeaderLine} />
+        </View>
+        <TouchableOpacity
+          style={styles.termsCard}
+          onPress={handleOpenTermsEdit}
+          activeOpacity={0.82}
+        >
+          {/* Card Header */}
+          <View style={styles.termsCardHeader}>
+            <View style={styles.termsCardHeaderLeft}>
+              <View style={styles.termsCardIconBg}>
+                <Ionicons name="document-text-outline" size={13} color={theme.primaryColor} />
+              </View>
+              <Text style={styles.termsCardTitle}>Terms & Conditions</Text>
+            </View>
+            <View style={styles.termsCardEditBadge}>
+              <Ionicons name="pencil-outline" size={11} color={theme.primaryColor} />
+              <Text style={styles.termsCardEditText}>Edit</Text>
+            </View>
+          </View>
+
+          <View style={styles.termsCardDivider} />
+
+          {/* Card Body */}
+          <View style={styles.termsCardBody}>
+            {quotation.terms ? (
+              (() => {
+                const plain = quotation.terms
+                  .replace(/<br\s*\/?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n')
+                  .replace(/<\/li>/gi, '\n')
+                  .replace(/<li>/gi, '• ')
+                  .replace(/<[^>]+>/g, '')
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&nbsp;/g, ' ')
+                  .trim();
+                const lines = plain.split('\n').filter(Boolean);
+                return (
+                  <View style={{ gap: 1 }}>
+                    {lines.slice(0, 3).map((line, idx) => (
+                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 2 }}>
+                        <Text style={{ fontSize: 13, color: theme.primaryColor, lineHeight: 17, fontWeight: '900' }}>·</Text>
+                        <Text numberOfLines={1} style={{ flex: 1, fontSize: 11.5, color: '#374151', fontWeight: '500', lineHeight: 17 }}>{line}</Text>
+                      </View>
+                    ))}
+                    {lines.length > 3 && (
+                      <Text style={{ fontSize: 10.5, color: COLORS.textMuted, fontWeight: '600', fontStyle: 'italic', marginTop: 1 }}>
+                        +{lines.length - 3} more lines…
+                      </Text>
+                    )}
+                  </View>
+                );
+              })()
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Ionicons name="add-circle-outline" size={13} color={theme.primaryColor} />
+                <Text style={styles.termsEmptyText}>No terms yet. Tap to add.</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
         {/* Totals */}
         <View style={styles.sectionHeaderRow}>
@@ -491,6 +587,64 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
           </View>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Terms Edit Modal */}
+      <Modal
+        visible={termsModalVisible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setTermsModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.termsModalRoot}
+        >
+          {/* Modal Header */}
+          <View style={[styles.termsModalHeader, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
+            <TouchableOpacity
+              style={styles.termsModalCloseBtn}
+              onPress={() => setTermsModalVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={22} color={COLORS.textDark} />
+            </TouchableOpacity>
+            <View style={{ flex: 1, paddingHorizontal: 12 }}>
+              <Text style={styles.termsModalTitle}>Terms & Conditions</Text>
+              <Text style={styles.termsModalSubtitle}>Edit and save the terms for this quotation</Text>
+            </View>
+            {termsSaving ? (
+              <ActivityIndicator size="small" color={theme.primaryColor} />
+            ) : (
+              <TouchableOpacity
+                style={styles.termsModalSaveBtn}
+                onPress={() => handleSaveTerms(termsHTML)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="checkmark" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={styles.termsModalSaveBtnText}>Save</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.termsModalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <RichTextEditor
+              key={termsModalVisible ? 'terms-edit-open' : 'terms-edit-closed'}
+              initialHTML={termsHTML}
+              placeholder="Enter terms & conditions..."
+              onChange={(html) => setTermsHTML(html)}
+              onSave={handleSaveTerms}
+              onCancel={() => setTermsModalVisible(false)}
+              disabled={termsSaving}
+              minHeight={340}
+              maxHeight={600}
+            />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Full Screen Image Preview Modal */}
       <Modal
@@ -690,6 +844,134 @@ const getStyles = (theme: any) => StyleSheet.create({
   remarkTitleRow: { flexDirection: 'row', alignItems: 'center' },
   remarkTitleText: { fontSize: 12.5, fontWeight: '800', color: COLORS.textDark },
   remarkBodyText: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: '600', lineHeight: 16 },
+  termsCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  termsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: theme.primaryLight || '#F0FAF5',
+  },
+  termsCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  termsCardIconBg: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    backgroundColor: COLORS.bgWhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  termsCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  termsCardSubtitle: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  termsCardDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  termsCardBody: {
+    padding: 10,
+  },
+  termsEmptyText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  termsCardEditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  termsCardEditText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.primaryColor,
+  },
+  // Terms Edit Modal styles
+  termsModalRoot: {
+    flex: 1,
+    backgroundColor: COLORS.bgPage,
+  },
+  termsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    backgroundColor: COLORS.bgWhite,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  termsModalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  termsModalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  termsModalSubtitle: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  termsModalSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primaryColor,
+    borderRadius: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  termsModalSaveBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  termsModalScrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
   totalsCard: {
     backgroundColor: COLORS.bgWhite,
     borderRadius: 14,

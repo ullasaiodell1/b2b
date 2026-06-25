@@ -42,6 +42,8 @@ interface ItemLine {
   unit_price: string;
   gst_percentage: string;
   item_discount: string;
+  mrp?: string | null;
+  base_unit?: string | null;
   images?: string[] | null;
   availableImages?: string[] | null;
   isCollapsed?: boolean;
@@ -59,6 +61,8 @@ function makeEmptyItem(): ItemLine {
     unit_price: '0',
     gst_percentage: '18',
     item_discount: '0',
+    mrp: null,
+    base_unit: null,
     images: [],
     availableImages: [],
     isCollapsed: false,
@@ -843,16 +847,23 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
                   onPress={() => toggleCollapse(idx)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.itemIndexBadge, { backgroundColor: primaryLight }]}>
                     <Text style={[styles.itemIndexText, { color: primaryColor }]}>{idx + 1}</Text>
                   </View>
-                  <Text style={styles.itemHeading} numberOfLines={1}>
-                    {item.item_name || `Item ${idx + 1}`}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.itemHeading} numberOfLines={1}>
+                      {item.item_name || `Item ${idx + 1}`}
+                    </Text>
+                    {item.unit_price && item.unit_price !== '0' ? (
+                      <Text style={{ fontSize: 11.5, fontWeight: '700', color: primaryColor, marginTop: 1 }}>
+                        ₹ {item.unit_price}{item.base_unit ? ` / ${item.base_unit}` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
                   <Ionicons
                     name={item.isCollapsed ? "chevron-back" : "chevron-down"}
                     size={18}
@@ -957,6 +968,24 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                       />
                     </View>
                   </View>
+
+                  {/* MRP + Unit info row (shown after product selected) */}
+                  {(item.mrp || item.base_unit) ? (
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      {item.mrp ? (
+                        <View style={styles.mrpBadge}>
+                          <Text style={styles.mrpBadgeLabel}>MRP</Text>
+                          <Text style={styles.mrpBadgeValue}>₹ {item.mrp}</Text>
+                        </View>
+                      ) : null}
+                      {item.base_unit ? (
+                        <View style={styles.unitBadge}>
+                          <Text style={styles.unitBadgeLabel}>UNIT</Text>
+                          <Text style={styles.unitBadgeValue}>{item.base_unit}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
 
                   {/* Tax & Discount inputs */}
                   <View style={styles.gridRow}>
@@ -1501,14 +1530,23 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
           const idx = activeImageSelectIndex;
           if (idx !== null) {
             if (pendingProduct) {
-              updateItem(idx, 'product_id', pendingProduct.id);
-              updateItem(idx, 'item_name', pendingProduct.product_name || '');
-              updateItem(idx, 'item_code', pendingProduct.code || '');
-              updateItem(idx, 'unit_price', String(pendingProduct.selling_price || pendingProduct.dealer_price || 0));
-              updateItem(idx, 'gst_percentage', String(pendingProduct.tax_rate ?? 18));
-              updateItem(idx, 'item_description', pendingProduct.description || '');
-              updateItem(idx, 'images', selectedImages);
-              updateItem(idx, 'availableImages', pendingProduct.images || []);
+              setItems((prev) => {
+                const next = [...prev];
+                next[idx] = {
+                  ...next[idx],
+                  product_id: pendingProduct.id,
+                  item_name: pendingProduct.product_name || '',
+                  item_code: pendingProduct.code || '',
+                  unit_price: String(pendingProduct.selling_price || pendingProduct.dealer_price || 0),
+                  gst_percentage: String(pendingProduct.tax_rate ?? 18),
+                  item_description: pendingProduct.description || '',
+                  mrp: String(pendingProduct.selling_price || pendingProduct.dealer_price || 0),
+                  base_unit: pendingProduct.base_unit || pendingProduct.unit || null,
+                  images: selectedImages,
+                  availableImages: pendingProduct.images || [],
+                };
+                return next;
+              });
             } else {
               updateItem(idx, 'images', selectedImages);
             }
@@ -1811,5 +1849,49 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 4,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 20,
+  },
+  mrpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  mrpBadgeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EA580C',
+    letterSpacing: 0.5,
+  },
+  mrpBadgeValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  unitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  unitBadgeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#16A34A',
+    letterSpacing: 0.5,
+  },
+  unitBadgeValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#14532D',
   },
 });

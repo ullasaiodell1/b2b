@@ -1,10 +1,11 @@
-import React from 'react';
-import { useLocalSearchParams } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
 import { OrderFilterComponent } from '@/components/order&quotations/OrderFilterComponent';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React from 'react';
 
 export default function LeadOrderFilterScreen() {
-  const params = useLocalSearchParams<{ referrer?: string; leadId?: string }>();
+  const route = useRoute<any>();
+  const params = (route.params ?? {}) as { referrer?: string; leadId?: string };
   const navigation = useNavigation<any>();
 
   return (
@@ -14,20 +15,27 @@ export default function LeadOrderFilterScreen() {
       onCancel={() => navigation.goBack()}
       onApply={(status, startDate, endDate) => {
         if (params.referrer === 'lead-details') {
-          navigation.navigate('lead-details', {
-            id: params.leadId,
-            activeTab: 'Order',
-            oStatus: status || '',
-            oStartDate: startDate ? startDate.toISOString() : '',
-            oEndDate: endDate ? endDate.toISOString() : '',
-            oFilterApplied: 'true',
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-details',
+            params: {
+              id: params.leadId,
+              activeTab: 'Order',
+              oStatus: status || '',
+              oStartDate: startDate ? startDate.toISOString() : '',
+              oEndDate: endDate ? endDate.toISOString() : '',
+              oFilterApplied: 'true',
+            },
           });
         } else {
-          navigation.navigate('lead-order', {
-            leadId: params.leadId,
+          router.navigate({
+            pathname: '/(tabs)/leads/lead-order',
+            params: {
+              leadId: params.leadId,
+            },
           });
         }
       }}
     />
   );
 }
+

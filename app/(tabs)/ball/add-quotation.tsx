@@ -16,11 +16,7 @@ export default function AddQuotationScreen() {
   }>();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+    router.replace('/(tabs)');
   };
 
   return (

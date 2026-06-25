@@ -610,28 +610,6 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.downloadBox}
-          activeOpacity={0.8}
-          onPress={handleDownload}
-          disabled={downloading}
-        >
-          <View>
-            <Text style={styles.downloadTitle}>Download Order</Text>
-            <Text style={styles.downloadSubtitle}>Export Complete Order As PDF</Text>
-          </View>
-          <View style={styles.downloadIconCircle}>
-            {downloading ? (
-              <ActivityIndicator size="small" color={theme.primaryColor} />
-            ) : (
-              <Ionicons
-                name={downloadSuccess ? 'checkmark' : 'download-outline'}
-                size={16}
-                color={theme.primaryColor}
-              />
-            )}
-          </View>
-        </TouchableOpacity>
 
         <View style={styles.docGrid}>
           {DOCUMENTS.map((doc, index) => (

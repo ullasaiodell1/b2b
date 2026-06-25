@@ -33,7 +33,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -54,17 +53,16 @@ const CHARGES_TYPE_OPTIONS = [
 ];
 
 
-import CustomerSearchModal from './edit-order/CustomerSearchModal';
-import EditAddressModal from './edit-order/EditAddressModal';
-import AddTransportModal from './edit-order/AddTransportModal';
 import {
-  ItemLine,
-  makeEmptyItem,
   calcItem,
   formatAmount,
-  formatDate,
+  ItemLine,
+  makeEmptyItem,
   numberToWords
 } from '@/types/order-edit';
+import AddTransportModal from './edit-order/AddTransportModal';
+import CustomerSearchModal from './edit-order/CustomerSearchModal';
+import EditAddressModal from './edit-order/EditAddressModal';
 
 export interface EditOrderComponentProps {
   id: string;
@@ -941,31 +939,13 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
-          <View style={styles.inputGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
-              <Text style={styles.inputLabelGrey}>CUSTOMER/LEAD</Text>
-            </View>
 
-            <TouchableOpacity
-              style={[styles.selectTrigger, { backgroundColor: '#F3F4F6', opacity: 0.8 }]}
-              disabled={true}
-              activeOpacity={1}
-            >
-              <Text style={[styles.selectTriggerText, !selectedCustomer && { color: '#9CA3AF' }]} numberOfLines={1}>
-                {selectedCustomer
-                  ? `${selectedCustomer.name} (${selectedCustomer.company || 'No Company'})`
-                  : 'Select Customer/Lead'}
-              </Text>
-              <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
 
 
 
           {/* COLLAPSIBLE CUSTOMER DETAILS & ADDRESS CARD */}
           {selectedCustomer ? (
-            <View style={[styles.itemCardContainer, { padding: 12, marginTop: 4, gap: 8 }]}>
+            <View style={[styles.itemCardContainer, { padding: 8, gap: 2 }]}>
               {/* Card Header */}
               <TouchableOpacity
                 style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
@@ -1034,7 +1014,7 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
           )}
 
           {/* STATUS & PAYMENT TYPE */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={{ width: '48%' }}>
               <Text style={[styles.inputLabelGrey, { marginBottom: 4 }]}>ORDER STATUS</Text>
               <TouchableOpacity
@@ -1061,7 +1041,7 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
           </View>
 
           {/* ORDER TYPE */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={{ width: '100%' }}>
               <Text style={[styles.inputLabelGrey, { marginBottom: 4 }]}>ORDER TYPE</Text>
               <TouchableOpacity
@@ -1921,10 +1901,10 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
 const getStyles = (theme: any) => StyleSheet.create({
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 1,
   },
   formField: {
-    gap: 5,
+    gap: 1,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -1970,15 +1950,15 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: theme.primaryColor,
     borderRadius: 8,
-    padding: 16,
+    padding: 10,
     backgroundColor: '#FAFBFD',
-    minHeight: 72,
+    minHeight: 60,
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   billToContent: {
     gap: 3,
-    marginTop: 4,
+    marginTop: 2,
   },
   billToCompany: {
     fontSize: 13.5,
@@ -2035,12 +2015,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 8,
   },
   formContainer: {
-    marginTop: 10,
-    gap: 5,
+    marginTop: 2,
+    gap: 1,
   },
   inputGroup: {
-    gap: 4,
-    marginTop: 4,
+    gap: 1,
+    marginTop: 1,
   },
   pickerContainer: {
     flexDirection: 'row',

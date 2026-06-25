@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
+import { router } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -100,26 +101,33 @@ export default function LedgerFilterScreen() {
     const isApplied = !!(startDate || endDate);
 
     if (backTo === 'lead-details') {
-      navigation.navigate(backTo as never, {
-        id: params.leadId,
-        lType: selectedType,
-        lCategory: selectedCategory,
-        lStartDate: startStr,
-        lEndDate: endStr,
-        lFilterApplied: isApplied ? 'true' : '',
-        activeTab: 'Ledger',
-      } as never);
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          id: params.leadId,
+          lType: selectedType,
+          lCategory: selectedCategory,
+          lStartDate: startStr,
+          lEndDate: endStr,
+          lFilterApplied: isApplied ? 'true' : '',
+          activeTab: 'Ledger',
+        },
+      });
     } else {
-      navigation.navigate(backTo as never, {
-        ...params,
-        type: selectedType,
-        category: selectedCategory,
-        startDate: startStr,
-        endDate: endStr,
-        filterApplied: isApplied ? 'true' : '',
-      } as never);
+      router.navigate({
+        pathname: `/(tabs)/leads/${backTo}` as any,
+        params: {
+          ...params,
+          type: selectedType,
+          category: selectedCategory,
+          startDate: startStr,
+          endDate: endStr,
+          filterApplied: isApplied ? 'true' : '',
+        },
+      });
     }
   };
+
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>

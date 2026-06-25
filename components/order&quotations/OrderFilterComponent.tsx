@@ -118,13 +118,16 @@ export const OrderFilterComponent: React.FC<OrderFilterComponentProps> = ({
       return;
     }
     if (referrer === 'lead-details' && leadId) {
-      (navigation as any).navigate('lead-details', {
-        id: leadId,
-        activeTab: 'Order',
-        oStatus: backendStatus || '',
-        oStartDate: startDate ? startDate.toISOString() : '',
-        oEndDate: endDate ? endDate.toISOString() : '',
-        oFilterApplied: 'true',
+      router.navigate({
+        pathname: '/(tabs)/leads/lead-details',
+        params: {
+          id: leadId,
+          activeTab: 'Order',
+          oStatus: backendStatus || '',
+          oStartDate: startDate ? startDate.toISOString() : '',
+          oEndDate: endDate ? endDate.toISOString() : '',
+          oFilterApplied: 'true',
+        }
       });
     } else {
       handleBack();

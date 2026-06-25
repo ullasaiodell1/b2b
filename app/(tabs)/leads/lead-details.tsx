@@ -35,7 +35,13 @@ export default function LeadDetailsScreen() {
   const insets = useSafeAreaInsets();
   const { primaryColor } = theme;
 
-  const [activeTab, setActiveTab] = useState<TabType>('Overview');
+  const [activeTab, setActiveTab] = useState<TabType>((params.activeTab as TabType) || 'Overview');
+
+  React.useEffect(() => {
+    if (params.activeTab) {
+      setActiveTab(params.activeTab as TabType);
+    }
+  }, [params.activeTab]);
   const isNavigatingRef = React.useRef(false);
 
   const { data: rawLead, isLoading, refetch } = useLeadDetails(params.id || '');
