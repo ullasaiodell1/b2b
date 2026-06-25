@@ -1,26 +1,25 @@
 import { COLORS } from '@/constants/theme';
-import React, { useState, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  StatusBar,
-  KeyboardAvoidingView,
-  ScrollView,
   Animated,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 
-import { useLogin } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/use-theme';
+import { useLogin } from '@/hooks/useAuth';
 
 const { height } = Dimensions.get('window');
 
@@ -42,11 +41,11 @@ export default function SignInScreen() {
   // Shake animation on wrong credentials
   const shake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10,  duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 55, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8,   duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8,  duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 55, useNativeDriver: true }),
     ]).start();
   };
 
@@ -223,22 +222,22 @@ export default function SignInScreen() {
                 secureTextEntry={secureTextEntry}
                 editable={!loginMutation.isPending}
               />
-              <TouchableOpacity 
-                style={styles.eyeBtn} 
+              <TouchableOpacity
+                style={styles.eyeBtn}
                 onPress={() => setSecureTextEntry(!secureTextEntry)}
               >
-                <Ionicons 
-                  name={secureTextEntry ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#8F9995" 
+                <Ionicons
+                  name={secureTextEntry ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#8F9995"
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Forgot Password */}
-          <TouchableOpacity 
-            style={styles.forgotWrap} 
+          <TouchableOpacity
+            style={styles.forgotWrap}
             activeOpacity={0.7}
             onPress={() => router.push('/reset-password')}
           >

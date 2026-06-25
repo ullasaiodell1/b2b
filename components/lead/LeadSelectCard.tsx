@@ -10,7 +10,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Modal,
+  ScrollView,
 } from 'react-native';
 
 interface LeadSelectCardProps {
@@ -30,7 +32,7 @@ export function LeadSelectCard({
 }: LeadSelectCardProps) {
   const { primaryColor } = useTheme();
   const [leadSearchQuery, setLeadSearchQuery] = useState('');
-  const [showLeadList, setShowLeadList] = useState(!initialLeadId);
+  const [showModal, setShowModal] = useState(false);
 
   const leadsQuery = useLeads();
   const { data: rawLeads = [], isLoading: isLoadingLeads } = leadsQuery;
@@ -87,7 +89,7 @@ export function LeadSelectCard({
 
   const handleLeadSelect = (lead: any) => {
     onSelectLead(lead.id, lead.name, lead.company);
-    setShowLeadList(false);
+    setShowModal(false);
     setLeadSearchQuery('');
   };
 
@@ -108,14 +110,14 @@ export function LeadSelectCard({
             ) : (
               <TouchableOpacity
                 style={styles.changeLeadBtn}
-                onPress={() => setShowLeadList(!showLeadList)}
+                onPress={() => setShowModal(true)}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.changeLeadBtnText, { color: primaryColor }]}>
-                  {showLeadList ? 'Hide List' : 'Change Lead'}
+                  Change Lead
                 </Text>
                 <Ionicons
-                  name={showLeadList ? 'chevron-up' : 'chevron-down'}
+                  name="chevron-down"
                   size={14}
                   color={primaryColor}
                 />
@@ -190,67 +192,101 @@ export function LeadSelectCard({
           </View>
         </View>
       ) : (
-        <View style={styles.noLeadSelectedCard}>
-          <Ionicons name="alert-circle-outline" size={20} color="#B91C1C" />
-          <Text style={styles.noLeadSelectedText}>No Lead Selected. Please select a lead below.</Text>
+        <View style={styles.selectGroup}>
+          <Text style={styles.inputLabel}>
+            Select Lead <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.inputRow}
+            onPress={() => setShowModal(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="person-circle-outline"
+              size={16}
+              color={COLORS.textMuted}
+              style={styles.inputIcon}
+            />
+            <Text style={[styles.textInput, { color: '#9CA3AF' }]}>
+              Select Lead
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={16}
+              color={COLORS.textMuted}
+            />
+          </TouchableOpacity>
         </View>
       )}
 
-      {showLeadList && !initialLeadId && (
-        <View style={styles.leadListContainer}>
-          <Text style={styles.sectionLabel}>Select Lead <Text style={styles.required}>*</Text></Text>
-          
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search leads to select..."
-              placeholderTextColor="#9CA3AF"
-              value={leadSearchQuery}
-              onChangeText={setLeadSearchQuery}
-            />
-            {leadSearchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setLeadSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+      {/* SELECT LEAD MODAL */}
+      <Modal transparent animationType="slide" visible={showModal} onRequestClose={() => setShowModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowModal(false)}
+        >
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Lead</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
 
-          <Text style={styles.hintText}>
-            💡 Tap a lead card below to select it.
-          </Text>
-
-          {isLoadingLeads ? (
-            <ActivityIndicator size="small" color={primaryColor} style={{ marginVertical: 20 }} />
-          ) : (
-            <View style={styles.leadsContainer}>
-              {filteredLeads.slice(0, 10).map((lead: any, idx: number) => {
-                const isSelected = selectedLeadId === lead.id;
-                return (
-                  <TouchableOpacity
-                    key={lead.id + '_' + idx}
-                    style={[
-                      styles.leadListItemCard,
-                      isSelected && { borderColor: primaryColor, backgroundColor: '#F0FDF4' }
-                    ]}
-                    onPress={() => handleLeadSelect(lead)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.cardName}>{lead.name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-
-              {filteredLeads.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Ionicons name="people-outline" size={32} color="#C2D3CC" />
-                  <Text style={styles.emptyTitle}>No leads found</Text>
-                </View>
+            <View style={styles.modalSearchContainer}>
+              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search by name, company..."
+                placeholderTextColor="#9CA3AF"
+                value={leadSearchQuery}
+                onChangeText={setLeadSearchQuery}
+                autoCorrect={false}
+                autoComplete="off"
+              />
+              {leadSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setLeadSearchQuery('')} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
               )}
             </View>
-          )}
-        </View>
-      )}
+
+            {isLoadingLeads ? (
+              <ActivityIndicator size="small" color={primaryColor} style={{ marginVertical: 20 }} />
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+                {filteredLeads.map((lead: any, idx: number) => {
+                  const isSelected = selectedLeadId === lead.id;
+                  return (
+                    <TouchableOpacity
+                      key={lead.id + '_' + idx}
+                      style={styles.modalRowItem}
+                      onPress={() => handleLeadSelect(lead)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalRowText}>{lead.name || 'No Name'}</Text>
+                        <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
+                          {lead.company || 'No Company'} • {lead.phone || 'No Phone'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  );
+                })}
+                {filteredLeads.length === 0 && (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                      No matches found
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -292,75 +328,6 @@ const styles = StyleSheet.create({
   },
   selectedLeadInfo: {
     gap: 6,
-  },
-  noLeadSelectedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    gap: 8,
-  },
-  noLeadSelectedText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#B91C1C',
-    flex: 1,
-  },
-  leadListContainer: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    marginTop: 8,
-    gap: 10,
-  },
-  sectionLabel: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  required: {
-    color: '#EF4444',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '600',
-    height: '100%',
-    padding: 0,
-  },
-  hintText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '700',
-    fontStyle: 'italic',
-  },
-  leadsContainer: {
-    gap: 8,
-  },
-  leadListItemCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 10,
-    gap: 4,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -418,15 +385,98 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontWeight: '600',
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    gap: 10,
+  // Form Picker Trigger styling
+  selectGroup: {
+    gap: 5,
+    marginTop: 8,
   },
-  emptyTitle: {
-    fontSize: 13,
+  inputLabel: {
+    fontSize: 12.5,
     fontWeight: '800',
     color: COLORS.textDark,
+  },
+  required: {
+    color: '#EF4444',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    padding: 0,
+  },
+  // Modal layout styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  modalRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalRowText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    gap: 8,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    height: '100%',
+    padding: 0,
   },
 });

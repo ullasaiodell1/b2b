@@ -7,11 +7,12 @@ import SelectProductModal from '@/components/order&quotations/SelectProductModal
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCompanies, useCompanyAccounts } from '@/hooks/useCompany';
-import { useCouriers, useCreateCourier } from '@/hooks/useCourier';
+import { useCouriers } from '@/hooks/useCourier';
 import { useDealers } from '@/hooks/useDealers';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useLeads } from '@/hooks/useLeads';
-import { useCities, useCountries, useStates } from '@/hooks/useLocation';
+import AddTransportModal from './edit-order/AddTransportModal';
+import EditAddressModal from './edit-order/EditAddressModal';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 import { useProfile } from '@/hooks/useProfile';
@@ -55,7 +56,6 @@ const CHARGES_TYPE_OPTIONS = [
   'Freight Charge'
 ];
 
-const SERVICE_TYPE_OPTIONS = ['Standard', 'Express', 'Priority', 'Same Day', 'Overnight'];
 
 interface ItemLine {
   tempId: string;
@@ -326,66 +326,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [showAddressModal, setShowAddressModal] = useState(false);
 
-  const [tempBillingAddress, setTempBillingAddress] = useState('');
-  const [tempShippingAddress, setTempShippingAddress] = useState('');
-  const [tempSameAsBilling, setTempSameAsBilling] = useState(true);
 
-  const [isLocatingBilling, setIsLocatingBilling] = useState(false);
-  const [isLocatingShipping, setIsLocatingShipping] = useState(false);
-
-  const handleGetLocation = async (target: 'billing' | 'shipping') => {
-    const setLocating = target === 'billing' ? setIsLocatingBilling : setIsLocatingShipping;
-    setLocating(true);
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Permission to access location was denied');
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const coords = location.coords;
-
-      let geocode = await Location.reverseGeocodeAsync({
-        latitude: coords.latitude,
-        longitude: coords.longitude
-      });
-
-      if (geocode && geocode.length > 0) {
-        const addr = geocode[0];
-        const streetPart = [addr.name, addr.street, addr.district].filter(Boolean).join(', ');
-        const cityPart = [addr.city, addr.subregion].filter(Boolean).join(', ');
-        const statePart = addr.region ? `${addr.region}` : '';
-        const pinPart = addr.postalCode ? `${addr.postalCode}` : '';
-        const countryPart = addr.country || '';
-
-        const fullAddress = [
-          streetPart,
-          cityPart,
-          [statePart, pinPart].filter(Boolean).join(' - '),
-          countryPart
-        ].filter(v => v && v.trim()).join(', ');
-
-        if (target === 'billing') {
-          setTempBillingAddress(fullAddress);
-          if (tempSameAsBilling) {
-            setTempShippingAddress(fullAddress);
-          }
-        } else {
-          setTempShippingAddress(fullAddress);
-        }
-      } else {
-        Alert.alert('Error', 'No address details found for your current location.');
-      }
-    } catch (error: any) {
-      console.error('[Get Location Error]:', error);
-      Alert.alert('Error', 'Failed to retrieve your current location: ' + (error?.message || ''));
-    } finally {
-      setLocating(false);
-    }
-  };
 
   const { data: dealersData = [], isLoading: isLoadingDealers } = useDealers({ search: customerSearchQuery, limit: 100 });
 
@@ -520,23 +461,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
   const [trackingAwb, setTrackingAwb] = useState('');
   const [shippingFreight, setShippingFreight] = useState('0.00');
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
-  const [newPartnerName, setNewPartnerName] = useState('');
-  const [newPartnerContact, setNewPartnerContact] = useState('');
-  const [newPartnerCountry, setNewPartnerCountry] = useState('');
-  const [newPartnerCountryId, setNewPartnerCountryId] = useState('');
-  const [newPartnerState, setNewPartnerState] = useState('');
-  const [newPartnerStateId, setNewPartnerStateId] = useState('');
-  const [newPartnerCity, setNewPartnerCity] = useState('');
-  const [newPartnerCityId, setNewPartnerCityId] = useState('');
-  const [newPartnerServiceType, setNewPartnerServiceType] = useState('Standard');
-  const [newPartnerRating, setNewPartnerRating] = useState('4.5');
-  const [newPartnerGst, setNewPartnerGst] = useState('');
-  const [newPartnerStatus, setNewPartnerStatus] = useState(true);
 
-  const [showCountryModal, setShowCountryModal] = useState(false);
-  const [showStateModal, setShowStateModal] = useState(false);
-  const [showCityModal, setShowCityModal] = useState(false);
-  const [showServiceTypeModal, setShowServiceTypeModal] = useState(false);
 
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -554,16 +479,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
     };
   }, []);
 
-  const [countrySearch, setCountrySearch] = useState('');
-  const [stateSearch, setStateSearch] = useState('');
-  const [citySearch, setCitySearch] = useState('');
-
-  const { data: countriesData } = useCountries(countrySearch);
-  const { data: statesData } = useStates(newPartnerCountryId, stateSearch);
-  const { data: citiesData } = useCities(newPartnerStateId, citySearch);
-
   const { data: couriersData } = useCouriers();
-  const createCourierMutation = useCreateCourier();
 
   const courierList = React.useMemo(() => {
     const defaultPartners = ['Blue Dart', 'Delhivery', 'FedEx', 'DHL', 'DTDC', 'Professional Couriers'];
@@ -573,74 +489,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
     return Array.from(new Set([...apiNames, ...defaultPartners]));
   }, [couriersData]);
 
-  const resetAddPartnerForm = () => {
-    setNewPartnerName('');
-    setNewPartnerContact('');
-    setNewPartnerCountry('');
-    setNewPartnerCountryId('');
-    setNewPartnerState('');
-    setNewPartnerStateId('');
-    setNewPartnerCity('');
-    setNewPartnerCityId('');
-    setNewPartnerServiceType('Standard');
-    setNewPartnerRating('4.5');
-    setNewPartnerGst('');
-    setNewPartnerStatus(true);
-  };
 
-  const handleCreateTransportPartner = async () => {
-    if (!newPartnerName.trim()) {
-      Alert.alert('Validation Error', 'Transport Name is required.');
-      return;
-    }
-    if (!newPartnerContact.trim()) {
-      Alert.alert('Validation Error', 'Contact Number is required.');
-      return;
-    }
-    if (newPartnerContact.trim().length !== 10) {
-      Alert.alert('Validation Error', 'Please enter a valid 10-digit contact number.');
-      return;
-    }
-    if (!newPartnerCountryId) {
-      Alert.alert('Validation Error', 'Country selection is required.');
-      return;
-    }
-    if (!newPartnerStateId) {
-      Alert.alert('Validation Error', 'State selection is required.');
-      return;
-    }
-    if (!newPartnerCityId) {
-      Alert.alert('Validation Error', 'City selection is required.');
-      return;
-    }
-
-    try {
-      const newCourierData = {
-        courier_name: newPartnerName.trim(),
-        contact_number: parseInt(newPartnerContact.trim(), 10) || 0,
-        country: newPartnerCountryId,
-        state: newPartnerStateId,
-        city: newPartnerCityId,
-        service_type: newPartnerServiceType,
-        efficiency_rating: parseFloat(newPartnerRating) || 4.5,
-        gst_number: newPartnerGst.trim() || null,
-        is_available: newPartnerStatus
-      };
-
-      await createCourierMutation.mutateAsync(newCourierData);
-
-      setLogisticsPartner(newPartnerName.trim());
-      setShowAddPartnerModal(false);
-      resetAddPartnerForm();
-      Alert.alert('Success', 'Courier registered successfully!');
-    } catch (err: any) {
-      console.error('[Create Courier Error]:', err);
-      setLogisticsPartner(newPartnerName.trim());
-      setShowAddPartnerModal(false);
-      resetAddPartnerForm();
-      Alert.alert('Success', 'Courier registered locally!');
-    }
-  };
 
   const [adjustmentType, setAdjustmentType] = useState<'PERCENTAGE' | 'FLAT'>('PERCENTAGE');
   const [discountValue, setDiscountValue] = useState('0.00');
@@ -1089,7 +938,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
           <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
               <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700' }}>* </Text>
-              <Text style={styles.inputLabelGrey}>CUSTOMER</Text>
+              <Text style={styles.inputLabelGrey}>CUSTOMER/LEAD</Text>
             </View>
 
             <TouchableOpacity
@@ -1135,9 +984,6 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
               {selectedCustomer && (
                 <TouchableOpacity
                   onPress={() => {
-                    setTempBillingAddress(billingAddress);
-                    setTempShippingAddress(sameAsBilling ? billingAddress : shippingAddress);
-                    setTempSameAsBilling(sameAsBilling);
                     setShowAddressModal(true);
                   }}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -1673,171 +1519,20 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        transparent
-        animationType="slide"
+      {/* ADDRESS MODAL */}
+      <EditAddressModal
         visible={showAddressModal}
-        onRequestClose={() => setShowAddressModal(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            activeOpacity={1}
-            onPress={() => setShowAddressModal(false)}
-          />
-          <View style={[styles.modalContent, { maxHeight: '80%', paddingBottom: 24 }]}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Delivery Address</Text>
-                <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 }}>
-                  Configure billing and shipping details for this order
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowAddressModal(false)}>
-                <Ionicons name="close" size={22} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
-              <View style={styles.formField}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="receipt-outline" size={14} color={COLORS.textMuted} />
-                    <Text style={styles.inputLabel}>BILLING ADDRESS</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleGetLocation('billing')}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                    activeOpacity={0.7}
-                    disabled={isLocatingBilling}
-                  >
-                    {isLocatingBilling ? (
-                      <ActivityIndicator size="small" color={primaryColor} />
-                    ) : (
-                      <>
-                        <Ionicons name="locate-outline" size={14} color={primaryColor} />
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: primaryColor }}>Use Current Location</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={[styles.textInputBox, { height: 70, textAlignVertical: 'top', paddingTop: 8 }]}
-                  placeholder="Full billing address, city, state, pincode..."
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
-                  value={tempBillingAddress}
-                  onChangeText={(txt) => {
-                    setTempBillingAddress(txt);
-                    if (tempSameAsBilling) {
-                      setTempShippingAddress(txt);
-                    }
-                  }}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
-                  <Text style={styles.inputLabel}>SHIPPING ADDRESS</Text>
-                </View>
-
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                  onPress={() => {
-                    const nextVal = !tempSameAsBilling;
-                    setTempSameAsBilling(nextVal);
-                    if (nextVal) {
-                      setTempShippingAddress(tempBillingAddress);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={tempSameAsBilling ? "checkbox" : "square-outline"}
-                    size={18}
-                    color={tempSameAsBilling ? primaryColor : COLORS.textMuted}
-                  />
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.textMuted }}>SAME AS BILLING</Text>
-                </TouchableOpacity>
-              </View>
-
-              {!tempSameAsBilling && (
-                <View style={styles.formField}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 }}>
-                    <TouchableOpacity
-                      onPress={() => handleGetLocation('shipping')}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                      activeOpacity={0.7}
-                      disabled={isLocatingShipping}
-                    >
-                      {isLocatingShipping ? (
-                        <ActivityIndicator size="small" color={primaryColor} />
-                      ) : (
-                        <>
-                          <Ionicons name="locate-outline" size={14} color={primaryColor} />
-                          <Text style={{ fontSize: 11, fontWeight: '800', color: primaryColor }}>Use Current Location</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput
-                    style={[styles.textInputBox, { height: 70, textAlignVertical: 'top', paddingTop: 8 }]}
-                    placeholder="Full shipping address, city, state, pincode..."
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    numberOfLines={3}
-                    value={tempShippingAddress}
-                    onChangeText={setTempShippingAddress}
-                  />
-                </View>
-              )}
-
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setShowAddressModal(false)}
-                  style={{
-                    flex: 1,
-                    height: 40,
-                    borderWidth: 1,
-                    borderColor: primaryColor,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#FFFFFF'
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: primaryColor }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setBillingAddress(tempBillingAddress);
-                    setSameAsBilling(tempSameAsBilling);
-                    setShippingAddress(tempSameAsBilling ? tempBillingAddress : tempShippingAddress);
-                    setShowAddressModal(false);
-                  }}
-                  style={{
-                    flex: 1.5,
-                    height: 40,
-                    backgroundColor: primaryColor,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>Apply Changes</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setShowAddressModal(false)}
+        billingAddress={billingAddress}
+        shippingAddress={shippingAddress}
+        sameAsBilling={sameAsBilling}
+        onConfirm={(billing, shipping, same) => {
+          setBillingAddress(billing);
+          setShippingAddress(shipping);
+          setSameAsBilling(same);
+          setShowAddressModal(false);
+        }}
+      />
 
       <Modal transparent animationType="slide" visible={showChargesTypeModal}>
         <TouchableOpacity
@@ -1905,381 +1600,15 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      <Modal transparent animationType="fade" visible={showAddPartnerModal}>
-        <View style={styles.modalOverlayCentered}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalFormCard}>
-            <View style={styles.modalFormHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalFormTitle}>Add Transport</Text>
-                <Text style={styles.modalFormSubtitle}>Register a new courier service.</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowAddPartnerModal(false);
-                  resetAddPartnerForm();
-                }}
-                style={styles.modalFormCloseBtn}
-              >
-                <Ionicons name="close" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalFormScrollContent} style={{ flexShrink: 1 }}>
-              <View style={styles.modalFormBody}>
-                <View style={styles.gridRow}>
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      <Text style={{ color: COLORS.danger }}>* </Text>Transport Name
-                    </Text>
-                    <TextInput
-                      style={styles.textInputBox}
-                      placeholder="e.g. BlueDart"
-                      placeholderTextColor="#9CA3AF"
-                      value={newPartnerName}
-                      onChangeText={setNewPartnerName}
-                    />
-                  </View>
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      <Text style={{ color: COLORS.danger }}>* </Text>Contact Number
-                    </Text>
-                    <TextInput
-                      style={styles.textInputBox}
-                      placeholder="e.g. 9876543210"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="phone-pad"
-                      value={newPartnerContact}
-                      onChangeText={setNewPartnerContact}
-                      maxLength={10}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.gridRow}>
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      <Text style={{ color: COLORS.danger }}>* </Text>Country
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.selectTrigger}
-                      onPress={() => setShowCountryModal(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.selectTriggerText, !newPartnerCountry && { color: '#9CA3AF' }]} numberOfLines={1}>
-                        {newPartnerCountry || 'Select Country'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      <Text style={{ color: COLORS.danger }}>* </Text>State
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.selectTrigger}
-                      onPress={() => {
-                        if (!newPartnerCountry) {
-                          Alert.alert('Required Field', 'Please select Country first.');
-                          return;
-                        }
-                        setShowStateModal(true);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.selectTriggerText, !newPartnerState && { color: '#9CA3AF' }]} numberOfLines={1}>
-                        {newPartnerState || (newPartnerCountry ? 'Select State' : 'Select Country first')}
-                      </Text>
-                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      <Text style={{ color: COLORS.danger }}>* </Text>City
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.selectTrigger}
-                      onPress={() => {
-                        if (!newPartnerState) {
-                          Alert.alert('Required Field', 'Please select State first.');
-                          return;
-                        }
-                        setShowCityModal(true);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.selectTriggerText, !newPartnerCity && { color: '#9CA3AF' }]} numberOfLines={1}>
-                        {newPartnerCity || (newPartnerState ? 'Select City' : 'Select State first')}
-                      </Text>
-                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.gridRow}>
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Service Type</Text>
-                    <TouchableOpacity
-                      style={styles.selectTrigger}
-                      onPress={() => setShowServiceTypeModal(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.selectTriggerText}>{newPartnerServiceType}</Text>
-                      <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Efficiency Rating (0-5)</Text>
-                    <TextInput
-                      style={styles.textInputBox}
-                      placeholder="4.5"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={newPartnerRating}
-                      onChangeText={setNewPartnerRating}
-                    />
-                  </View>
-
-                  <View style={[styles.formField, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>GST Number</Text>
-                    <TextInput
-                      style={styles.textInputBox}
-                      placeholder="e.g. 22AAAAA0000A1Z5"
-                      placeholderTextColor="#9CA3AF"
-                      value={newPartnerGst}
-                      onChangeText={setNewPartnerGst}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.availabilityCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.availabilityTitle}>Availability Status</Text>
-                    <Text style={styles.availabilitySubtitle}>Toggle courier operational status</Text>
-                  </View>
-                  <Switch
-                    value={newPartnerStatus}
-                    onValueChange={setNewPartnerStatus}
-                    trackColor={{ false: '#D1D5DB', true: '#E0F2FE' }}
-                    thumbColor={newPartnerStatus ? '#0284C7' : '#9CA3AF'}
-                  />
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFormFooter}>
-              <TouchableOpacity
-                style={styles.modalFormCancelBtn}
-                onPress={() => {
-                  setShowAddPartnerModal(false);
-                  resetAddPartnerForm();
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalFormCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalFormSubmitBtn, { backgroundColor: '#4CB5BD' }]}
-                onPress={handleCreateTransportPartner}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalFormSubmitBtnText}>Create Transport</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
-
-      <Modal transparent animationType="slide" visible={showCountryModal}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCountryModal(false)}
-        >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Country</Text>
-              <TouchableOpacity onPress={() => setShowCountryModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalSearchContainer}>
-              <Ionicons name="search" size={16} color="#9CA3AF" />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search country..."
-                placeholderTextColor="#9CA3AF"
-                value={countrySearch}
-                onChangeText={setCountrySearch}
-              />
-              {countrySearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCountrySearch('')}>
-                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {(countriesData || []).map((opt: any) => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setNewPartnerCountry(opt.name);
-                    setNewPartnerCountryId(opt.id);
-                    setNewPartnerState('');
-                    setNewPartnerStateId('');
-                    setNewPartnerCity('');
-                    setNewPartnerCityId('');
-                    setShowCountryModal(false);
-                    setCountrySearch('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt.name}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal transparent animationType="slide" visible={showStateModal}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowStateModal(false)}
-        >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select State</Text>
-              <TouchableOpacity onPress={() => setShowStateModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalSearchContainer}>
-              <Ionicons name="search" size={16} color="#9CA3AF" />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search state..."
-                placeholderTextColor="#9CA3AF"
-                value={stateSearch}
-                onChangeText={setStateSearch}
-              />
-              {stateSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setStateSearch('')}>
-                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {(statesData || []).map((opt: any) => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setNewPartnerState(opt.name);
-                    setNewPartnerStateId(opt.id);
-                    setNewPartnerCity('');
-                    setNewPartnerCityId('');
-                    setShowStateModal(false);
-                    setStateSearch('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt.name}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal transparent animationType="slide" visible={showCityModal}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCityModal(false)}
-        >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24), maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select City</Text>
-              <TouchableOpacity onPress={() => setShowCityModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalSearchContainer}>
-              <Ionicons name="search" size={16} color="#9CA3AF" />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search city..."
-                placeholderTextColor="#9CA3AF"
-                value={citySearch}
-                onChangeText={setCitySearch}
-              />
-              {citySearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCitySearch('')}>
-                  <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {(citiesData || []).map((opt: any) => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setNewPartnerCity(opt.name);
-                    setNewPartnerCityId(opt.id);
-                    setShowCityModal(false);
-                    setCitySearch('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt.name}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal transparent animationType="slide" visible={showServiceTypeModal}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowServiceTypeModal(false)}
-        >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Service Type</Text>
-              <TouchableOpacity onPress={() => setShowServiceTypeModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {SERVICE_TYPE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setNewPartnerServiceType(opt);
-                    setShowServiceTypeModal(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{opt}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* ADD TRANSPORT MODAL */}
+      <AddTransportModal
+        visible={showAddPartnerModal}
+        onClose={() => setShowAddPartnerModal(false)}
+        onSuccess={(name) => {
+          setLogisticsPartner(name);
+          setShowAddPartnerModal(false);
+        }}
+      />
 
       <Modal transparent animationType="slide" visible={showCustomerModal} onRequestClose={() => setShowCustomerModal(false)}>
         <TouchableOpacity
@@ -2515,7 +1844,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   billToBox: {
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#D1D5DB',
+    borderColor: theme.primaryColor,
     borderRadius: 8,
     padding: 16,
     backgroundColor: '#FAFBFD',

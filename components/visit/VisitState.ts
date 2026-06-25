@@ -29,6 +29,11 @@ export const updateVisitsState = (newVisits: VisitRecord[]) => {
   listeners.forEach((listener) => listener());
 };
 
+export const resetVisitsState = () => {
+  visitsState = [...INITIAL_VISITS];
+  listeners.forEach((listener) => listener());
+};
+
 export const subscribeToVisits = (listener: () => void) => {
   listeners.add(listener);
   return () => {

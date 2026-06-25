@@ -108,6 +108,11 @@ function makeThemeDynamic(obj: any): any {
   
   const newObj: any = Array.isArray(obj) ? [] : {};
   
+  const primaryLower = COLORS.primary ? COLORS.primary.toLowerCase() : '';
+  const lightLower = COLORS.primaryLight ? COLORS.primaryLight.toLowerCase() : '';
+  const darkLower = COLORS.primaryDark ? COLORS.primaryDark.toLowerCase() : '';
+  const avatarLower = COLORS.avatarBg ? COLORS.avatarBg.toLowerCase() : '';
+
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const val = obj[key];
@@ -115,25 +120,25 @@ function makeThemeDynamic(obj: any): any {
         newObj[key] = makeThemeDynamic(val);
       } else if (typeof val === 'string') {
         const lowerVal = val.toLowerCase();
-        if (lowerVal === '#346556') {
+        if (lowerVal === '#346556' || (primaryLower && lowerVal === primaryLower)) {
           Object.defineProperty(newObj, key, {
             get: () => COLORS.primary,
             enumerable: true,
             configurable: true
           });
-        } else if (lowerVal === '#eaf4ee') {
+        } else if (lowerVal === '#eaf4ee' || (lightLower && lowerVal === lightLower)) {
           Object.defineProperty(newObj, key, {
             get: () => COLORS.primaryLight,
             enumerable: true,
             configurable: true
           });
-        } else if (lowerVal === '#204036') {
+        } else if (lowerVal === '#204036' || (darkLower && lowerVal === darkLower)) {
           Object.defineProperty(newObj, key, {
             get: () => COLORS.primaryDark,
             enumerable: true,
             configurable: true
           });
-        } else if (lowerVal === '#c9e4d4') {
+        } else if (lowerVal === '#c9e4d4' || (avatarLower && lowerVal === avatarLower)) {
           Object.defineProperty(newObj, key, {
             get: () => COLORS.avatarBg,
             enumerable: true,
@@ -151,8 +156,7 @@ function makeThemeDynamic(obj: any): any {
 }
 
 (StyleSheet as any).create = function(styles: any) {
-  const dynamicStyles = makeThemeDynamic(styles);
-  return originalCreate(dynamicStyles);
+  return makeThemeDynamic(styles);
 };
 
 export const Fonts = Platform.select({

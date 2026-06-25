@@ -370,7 +370,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: theme.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

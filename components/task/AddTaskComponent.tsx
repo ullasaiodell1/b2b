@@ -17,6 +17,7 @@ import { scheduleTaskNotification } from '@/utils/notifications';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -61,6 +62,8 @@ export interface AddTaskComponentProps {
   leadId?: string;
   leadName?: string;
   isEmbedded?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export function AddTaskComponent({
@@ -68,6 +71,8 @@ export function AddTaskComponent({
   leadId: propLeadId,
   leadName: propLeadName,
   isEmbedded = false,
+  onSuccess,
+  onCancel,
 }: AddTaskComponentProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -255,6 +260,23 @@ export function AddTaskComponent({
     return `${day}-${month}-${year} ${hours}:${minutes}`;
   };
 
+  const handleBack = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [onCancel]);
+
   const syncToSystemCalendar = async (taskTitle: string, taskDescription: string, taskDueDate: Date) => {
     try {
       const { status: calendarPerm } = await Calendar.requestCalendarPermissionsAsync();
@@ -383,7 +405,11 @@ export function AddTaskComponent({
         await syncToSystemCalendar(title.trim(), description.trim(), dueDateObj);
       }
 
-      navigation.goBack();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        handleBack();
+      }
     } catch (err: any) {
       console.error('[AddTask] save error:', err);
       Alert.alert('Error', err?.message || `Failed to ${id ? 'update' : 'create'} task. Please try again.`);
@@ -407,7 +433,7 @@ export function AddTaskComponent({
       {/* HEADER */}
       {!isEmbedded && (
         <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>

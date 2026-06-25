@@ -1,11 +1,17 @@
+import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { LedgerEntry, useLeadLedger } from '@/hooks/useLedger';
+import { useLeadLedger } from '@/hooks/useLedger';
+import { LedgerEntry } from '@/types/ledger';
+import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StatusBar,
@@ -18,6 +24,29 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Normalize ledger entry from raw API response to LedgerEntry type */
+function normalizeLedgerEntry(item: any, index: number): LedgerEntry {
+  const prefix = item.prefix || '';
+  const serial = item.serial_number || '';
+  const refNo = prefix && serial ? `${prefix}/${serial}` : String(item.id ?? index);
+
+  return {
+    id: String(item.id ?? index),
+    date: item.date || item.created_at || new Date().toISOString(),
+    entryType: String(item.type || '').toLowerCase() === 'credit' ? 'credit' : 'debit',
+    _type: item._type || '',
+    category: item.category || '',
+    amount: Math.abs(Number(item.amount || 0)),
+    closingBalance: Number(item.closing_balance ?? 0),
+    previousBalance: Number(item.previous_balance ?? 0),
+    prefix,
+    serialNumber: String(serial),
+    refNo,
+    accountName: item.account_name || '',
+    createdByName: item.created_by_name || '',
+  };
+}
 
 /** Format ISO date string → "DD/MM/YYYY" */
 function formatDate(isoStr: string): string {
@@ -60,6 +89,63 @@ export default function LeadLedgerScreen() {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
 
+  const [ledgerDownloading, setLedgerDownloading] = useState(false);
+
+  const handleDownloadLedger = async () => {
+    if (!params.leadId) return;
+    setLedgerDownloading(true);
+    try {
+      const token = await getAuthToken();
+      const cleanName = (companyName || 'Lead')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .toLowerCase();
+      const filename = `ledger_${cleanName}.pdf`;
+
+      const downloadUrl = `${serverDetails.serverProxyURL}/leads/${params.leadId}/ledger/download?startDate=${filterStart}&endDate=${filterEnd}`;
+      console.log(`[LedgerDownload] Starting download from URL: ${downloadUrl}`);
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(downloadUrl, {
+          headers: { Authorization: token || '' },
+        });
+        if (!response.ok) throw new Error('Failed to download ledger PDF from server');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const localUri = FileSystem.documentDirectory + filename;
+        const { uri } = await FileSystem.downloadAsync(
+          downloadUrl,
+          localUri,
+          { headers: { Authorization: token || '' } }
+        );
+        console.log(`[LedgerDownload] File downloaded successfully to: ${uri}`);
+
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Share Ledger PDF`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('Downloaded', `Ledger PDF saved to:\n${uri}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('[Download Ledger Error]:', err);
+      Alert.alert('Error', err?.message || 'Failed to download ledger PDF.');
+    } finally {
+      setLedgerDownloading(false);
+    }
+  };
+
   const params = (route.params ?? {}) as {
     leadId?: string;
     leadName?: string;
@@ -96,7 +182,10 @@ export default function LeadLedgerScreen() {
 
   const { data: ledgerData, isLoading } = useLeadLedger(params.leadId || '', apiParams);
 
-  const items = ledgerData?.items ?? [];
+  const rawItems = ledgerData?.items ?? [];
+  const items = useMemo(() => {
+    return rawItems.map((item: any, idx: number) => normalizeLedgerEntry(item, idx));
+  }, [rawItems]);
   const openingBalance = ledgerData?.openingBalance ?? 0;
 
   // ── Client-side filtering (type / category / search) ─────────────
@@ -288,10 +377,24 @@ export default function LeadLedgerScreen() {
         <View style={styles.balanceCard}>
           <View style={styles.balanceHeader}>
             <Text style={styles.balanceLabel}>CLOSING BALANCE</Text>
-            <View style={[styles.drBadge, !totals.isDR && styles.crBadge]}>
-              <Text style={[styles.drBadgeText, !totals.isDR && styles.crBadgeText]}>
-                {totals.isDR ? 'DR' : 'CR'}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={[styles.drBadge, !totals.isDR && styles.crBadge]}>
+                <Text style={[styles.drBadgeText, !totals.isDR && styles.crBadgeText]}>
+                  {totals.isDR ? 'DR' : 'CR'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleDownloadLedger}
+                disabled={ledgerDownloading}
+                style={styles.downloadBtn}
+                activeOpacity={0.7}
+              >
+                {ledgerDownloading ? (
+                  <ActivityIndicator size="small" color={theme.primaryColor} />
+                ) : (
+                  <Ionicons name="download-outline" size={20} color={theme.primaryColor} />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -516,6 +619,7 @@ const getStyles = (theme: any) =>
     },
     balanceHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     balanceLabel: { fontSize: 11, fontWeight: '800', color: COLORS.textMuted, letterSpacing: 0.5 },
+    downloadBtn: { padding: 4 },
     balanceAmount: { fontSize: 28, fontWeight: '900', color: '#B91C1C' },
 
     drBadge: {

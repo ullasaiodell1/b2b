@@ -3,37 +3,15 @@ import {
     getLeadInterestedProducts,
     removeLeadInterestedProduct,
 } from '@/services/api/interestedProducts';
+import { InterestedProduct, normalizeProduct } from '@/types/product';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+export type { InterestedProduct };
 
 export const interestedProductKeys = {
   all: ['interestedProducts'] as const,
   lead: (leadId: string) => [...interestedProductKeys.all, 'lead', leadId] as const,
 };
-
-// Normalise a raw API item to a consistent shape
-export interface InterestedProduct {
-  id: string;
-  product_name: string;
-  code: string;
-  selling_price: number | null;
-  // preserve extra fields for display
-  [key: string]: any;
-}
-
-function normalizeProduct(item: any): InterestedProduct {
-  return {
-    ...item,
-    id: String(item.id ?? ''),
-    product_name: item.product_name || item.name || '',
-    code: item.code || item.sku || '',
-    selling_price:
-      item.selling_price != null
-        ? Number(item.selling_price)
-        : item.price != null
-        ? Number(item.price)
-        : null,
-  };
-}
 
 // ── READ ──────────────────────────────────────────────────────────
 export const useLeadInterestedProducts = (leadId: string) => {
@@ -46,12 +24,12 @@ export const useLeadInterestedProducts = (leadId: string) => {
       const list = Array.isArray(raw?.data)
         ? raw.data
         : Array.isArray(raw?.data?.data)
-        ? raw.data.data
-        : Array.isArray(raw)
-        ? raw
-        : Array.isArray(raw?.results)
-        ? raw.results
-        : [];
+          ? raw.data.data
+          : Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.results)
+              ? raw.results
+              : [];
       return list.map(normalizeProduct) as InterestedProduct[];
     },
     enabled: !!leadId,

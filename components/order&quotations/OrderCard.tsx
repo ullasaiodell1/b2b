@@ -1,8 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface OrderCardProps {
   order: any;
@@ -20,9 +20,17 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress, isCompact 
   const contactPerson = order.contactPerson || '—';
   const location = order.hotelLocation || '—';
   const status = order.status || 'Pending';
+  const paymentStatus = order.payment_status || order.paymentStatus || null;
   const itemsCount = Array.isArray(order.items) ? order.items.length : order.itemsCount || 0;
-  const paymentMethod = order.paymentType || '—';
+  const customerName = order.customer_name || order.customerName || '—';
   const amount = order.amount || '—';
+
+  // Payment status color config
+  const paymentStatusConfig = paymentStatus === 'PAID'
+    ? { bg: COLORS.completeBg, text: COLORS.complete, icon: 'checkmark-circle' as const }
+    : paymentStatus === 'UNPAID'
+    ? { bg: COLORS.pendingBg, text: COLORS.pending, icon: 'alert-circle-outline' as const }
+    : { bg: '#F0F0F0', text: COLORS.textMuted, icon: 'ellipse-outline' as const };
 
   // Config mapping for status
   const configMap: Record<string, { bg: string; text: string; icon: string }> = {
@@ -46,6 +54,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress, isCompact 
         activeOpacity={onPress ? 0.9 : 1}
         disabled={!onPress}
       >
+        {/* Row 1: Order# + Date */}
         <View style={s.cardHeader}>
           <Text style={[s.orderNo, { color: theme.primaryColor }]}># {orderNumber}</Text>
           <View style={[s.dateTag, { backgroundColor: theme.primaryLight }]}>
@@ -54,37 +63,29 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress, isCompact 
           </View>
         </View>
 
-        <View style={s.clientBlock}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={[s.metaRow, { flex: 1, marginRight: 8 }]}>
-              <Ionicons name="business-outline" size={13} color={COLORS.textMuted} />
-              <Text style={s.clientName} numberOfLines={1}>{clientName}</Text>
-            </View>
-            <View style={[s.metaRow, { flex: 1, justifyContent: 'flex-end' }]}>
-              <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
-              <Text style={s.metaText} numberOfLines={1}>{contactPerson}</Text>
-            </View>
-          </View>
+        {/* Row 2: Customer Name + Amount */}
+        <View style={s.nameAmountRow}>
           <View style={s.metaRow}>
-            <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-            <Text style={[s.metaText, { flex: 1 }]} numberOfLines={1}>{location}</Text>
+            <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
+            <Text style={s.metaText} numberOfLines={1}>{customerName}</Text>
           </View>
+          <Text style={[s.amountText, { color: theme.primaryColor }]}>{amount}</Text>
         </View>
 
         <View style={s.divider} />
 
-        <View style={s.cardFooter}>
+        {/* Row 3: Status (left) + Payment Status (right) */}
+        <View style={s.footerRow}>
           <View style={[s.statusBadge, { backgroundColor: config.bg }]}>
             <Ionicons name={config.icon as any} size={11} color={config.text} style={{ marginRight: 3 }} />
             <Text style={[s.statusBadgeText, { color: config.text }]}>{status}</Text>
-            <Text style={[s.itemsCountText, { color: config.text }]}> • {itemsCount} Items</Text>
           </View>
-
-          <View style={s.amountBlock}>
-            <Text style={s.payLabel}>Order By</Text>
-            <Text style={s.payVal}>{paymentMethod}</Text>
-            <Text style={[s.amountText, { color: theme.primaryColor }]}>{amount}</Text>
-          </View>
+          {paymentStatus ? (
+            <View style={[s.paymentStatusBadge, { backgroundColor: paymentStatusConfig.bg }]}>
+              <Ionicons name={paymentStatusConfig.icon} size={11} color={paymentStatusConfig.text} />
+              <Text style={[s.paymentStatusText, { color: paymentStatusConfig.text }]}>{paymentStatus}</Text>
+            </View>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -98,7 +99,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress, isCompact 
       activeOpacity={onPress ? 0.9 : 1}
       disabled={!onPress}
     >
-      {/* Header: ID and Date */}
+      {/* Row 1: Order# + Date */}
       <View style={s.cardHeader}>
         <Text style={[s.orderNo, { color: theme.primaryColor }]}># {orderNumber}</Text>
         <View style={s.dateRow}>
@@ -107,65 +108,30 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress, isCompact 
         </View>
       </View>
 
-      {/* Details Block */}
-      <View style={s.clientBlock}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={[s.metaRow, { flex: 1, marginRight: 8 }]}>
-            <Ionicons name="business-outline" size={14} color={COLORS.textMuted} />
-            <Text style={[s.clientName, { fontSize: 13 }]} numberOfLines={1}>{clientName}</Text>
-          </View>
-          <View style={[s.metaRow, { flex: 1, justifyContent: 'flex-end' }]}>
-            <Ionicons name="person-outline" size={14} color={COLORS.textMuted} />
-            <Text style={s.metaText} numberOfLines={1}>{contactPerson}</Text>
-          </View>
-        </View>
+      {/* Row 2: Customer Name + Amount */}
+      <View style={s.nameAmountRow}>
         <View style={s.metaRow}>
-          <Ionicons name="home-outline" size={14} color={COLORS.textMuted} />
-          <Text style={[s.metaText, { flex: 1 }]} numberOfLines={1}>{location}</Text>
+          <Ionicons name="person-outline" size={14} color={COLORS.textMuted} />
+          <Text style={s.metaText} numberOfLines={1}>{customerName}</Text>
         </View>
+        <Text style={s.amountValue}>{amount}</Text>
       </View>
 
-      {/* Divider Line */}
+      {/* Divider */}
       <View style={s.divider} />
 
-      {/* Status and Items row */}
-      <View style={s.statusRow}>
+      {/* Row 3: Status (left) + Payment Status (right) */}
+      <View style={s.footerRow}>
         <View style={s.statusBadgeRow}>
-          <Ionicons
-            name={config.icon as any}
-            size={16}
-            color={config.text}
-          />
-          <Text style={[s.statusBadgeText, { color: config.text, fontSize: 12.5 }]}>
-            {status}
-          </Text>
+          <Ionicons name={config.icon as any} size={15} color={config.text} />
+          <Text style={[s.statusBadgeText, { color: config.text, fontSize: 12.5 }]}>{status}</Text>
         </View>
-
-        <View style={s.itemsBadge}>
-          <Ionicons name="list-outline" size={14} color={COLORS.primary} />
-          <Text style={s.itemsText}>{itemsCount} Items</Text>
-        </View>
-      </View>
-
-      {/* Divider Line */}
-      <View style={s.divider} />
-
-      {/* Footer Payment & Amount */}
-      <View style={s.cardFooter}>
-        <View style={s.paymentBlock}>
-          <View style={s.paymentIconBox}>
-            <Ionicons name="card-outline" size={16} color={COLORS.textMuted} />
+        {paymentStatus ? (
+          <View style={[s.paymentStatusBadge, { backgroundColor: paymentStatusConfig.bg }]}>
+            <Ionicons name={paymentStatusConfig.icon} size={13} color={paymentStatusConfig.text} />
+            <Text style={[s.paymentStatusText, { color: paymentStatusConfig.text }]}>{paymentStatus}</Text>
           </View>
-          <View>
-            <Text style={s.footerLabel}>Order By</Text>
-            <Text style={s.footerValue}>{paymentMethod}</Text>
-          </View>
-        </View>
-
-        <View style={s.amountBlock}>
-          <Text style={[s.footerLabel, { textAlign: 'right' }]}>Amount</Text>
-          <Text style={s.amountValue}>{amount}</Text>
-        </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -178,7 +144,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
-    marginBottom: 8,
     gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -262,6 +227,16 @@ const s = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 2,
   },
+  nameAmountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   payLabel: {
     fontSize: 9,
     color: COLORS.textMuted,
@@ -326,5 +301,17 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     color: COLORS.textDark,
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  paymentStatusText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

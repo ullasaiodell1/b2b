@@ -258,7 +258,7 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
             </Text>
             <TouchableOpacity
               style={[styles.inputRow, statusDropdownOpen && { borderColor: primaryColor, backgroundColor: primaryLight }]}
-              onPress={() => setStatusDropdownOpen(!statusDropdownOpen)}
+              onPress={() => setStatusDropdownOpen(true)}
               activeOpacity={0.8}
             >
               <Ionicons
@@ -271,41 +271,11 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
                 {status ?? 'Select status'}
               </Text>
               <Ionicons
-                name={statusDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                name="chevron-down"
                 size={16}
                 color={COLORS.textMuted}
               />
             </TouchableOpacity>
-
-            {statusDropdownOpen && (
-              <View style={styles.dropdownList}>
-                {STATUS_OPTIONS.map((opt, idx) => {
-                  const isSelected = status === opt;
-                  return (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && styles.dropdownItemSelected,
-                        idx < STATUS_OPTIONS.length - 1 && styles.dropdownItemBorder,
-                      ]}
-                      onPress={() => {
-                        setStatus(opt);
-                        setStatusDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.dropdownItemText,
-                        isSelected && styles.dropdownItemTextSelected,
-                      ]}>
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
           </View>
 
           <View style={styles.divider} />
@@ -315,7 +285,7 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
             <Text style={styles.inputLabel}>Method</Text>
             <TouchableOpacity
               style={[styles.inputRow, methodDropdownOpen && { borderColor: primaryColor, backgroundColor: primaryLight }]}
-              onPress={() => setMethodDropdownOpen(!methodDropdownOpen)}
+              onPress={() => setMethodDropdownOpen(true)}
               activeOpacity={0.8}
             >
               <Ionicons
@@ -328,41 +298,11 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
                 {method ?? 'Select method'}
               </Text>
               <Ionicons
-                name={methodDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                name="chevron-down"
                 size={16}
                 color={COLORS.textMuted}
               />
             </TouchableOpacity>
-
-            {methodDropdownOpen && (
-              <View style={styles.dropdownList}>
-                {METHOD_OPTIONS.map((opt, idx) => {
-                  const isSelected = method === opt;
-                  return (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && styles.dropdownItemSelected,
-                        idx < METHOD_OPTIONS.length - 1 && styles.dropdownItemBorder,
-                      ]}
-                      onPress={() => {
-                        setMethod(opt);
-                        setMethodDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.dropdownItemText,
-                        isSelected && styles.dropdownItemTextSelected,
-                      ]}>
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
           </View>
 
           <View style={styles.divider} />
@@ -499,6 +439,118 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
           setScheduledTime(selected);
         }}
       />
+
+      {/* ── STATUS SELECT BOTTOM SHEET MODAL ── */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={statusDropdownOpen}
+        onRequestClose={() => setStatusDropdownOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.bsOverlay}
+          activeOpacity={1}
+          onPress={() => setStatusDropdownOpen(false)}
+        >
+          <View
+            style={styles.bsContent}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.bsTitle}>Select Status</Text>
+              <TouchableOpacity onPress={() => setStatusDropdownOpen(false)} style={{ padding: 4 }} activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Scrollable list */}
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+              {STATUS_OPTIONS.map((opt) => {
+                const isSelected = status === opt;
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      setStatus(opt);
+                      setStatusDropdownOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalRowText,
+                      isSelected && { color: primaryColor, fontWeight: '900' },
+                    ]}>
+                      {opt}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={primaryColor} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── METHOD SELECT BOTTOM SHEET MODAL ── */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={methodDropdownOpen}
+        onRequestClose={() => setMethodDropdownOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.bsOverlay}
+          activeOpacity={1}
+          onPress={() => setMethodDropdownOpen(false)}
+        >
+          <View
+            style={styles.bsContent}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.bsTitle}>Select Method</Text>
+              <TouchableOpacity onPress={() => setMethodDropdownOpen(false)} style={{ padding: 4 }} activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Scrollable list */}
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+              {METHOD_OPTIONS.map((opt) => {
+                const isSelected = method === opt;
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    style={styles.modalRowItem}
+                    onPress={() => {
+                      setMethod(opt);
+                      setMethodDropdownOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalRowText,
+                      isSelected && { color: primaryColor, fontWeight: '900' },
+                    ]}>
+                      {opt}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={primaryColor} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -692,5 +744,45 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textDark,
     textAlign: 'center',
+  },
+  bsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bsContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+    paddingBottom: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: '#FFFFFF',
+  },
+  bsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  modalRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalRowText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
   },
 });

@@ -119,6 +119,15 @@ export const updateOrderFilterState = (newFilter: OrderFilterState) => {
   listeners.forEach((listener) => listener());
 };
 
+export const resetOrdersState = () => {
+  ordersState = [...INITIAL_ORDERS];
+  activeOrderFilter = {
+    status: '',
+    dateRange: '',
+  };
+  listeners.forEach((listener) => listener());
+};
+
 export const subscribeToOrders = (listener: () => void) => {
   listeners.add(listener);
   return () => {

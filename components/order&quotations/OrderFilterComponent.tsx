@@ -1,5 +1,6 @@
 import { activeOrderFilter, updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
@@ -52,6 +53,7 @@ export const OrderFilterComponent: React.FC<OrderFilterComponentProps> = ({
   const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   const handleBack = () => {
     if (onCancel) {

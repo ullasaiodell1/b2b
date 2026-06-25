@@ -7,6 +7,13 @@ import {
 } from '@/services/api/leave';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserData } from '@/utils/storage';
+import {
+  LeaveParams,
+  ApprovalsParams,
+  LeaveTypeParams,
+  CreateLeavePayload,
+  UpdateLeaveStatusMutationPayload,
+} from '@/types/leave';
 
 export const leaveKeys = {
   all: ['leaves'] as const,
@@ -15,21 +22,8 @@ export const leaveKeys = {
   types: (params?: any) => [...leaveKeys.all, 'types', params] as const,
 };
 
-// Helper: detect forbidden errors from the backend
-const isForbiddenError = (error: any): boolean => {
-  const code = error?.code || error?.response?.data?.code || '';
-  const status = error?.response?.status || error?.status;
-  return code === 'forbidden' || status === 403;
-};
-
 // Hook to fetch personal leaves — only enabled when user_id is available
-export function useLeaves(params?: {
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
-  user_id?: string;
-  search?: string;
-  limit?: number;
-  offset?: number;
-}) {
+export function useLeaves(params?: LeaveParams) {
   const resolvedUserId = params?.user_id;
 
   return useQuery({
@@ -39,27 +33,14 @@ export function useLeaves(params?: {
     // Do NOT retry on failure — forbidden errors should not be retried
     retry: false,
     queryFn: async () => {
-      try {
-        const response = await getLeaves(params);
-        return (response as any) || { total: 0, data: [] };
-      } catch (error: any) {
-        if (isForbiddenError(error)) {
-          // Return empty state instead of throwing — UI shows empty list gracefully
-          return { total: 0, data: [] };
-        }
-        throw error;
-      }
+      const response = await getLeaves(params);
+      return (response as any) || { total: 0, data: [] };
     },
   });
 }
 
 // Hook to fetch leaves pending approval for the current user (acting as approver)
-export function useApprovals(params?: {
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
-  search?: string;
-  limit?: number;
-  offset?: number;
-}) {
+export function useApprovals(params?: ApprovalsParams) {
   return useQuery({
     queryKey: leaveKeys.list({ ...params, type: 'approvals' }),
     retry: false,
@@ -71,55 +52,29 @@ export function useApprovals(params?: {
         return { total: 0, data: [] };
       }
 
-      try {
-        const response = await getLeaves({
-          ...params,
-          user_id: userId,
-        });
+      const response = await getLeaves(params);
+      const allLeaves = (response as any)?.data || [];
+      // Client-side: keep only leaves where the logged-in user is the designated approver
+      const filtered = allLeaves.filter(
+        (row: any) => row.approval_from_email === userEmail && row.user_id !== userId
+      );
 
-        const allLeaves = (response as any)?.data || [];
-        // Client-side: keep only leaves where the logged-in user is the designated approver
-        const filtered = allLeaves.filter(
-          (row: any) => row.approval_from_email === userEmail && row.user_id !== userId
-        );
-
-        return { total: filtered.length, data: filtered };
-      } catch (error: any) {
-        if (isForbiddenError(error)) {
-          // User's role doesn't have leave approval permission — return empty gracefully
-          return { total: 0, data: [] };
-        }
-        throw error;
-      }
+      return { total: filtered.length, data: filtered };
     },
   });
 }
 
 // Hook to fetch leave types
-export function useLeaveTypes(params?: {
-  search?: string;
-  is_active?: boolean;
-  type?: 'PAID' | 'UNPAID';
-  limit?: number;
-  offset?: number;
-}) {
+export function useLeaveTypes(params?: LeaveTypeParams) {
   return useQuery({
     queryKey: leaveKeys.types(params),
     retry: false,
     queryFn: async () => {
-      try {
-        const response = await getLeaveTypes({
-          is_active: true,
-          ...params,
-        });
-        return (response as any)?.data || [];
-      } catch (error: any) {
-        if (isForbiddenError(error)) {
-          // Return empty list — the leave type picker will show "No active leave types found"
-          return [];
-        }
-        throw error;
-      }
+      const response = await getLeaveTypes({
+        is_active: true,
+        ...params,
+      });
+      return (response as any)?.data || [];
     },
   });
 }
@@ -128,14 +83,7 @@ export function useLeaveTypes(params?: {
 export function useCreateLeave() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: {
-      type_id: string;
-      start_date: string;
-      end_date: string;
-      leave_duration?: 'FULL_DAY' | 'HALF_DAY';
-      approval_from_email: string;
-      remark: string;
-    }) => createLeave(data),
+    mutationFn: (data: CreateLeavePayload) => createLeave(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leaveKeys.all });
     },
@@ -150,11 +98,7 @@ export function useUpdateLeaveStatus() {
       leaveId,
       status,
       action_remark,
-    }: {
-      leaveId: string;
-      status: 'APPROVED' | 'REJECTED';
-      action_remark?: string;
-    }) => updateLeaveStatus(leaveId, { status, action_remark }),
+    }: UpdateLeaveStatusMutationPayload) => updateLeaveStatus(leaveId, { status, action_remark }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leaveKeys.all });
       // Invalidate attendance history since leaves modify attendance state

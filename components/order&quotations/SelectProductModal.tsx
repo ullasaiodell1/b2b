@@ -65,18 +65,31 @@ export default function SelectProductModal({
         visible={visible}
         onRequestClose={handleCancel}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleCancel}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                height: '80%',
+                paddingBottom: Math.max(insets.bottom + 12, 16),
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
             {/* HEADER */}
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.backBtn} onPress={handleCancel} activeOpacity={0.7}>
-                <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-              <View style={styles.headerTitleContainer}>
-                <Text style={styles.headerTitle}>Select Product / Kit</Text>
-                <Text style={styles.headerSub}>Select product or create custom item</Text>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Select Product / Kit</Text>
+                <Text style={styles.modalSubtitle}>Select product or create custom item</Text>
               </View>
-              <View style={{ width: 36 }} />
+              <TouchableOpacity onPress={handleCancel} style={styles.closeBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
             </View>
 
             {/* SEARCH BOX */}
@@ -150,8 +163,8 @@ export default function SelectProductModal({
                         </View>
                       </TouchableOpacity>
                     ) : (
-                      <View style={[styles.productThumbnail, styles.productThumbnailPlaceholder]}>
-                        <Ionicons name="image-outline" size={18} color={COLORS.textMuted} />
+                      <View style={[styles.productThumbnail, styles.productThumbnailPlaceholder, { borderColor: primaryColor }]}>
+                        <Ionicons name="image-outline" size={18} color={primaryColor} />
                       </View>
                     )}
                     <View style={{ flex: 1, gap: 4 }}>
@@ -183,7 +196,7 @@ export default function SelectProductModal({
               </ScrollView>
             )}
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Full Screen Image Preview Modal */}
@@ -217,37 +230,39 @@ export default function SelectProductModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.bgPage,
-    flex: 1,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.bgWhite,
-    paddingBottom: 14,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    backgroundColor: '#FFFFFF',
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
   },
-  headerTitleContainer: { alignItems: 'center' },
-  headerTitle: { fontSize: 14.5, fontWeight: '900', color: COLORS.textDark },
-  headerSub: { fontSize: 10.5, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+  modalSubtitle: {
+    fontSize: 10.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 4,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',

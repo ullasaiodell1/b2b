@@ -487,7 +487,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderStyle: 'dashed',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: theme.primaryColor,
   },
   imagePlaceholderText: {
     marginTop: 10,

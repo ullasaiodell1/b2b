@@ -26,3 +26,19 @@ export function updateProfileData(newData: Partial<ProfileData>) {
   profileData = { ...profileData, ...newData };
   listeners.forEach((l) => l());
 }
+
+export function resetProfileData() {
+  profileData = {
+    fullName: '',
+    mobile: '',
+    dob: '',
+    email: '',
+    gender: 'Male',
+    gstNo: '',
+    panNo: '',
+    address: '',
+    photoUri: null,
+  };
+  listeners.forEach((l) => l());
+}
+

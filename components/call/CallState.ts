@@ -1,32 +1,7 @@
 import { CallFilterState, CallRecord } from '@/types/call';
 export { CallFilterState, CallRecord };
 
-export const INITIAL_CALLS: CallRecord[] = [
-  {
-    id: '1',
-    name: 'Khushal Nadiyapara',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 6:03pm',
-    duration: '50:00 min',
-    type: 'Incoming',
-  },
-  {
-    id: '2',
-    name: 'Parth Solanki',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 6:03pm',
-    duration: '50:00 min',
-    type: 'Outgoing',
-  },
-  {
-    id: '3',
-    name: 'Jigar Kalariya',
-    phoneNumber: '+91 12345 67890',
-    dateTime: '20 Jan 2026, 6:03pm',
-    duration: '00:00 min',
-    type: 'Missed',
-  },
-];
+export const INITIAL_CALLS: CallRecord[] = [];
 
 export let callsState: CallRecord[] = [...INITIAL_CALLS];
 export let activeCallFilter: CallFilterState = {
@@ -43,6 +18,15 @@ export const updateCallsState = (newCalls: CallRecord[]) => {
 
 export const updateCallFilterState = (newFilter: CallFilterState) => {
   activeCallFilter = newFilter;
+  listeners.forEach((listener) => listener());
+};
+
+export const resetCallsState = () => {
+  callsState = [...INITIAL_CALLS];
+  activeCallFilter = {
+    status: '',
+    dateRange: '',
+  };
   listeners.forEach((listener) => listener());
 };
 

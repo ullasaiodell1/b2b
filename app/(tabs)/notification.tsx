@@ -10,10 +10,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 
 interface NotificationItemProps {
   title: string;
@@ -86,55 +90,159 @@ function NotificationItem({
 
       {type === 'app-update' && (
         <TouchableOpacity activeOpacity={0.7} onPress={onPressButton}>
-          <Text style={styles.updateLinkText}>{"Tap To See What's New ?"}</Text>
+          <Text style={styles.updateLinkText}>{buttonLabel || "Tap To See What's New ?"}</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
+const groupNotifications = (notifications: any[]) => {
+  const todayList: any[] = [];
+  const yesterdayList: any[] = [];
+  const earlierList: any[] = [];
+
+  notifications.forEach((item) => {
+    const timeStr = item.created_at || item.createdAt || item.time;
+    if (!timeStr) {
+      earlierList.push(item);
+      return;
+    }
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) {
+      earlierList.push(item);
+      return;
+    }
+
+    if (isToday(date)) {
+      todayList.push(item);
+    } else if (isYesterday(date)) {
+      yesterdayList.push(item);
+    } else {
+      earlierList.push(item);
+    }
+  });
+
+  return { todayList, yesterdayList, earlierList };
+};
+
 export default function NotificationScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
   const router = useRouter();
-
   const insets = useSafeAreaInsets();
 
-  const handleDownload = () => {
-    Alert.alert('Download', 'Downloading E-Way Bill PDF...');
+  const { data, isLoading, isFetching, refetch } = useNotifications();
+
+  const notificationsList = React.useMemo(() => {
+    let list: any[] = [];
+    if (Array.isArray(data)) {
+      list = data;
+    } else if (Array.isArray(data?.data)) {
+      list = data.data;
+    } else if (Array.isArray(data?.data?.data)) {
+      list = data.data.data;
+    }
+    return list;
+  }, [data]);
+
+  const { todayList, yesterdayList, earlierList } = React.useMemo(() => {
+    return groupNotifications(notificationsList);
+  }, [notificationsList]);
+
+  const formatNotificationTime = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
+    try {
+      if (isToday(date)) {
+        return formatDistanceToNow(date, { addSuffix: true });
+      } else if (isYesterday(date)) {
+        return `Yesterday • ${format(date, 'h:mm a')}`;
+      } else {
+        return format(date, 'MMM d • h:mm a');
+      }
+    } catch (e) {
+      console.error('[formatNotificationTime] Error formatting date:', e);
+      return dateString;
+    }
   };
 
-  const handleTrack = () => {
-    Alert.alert('Track Order', 'Safexpress Package tracker opened.');
+  const handleAction = (item: any) => {
+    const type = item.type;
+    const metadata = item.data ? (typeof item.data === 'string' ? JSON.parse(item.data) : item.data) : {};
+    
+    switch (type) {
+      case 'download-bill':
+        Alert.alert('Download', 'Downloading E-Way Bill PDF...');
+        break;
+      case 'track':
+        Alert.alert('Track Order', 'Safexpress Package tracker opened.');
+        break;
+      case 'confirm-order':
+        router.navigate('/(tabs)/Order' as any);
+        break;
+      case 'app-update':
+        Alert.alert('App Update', metadata.changelog || 'Check the app store for latest features.');
+        break;
+      case 'lead-assigned':
+      case 'new-lead':
+        router.navigate('/(tabs)/leads' as any);
+        break;
+      case 'meeting':
+      case 'meeting-scheduled':
+        router.navigate('/(tabs)/meeting' as any);
+        break;
+      case 'quotation':
+        router.navigate('/(tabs)/Quotation' as any);
+        break;
+      case 'task':
+        router.navigate('/(tabs)/task' as any);
+        break;
+      case 'client':
+        router.navigate('/(tabs)/company' as any);
+        break;
+      default:
+        if (metadata.route) {
+          router.navigate(metadata.route);
+        } else {
+          Alert.alert(item.title || 'Notification', item.body || item.message || '');
+        }
+        break;
+    }
   };
 
-  const handleConfirm = () => {
-    router.navigate('/(tabs)/Order' as any);
+  const getType = (type?: string): NotificationItemProps['type'] => {
+    switch (type) {
+      case 'download-bill':
+      case 'payment-badge':
+      case 'track':
+      case 'confirm-order':
+      case 'app-update':
+        return type;
+      default:
+        return 'app-update'; // default fallback
+    }
   };
 
-  const handleUpdateNotes = () => {
-    Alert.alert('App Update v3.2.1', 'Changelog:\n- Bulk Invoice Download\n- E-Way Bill Integration\n- Offline Order Entry Mode');
-  };
-
-  const handleLeadAssign = () => {
-    router.navigate('/(tabs)/leads' as any);
-  };
-
-  const handleMeetingDetail = () => {
-    router.navigate('/(tabs)/meeting' as any);
-  };
-
-  const handleViewQuotation = () => {
-    router.navigate('/(tabs)/Quotation' as any);
-  };
-
-  const handleOpenTask = () => {
-    router.navigate('/(tabs)/task' as any);
-  };
-
-  const handleViewClient = () => {
-    router.navigate('/(tabs)/company' as any);
-  };
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
+        {/* ── HEADER ────────────────────────────────── */}
+        <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
+          <Text style={styles.headerTitle}>
+            <Text style={{ color: theme.primaryColor }}>Notif</Text>
+            <Text style={{ color: COLORS.textDark }}>ication</Text>
+          </Text>
+        </View>
+        <View style={styles.loadingIndicatorContainer}>
+          <ActivityIndicator size="large" color={theme.primaryColor} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -148,148 +256,88 @@ export default function NotificationScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
+        }
+      >
+        {notificationsList.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="notifications-off-outline" size={48} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={styles.emptySubtext}>We'll notify you when something important happens.</Text>
+          </View>
+        ) : (
+          <>
+            {/* TODAY SECTION */}
+            {todayList.length > 0 && (
+              <>
+                <View style={styles.sectionDivider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>TODAY</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                {todayList.map((item, index) => (
+                  <NotificationItem
+                    key={item.id || `today-${index}`}
+                    title={item.title || 'Notification'}
+                    time={formatNotificationTime(item.created_at || item.createdAt || item.time)}
+                    body={item.body || item.message || item.description || ''}
+                    type={getType(item.type)}
+                    buttonLabel={item.buttonLabel || item.button_label || undefined}
+                    onPressButton={() => handleAction(item)}
+                  />
+                ))}
+              </>
+            )}
 
-        {/* TODAY SECTION */}
-        <View style={styles.sectionDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>TODAY</Text>
-          <View style={styles.dividerLine} />
-        </View>
+            {/* YESTERDAY SECTION */}
+            {yesterdayList.length > 0 && (
+              <>
+                <View style={styles.sectionDivider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>YESTERDAY</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                {yesterdayList.map((item, index) => (
+                  <NotificationItem
+                    key={item.id || `yesterday-${index}`}
+                    title={item.title || 'Notification'}
+                    time={formatNotificationTime(item.created_at || item.createdAt || item.time)}
+                    body={item.body || item.message || item.description || ''}
+                    type={getType(item.type)}
+                    buttonLabel={item.buttonLabel || item.button_label || undefined}
+                    onPressButton={() => handleAction(item)}
+                  />
+                ))}
+              </>
+            )}
 
-        <NotificationItem
-          title="Order Dispatched Successfully"
-          time="30 min ago"
-          body="Order #ORD-2026-00908 for Mehta Industries has been dispatched via Safexpress. LR No: SFX884421."
-          type="download-bill"
-          buttonLabel="Download E-Way Bill"
-          onPressButton={handleDownload}
-        />
-
-        <NotificationItem
-          title="Payment Successful"
-          time="1 hour ago"
-          body="₹4,299 paid to Netflix India. Subscription renewed for 12 months."
-          type="payment-badge"
-          buttonLabel="Paid - HDFC-4521"
-        />
-
-        <NotificationItem
-          title="New Lead Assigned"
-          time="3 hours ago"
-          body="A new lead, 'Apex Chemicals Ltd.' (Rajkot) has been assigned to you by manager."
-          type="confirm-order"
-          buttonLabel="View Lead"
-          onPressButton={handleLeadAssign}
-        />
-
-        <NotificationItem
-          title="Your package is nearby"
-          time="4 hours ago"
-          body="Order #52841 from Flipkart — out for delivery. Arriving by 6:00 PM."
-          type="track"
-          buttonLabel="Track"
-          onPressButton={handleTrack}
-        />
-
-        {/* YESTERDAY SECTION */}
-        <View style={styles.sectionDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>YESTERDAY — MAR 8</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <NotificationItem
-          title="Urgent — New Order Received"
-          time="Yesterday 2:15 PM"
-          body="Ambica Steels Pvt. Ltd. placed a new order #ORD-2026-01042 worth ₹3,24,800."
-          type="confirm-order"
-          buttonLabel="Confirm Order"
-          onPressButton={handleConfirm}
-        />
-
-        <NotificationItem
-          title="Payment Received"
-          time="Yesterday 11:30 AM"
-          body="₹1,50,000 received from Zenon Traders for invoice #INV-2026-009."
-          type="payment-badge"
-          buttonLabel="Paid - HDFC-8812"
-        />
-
-        <NotificationItem
-          title="Meeting Scheduled with Arjun Gohil"
-          time="Yesterday 9:00 AM"
-          body="Your meeting has been scheduled with Arjun Gohil at The Grand Thakor Hotel, Rajkot."
-          type="track"
-          buttonLabel="View Meeting"
-          onPressButton={handleMeetingDetail}
-        />
-
-        {/* SATURDAY SECTION */}
-        <View style={styles.sectionDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>SATURDAY — MAR 7</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <NotificationItem
-          title="App Updated to v3.2.1"
-          time="Saturday 6:30 PM"
-          body="New features: Bulk invoice download, Improved E-Way Bill integration, offline mode for order entry."
-          type="app-update"
-          onPressButton={handleUpdateNotes}
-        />
-
-        <NotificationItem
-          title="Quotation Rejected"
-          time="Saturday 2:00 PM"
-          body="Quotation #QT-2026-011 for Parth Solanki has been rejected due to pricing requirements."
-          type="download-bill"
-          buttonLabel="View Details"
-          onPressButton={handleViewQuotation}
-        />
-
-        <NotificationItem
-          title="Payment Successful"
-          time="Saturday 11:00 AM"
-          body="₹4,299 paid to Netflix India. Subscription renewed for 12 months."
-          type="payment-badge"
-          buttonLabel="Paid - HDFC-4521"
-        />
-
-        {/* EARLIER THIS WEEK */}
-        <View style={styles.sectionDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>EARLIER THIS WEEK</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <NotificationItem
-          title="Task Overdue: Submit Sales Report"
-          time="3 days ago"
-          body="Task 'Submit Q1 Sales Report' was due on March 4. Please update the status immediately."
-          type="confirm-order"
-          buttonLabel="Open Task"
-          onPressButton={handleOpenTask}
-        />
-
-        <NotificationItem
-          title="Order #ORD-2026-00890 Completed"
-          time="4 days ago"
-          body="All shipments delivered and payments verified for order #ORD-2026-00890."
-          type="payment-badge"
-          buttonLabel="Completed"
-        />
-
-        <NotificationItem
-          title="New Client Onboarded"
-          time="5 days ago"
-          body="Client 'NanoTech Solutions Pvt. Ltd.' has successfully onboarded on the portal."
-          type="track"
-          buttonLabel="View Client"
-          onPressButton={handleViewClient}
-        />
-
+            {/* EARLIER SECTION */}
+            {earlierList.length > 0 && (
+              <>
+                <View style={styles.sectionDivider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>EARLIER</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                {earlierList.map((item, index) => (
+                  <NotificationItem
+                    key={item.id || `earlier-${index}`}
+                    title={item.title || 'Notification'}
+                    time={formatNotificationTime(item.created_at || item.createdAt || item.time)}
+                    body={item.body || item.message || item.description || ''}
+                    type={getType(item.type)}
+                    buttonLabel={item.buttonLabel || item.button_label || undefined}
+                    onPressButton={() => handleAction(item)}
+                  />
+                ))}
+              </>
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -437,5 +485,34 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textDark,
     marginTop: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.bgWhite,
+  },
+  loadingIndicatorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 120,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: '600',
   },
 });

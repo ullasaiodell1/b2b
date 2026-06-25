@@ -9,6 +9,7 @@ export default function OrderLayout() {
       <Stack.Screen name="order-details" options={{ title: 'Order Details' }} />
       <Stack.Screen name="order-filter"  options={{ title: 'Order Filter' }} />
       <Stack.Screen name="add-order"     options={{ title: 'Add Order' }} />
+      <Stack.Screen name="edit-order"    options={{ title: 'Edit Order' }} />
     </Stack>
   );
 }

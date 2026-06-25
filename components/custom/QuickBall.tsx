@@ -33,12 +33,12 @@ export default function QuickBall() {
 
   // Built inside render so New Lead color is always reactive
   const MENU_ITEMS: MenuItem[] = [
-    { label: 'New Lead', icon: 'person-add-outline', route: '/(tabs)/leads/add-lead', color: primaryColor },
-    { label: 'New Order', icon: 'cart-outline', route: '/(tabs)/Order/add-order', color: '#39241E' },
-    { label: 'New Quotation', icon: 'document-attach-outline', route: '/(tabs)/Quotation/add-quotation', color: '#E2C0B1' },
-    { label: 'New Task', icon: 'checkmark-done-circle-outline', route: '/(tabs)/task/add-task', color: COLORS.blue || '#3B82F6' },
-    { label: 'New Meeting', icon: 'videocam-outline', route: '/(tabs)/meeting/add-meeting', color: COLORS.success || '#10B981' },
-    { label: 'New Visit', icon: 'location-outline', route: '/(tabs)/visit/add-visit', color: COLORS.danger || '#EF4444' },
+    { label: 'New Lead', icon: 'person-add-outline', route: '/(tabs)/ball/add-lead', color: primaryColor },
+    { label: 'New Order', icon: 'cart-outline', route: '/(tabs)/ball/add-order', color: '#39241E' },
+    { label: 'New Quotation', icon: 'document-attach-outline', route: '/(tabs)/ball/add-quotation', color: '#E2C0B1' },
+    { label: 'New Task', icon: 'checkmark-done-circle-outline', route: '/(tabs)/ball/add-task', color: COLORS.blue || '#3B82F6' },
+    { label: 'New Meeting', icon: 'videocam-outline', route: '/(tabs)/ball/add-meeting', color: COLORS.success || '#10B981' },
+    { label: 'New Visit', icon: 'location-outline', route: '/(tabs)/ball/add-visit', color: COLORS.danger || '#EF4444' },
   ];
 
 

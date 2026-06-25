@@ -12,10 +12,21 @@ export default function LeadOrderFilterScreen() {
       referrer={params.referrer || 'lead-order'}
       leadId={params.leadId}
       onCancel={() => navigation.goBack()}
-      onApply={() => {
-        navigation.navigate('lead-order', {
-          leadId: params.leadId,
-        });
+      onApply={(status, startDate, endDate) => {
+        if (params.referrer === 'lead-details') {
+          navigation.navigate('lead-details', {
+            id: params.leadId,
+            activeTab: 'Order',
+            oStatus: status || '',
+            oStartDate: startDate ? startDate.toISOString() : '',
+            oEndDate: endDate ? endDate.toISOString() : '',
+            oFilterApplied: 'true',
+          });
+        } else {
+          navigation.navigate('lead-order', {
+            leadId: params.leadId,
+          });
+        }
       }}
     />
   );

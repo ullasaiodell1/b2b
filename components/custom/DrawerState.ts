@@ -83,3 +83,9 @@ export function resetDrawerItems() {
   drawerItems = DEFAULT_DRAWER_ITEMS.map((item) => ({ ...item }));
   notify();
 }
+
+export function resetDrawerState() {
+  isDrawerOpen = false;
+  drawerItems = DEFAULT_DRAWER_ITEMS.map((item) => ({ ...item }));
+  notify();
+}

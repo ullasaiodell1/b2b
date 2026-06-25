@@ -55,39 +55,39 @@ AsyncStorage.getItem(TABS_STORAGE_KEY).then(val => {
       console.error('Error parsing stored configured tabs:', e);
     }
   }
-}).catch(() => {});
+}).catch(() => { });
 
 AsyncStorage.getItem(DYNAMIC_TAB_STORAGE_KEY).then(val => {
   if (val !== null) {
     dynamicTabId = val;
     notifyTabs();
   }
-}).catch(() => {});
+}).catch(() => { });
 
 export function updateConfiguredTabs(newTabs: string[]) {
   configuredTabs = [...newTabs];
   dynamicTabId = null; // reset dynamic tab on reconfiguration
-  AsyncStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(configuredTabs)).catch(() => {});
-  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
+  AsyncStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(configuredTabs)).catch(() => { });
+  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => { });
   notifyTabs();
 }
 
 export function setDynamicTab(tabId: string | null) {
   if (tabId === null) {
     dynamicTabId = null;
-    AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
+    AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => { });
     notifyTabs();
   } else if (!configuredTabs.includes(tabId)) {
     dynamicTabId = tabId;
-    AsyncStorage.setItem(DYNAMIC_TAB_STORAGE_KEY, tabId).catch(() => {});
+    AsyncStorage.setItem(DYNAMIC_TAB_STORAGE_KEY, tabId).catch(() => { });
     notifyTabs();
   }
 }
 
 export function resetTabs() {
-  configuredTabs = ['index', 'leads', 'meeting', 'email'];
+  configuredTabs = ['index', 'leads', 'meeting', ''];
   dynamicTabId = null;
-  AsyncStorage.removeItem(TABS_STORAGE_KEY).catch(() => {});
-  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => {});
+  AsyncStorage.removeItem(TABS_STORAGE_KEY).catch(() => { });
+  AsyncStorage.removeItem(DYNAMIC_TAB_STORAGE_KEY).catch(() => { });
   notifyTabs();
 }

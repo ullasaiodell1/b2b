@@ -13,6 +13,11 @@ export const updateMeetingsState = (newMeetings: MeetingRecord[]) => {
   listeners.forEach((listener) => listener());
 };
 
+export const resetMeetingsState = () => {
+  meetingsState = [...INITIAL_MEETINGS];
+  listeners.forEach((listener) => listener());
+};
+
 export const subscribeToMeetings = (listener: () => void) => {
   listeners.add(listener);
   return () => {

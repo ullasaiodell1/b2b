@@ -1,3 +1,4 @@
+import { CreateContactPayload, UpdateContactPayload } from '@/types/contact';
 import axios from './httpRequest';
 
 // GET /leads/:leadId/contacts
@@ -15,15 +16,7 @@ export const getLeadContacts = (
 // POST /leads/:leadId/contacts
 export const createLeadContact = (
   leadId: string,
-  data: {
-    name: string;
-    email: string;
-    phone: string;
-    designation?: string;
-    department?: string;
-    notes?: string;
-    is_primary?: boolean;
-  }
+  data: CreateContactPayload
 ) => {
   return axios({
     method: 'POST',
@@ -36,15 +29,7 @@ export const createLeadContact = (
 export const updateLeadContact = (
   leadId: string,
   contactId: string,
-  data: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    designation?: string;
-    department?: string;
-    notes?: string;
-    is_primary?: boolean;
-  }
+  data: UpdateContactPayload
 ) => {
   return axios({
     method: 'PATCH',

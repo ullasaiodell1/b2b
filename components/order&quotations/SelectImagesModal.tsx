@@ -70,94 +70,107 @@ export default function SelectImagesModal({
         visible={visible}
         onRequestClose={handleCancel}
       >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
-          {/* HEADER */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={handleCancel} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Select Product Image</Text>
-              <Text style={styles.headerSub}>Select or unselect images for this item</Text>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleCancel}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                height: '80%',
+                paddingBottom: 0,
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            {/* HEADER */}
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Select Product Image</Text>
+                <Text style={styles.modalSubtitle}>Select or unselect images for this item</Text>
+              </View>
+              <TouchableOpacity onPress={handleCancel} style={styles.closeBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color={COLORS.textDark} />
+              </TouchableOpacity>
             </View>
-            <View style={{ width: 36 }} />
-          </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.instructionText}>
-              Closing without saving keeps the current row details.
-            </Text>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.instructionText}>
+                Closing without saving keeps the current row details.
+              </Text>
 
-            <View style={styles.gridContainer}>
-              {originalImages.map((imgUrl, idx) => {
-                const isSelected = selectedList.includes(imgUrl);
-                return (
-                  <TouchableOpacity
-                    key={`${imgUrl}-${idx}`}
-                    style={[
-                      styles.imageCard,
-                      isSelected && { borderColor: primaryColor },
-                    ]}
-                    onPress={() => toggleImage(imgUrl)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.imageWrapper}>
-                      <Image source={{ uri: imgUrl }} style={styles.image} resizeMode="cover" />
-                      
-                      {/* Full-screen expand preview button */}
-                      <TouchableOpacity 
-                        style={styles.zoomIconContainer} 
-                        onPress={() => setPreviewImage(imgUrl)}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="expand" size={14} color="#FFF" />
-                      </TouchableOpacity>
+              <View style={styles.gridContainer}>
+                {originalImages.map((imgUrl, idx) => {
+                  const isSelected = selectedList.includes(imgUrl);
+                  return (
+                    <TouchableOpacity
+                      key={`${imgUrl}-${idx}`}
+                      style={[
+                        styles.imageCard,
+                        isSelected && { borderColor: primaryColor },
+                      ]}
+                      onPress={() => toggleImage(imgUrl)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.imageWrapper}>
+                        <Image source={{ uri: imgUrl }} style={styles.image} resizeMode="cover" />
+                        
+                        {/* Full-screen expand preview button */}
+                        <TouchableOpacity 
+                          style={styles.zoomIconContainer} 
+                          onPress={() => setPreviewImage(imgUrl)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="expand" size={14} color="#FFF" />
+                        </TouchableOpacity>
 
-                      {isSelected && (
-                        <View style={styles.overlay}>
-                          <View style={[styles.checkBadge, { backgroundColor: primaryColor }]}>
-                            <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+                        {isSelected && (
+                          <View style={styles.overlay}>
+                            <View style={[styles.checkBadge, { backgroundColor: primaryColor }]}>
+                              <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+                            </View>
                           </View>
-                        </View>
-                      )}
-                    </View>
-                    <View style={[styles.cardFooter, isSelected && { backgroundColor: primaryLight }]}>
-                      <Text style={[styles.footerText, isSelected && { color: primaryColor }]}>
-                        {isSelected ? 'Selected Item' : 'Tap To Select'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-              {originalImages.length === 0 && (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="image-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.emptyText}>No images found for this product</Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
+                        )}
+                      </View>
+                      <View style={[styles.cardFooter, isSelected && { backgroundColor: primaryLight }]}>
+                        <Text style={[styles.footerText, isSelected && { color: primaryColor }]}>
+                          {isSelected ? 'Selected Item' : 'Tap To Select'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {originalImages.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="image-outline" size={48} color={COLORS.textMuted} />
+                    <Text style={styles.emptyText}>No images found for this product</Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
 
-          {/* FOOTER */}
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
-            <Text style={styles.selectedCountText}>{selectedList.length} image(s) selected</Text>
-            <View style={styles.footerActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.7}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: primaryColor }]}
-                onPress={handleSave}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.saveBtnText}>Use Selected Images</Text>
-              </TouchableOpacity>
+            {/* FOOTER */}
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
+              <Text style={styles.selectedCountText}>{selectedList.length} image(s) selected</Text>
+              <View style={styles.footerActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.7}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: primaryColor }]}
+                  onPress={handleSave}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveBtnText}>Use Selected Images</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </View>
-    </Modal>
+        </TouchableOpacity>
+      </Modal>
 
     {/* Full Screen Image Preview Modal */}
     <Modal
@@ -190,37 +203,39 @@ export default function SelectImagesModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.bgPage,
-    flex: 1,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.bgWhite,
-    paddingBottom: 14,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    backgroundColor: '#FFFFFF',
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
   },
-  headerTitleContainer: { alignItems: 'center' },
-  headerTitle: { fontSize: 14.5, fontWeight: '900', color: COLORS.textDark },
-  headerSub: { fontSize: 10.5, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+  modalSubtitle: {
+    fontSize: 10.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 4,
+  },
   scrollContent: { padding: 16 },
   instructionText: {
     fontSize: 11.5,

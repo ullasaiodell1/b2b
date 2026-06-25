@@ -87,6 +87,7 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
   const { data: dealerDetails } = useDealerDetails(order?.dealer_id || '');
 
   const effectiveCompanyId = order?.company_id || (leadDetails as any)?.company_id || (dealerDetails as any)?.company_id || '0364bbec-99cf-42d1-8d3f-1efbb6a0c9e2';
+  const effectiveCompanyName = order?.company_name || order?.company || order?.lead_company_name || order?.dealer_company_name || (leadDetails as any)?.company_name || (leadDetails as any)?.company || (dealerDetails as any)?.company_name || (dealerDetails as any)?.company || (dealerDetails as any)?.display_name || 'N/A';
 
   React.useEffect(() => {
     console.log('[OrderDetailsComponent] Order details fetched/updated:', {
@@ -214,7 +215,22 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
             <Text style={{ color: theme.primaryColor }}>ORDER </Text>
             <Text style={{ color: COLORS.textDark }}>DETAILS</Text>
           </Text>
-          <View style={{ width: 38 }} />
+          {!['CONFIRMED', 'APPROVED', 'COMPLETED', 'DELIVERED'].includes((order?.status || 'DRAFT').toUpperCase()) ? (
+            <TouchableOpacity
+              onPress={() => {
+                router.push({
+                  pathname: '/(tabs)/Order/edit-order' as any,
+                  params: { id: order.id },
+                });
+              }}
+              style={styles.backBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={20} color={COLORS.textDark} />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 38 }} />
+          )}
         </View>
       )}
 
@@ -332,8 +348,8 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
             <View style={styles.detailsRow}>
               <Ionicons name="business-outline" size={15} color={theme.primaryColor} style={styles.detailsIcon} />
               <View style={styles.detailsCol}>
-                <Text style={styles.detailsLabel}>COMPANY ID</Text>
-                <Text style={styles.detailsValue}>{effectiveCompanyId}</Text>
+                <Text style={styles.detailsLabel}>COMPANY NAME</Text>
+                <Text style={styles.detailsValue}>{effectiveCompanyName}</Text>
               </View>
             </View>
 
@@ -572,7 +588,7 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
         </View>
 
         <TouchableOpacity
-          style={[styles.downloadBox, { backgroundColor: '#1E4D3B' }]}
+          style={[styles.downloadBox, { backgroundColor: theme.primaryDark }]}
           activeOpacity={0.8}
           onPress={handleDownloadCourierSlip}
           disabled={courierSlipDownloading}
@@ -826,7 +842,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: '#FFFFFF',
   },
   downloadBox: {
-    backgroundColor: '#4C8070',
+    backgroundColor: theme.primaryColor,
     borderRadius: 10,
     height: 50,
     flexDirection: 'row',

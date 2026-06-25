@@ -73,6 +73,11 @@ export const updateLeadsState = (newLeads: LeadRecord[]) => {
   listeners.forEach((listener) => listener());
 };
 
+export const resetLeadsState = () => {
+  leadsState = [...INITIAL_LEADS];
+  listeners.forEach((listener) => listener());
+};
+
 export const subscribeToLeads = (listener: () => void) => {
   listeners.add(listener);
   return () => {

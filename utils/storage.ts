@@ -1,4 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { queryClient } from "@/config/reactQuery";
+import { resetProfileData } from "@/components/ProfileState";
+import { resetAttendanceState } from "@/components/attendance/AttendanceState";
+import { resetCallsState } from "@/components/call/CallState";
+import { resetLeadsState } from "@/components/lead/LeadState";
+import { resetMeetingsState } from "@/components/meeting/MeetingState";
+import { resetVisitsState } from "@/components/visit/VisitState";
+import { resetOrdersState } from "@/components/order&quotations/OrderState";
+import { setCameraResult } from "@/components/custom/CameraState";
 
 // Storage keys
 export const STORAGE_KEYS = {
@@ -72,11 +81,26 @@ export const removeUserData = async (): Promise<void> => {
 // Clear all auth data
 export const clearAuthData = async (): Promise<void> => {
   try {
+    // 1. Clear physical AsyncStorage
     await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
-    await AsyncStorage.clear();
+
+    // 2. Clear TanStack React Query client cache
+    queryClient.clear();
+
+    // 3. Reset all in-memory global state stores to prevent data leakage
+    resetProfileData();
+    resetAttendanceState();
+    resetCallsState();
+    resetLeadsState();
+    resetMeetingsState();
+    resetVisitsState();
+    resetOrdersState();
+    setCameraResult(null);
+
   } catch (error) {
     console.error("Error clearing auth data:", error);
     throw error;
   }
 };
+

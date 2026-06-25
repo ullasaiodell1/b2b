@@ -15,26 +15,18 @@ export function useCalls(params?: Partial<CallFilterState>) {
   return useQuery({
     queryKey: callKeys.callFilter(params),
     queryFn: async () => {
-      try {
-        await syncDeviceCallLogs();
-      } catch (err) {
-        console.error('[useCalls] Failed to sync device call logs during query:', err);
-      }
-      const leadsResponse = await fetchRawLeads();
-      const leads = (leadsResponse as any)?.data || leadsResponse || [];
-      const callLogsPromises = leads.map(async (lead: any) => {
-        try {
-          const res = await fetchRawCallLogs(lead.id);
-          const logsArray = (res as any)?.data || res || [];
-          return Array.isArray(logsArray) ? logsArray : [];
-        } catch (err) {
-          console.error(`[useCalls] Error fetching call logs for lead ${lead.id}:`, err);
-          return [];
-        }
-      });
-      const nestedCallLogs = await Promise.all(callLogsPromises);
-      const allLogs = nestedCallLogs.flat();
-      return { leads, allLogs };
+      await syncDeviceCallLogs().catch(err => console.error('[useCalls] Failed to sync call logs:', err));
+      const res = await fetchRawLeads();
+      const leads = (res as any)?.data || res || [];
+      
+      const nestedCallLogs = await Promise.all(
+        leads.map(async (lead: any) => {
+          const callLogs = await fetchRawCallLogs(lead.id).catch(() => ({ data: [] }));
+          return (callLogs as any)?.data || callLogs || [];
+        })
+      );
+      
+      return { leads, allLogs: nestedCallLogs.flat() };
     },
   });
 }
@@ -43,13 +35,9 @@ export function useCalls(params?: Partial<CallFilterState>) {
 export function useCreateCall() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Partial<CallRecord> & { lead_id: string }) => {
-      const leadId = data.lead_id;
-      if (!leadId) {
-        throw new Error('lead_id is required to log a call');
-      }
-      const normalizedPayload = normalizeCallPayload(leadId, data);
-      return addCallRaw(leadId, normalizedPayload);
+    mutationFn: (data: Partial<CallRecord> & { lead_id: string }) => {
+      if (!data.lead_id) throw new Error('lead_id is required to log a call');
+      return addCallRaw(data.lead_id, normalizeCallPayload(data.lead_id, data));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: callKeys.lists() });
@@ -60,9 +48,7 @@ export function useCreateCall() {
 export function useSyncCallLogs() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      return syncDeviceCallLogs();
-    },
+    mutationFn: () => syncDeviceCallLogs(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: callKeys.lists() });
     }

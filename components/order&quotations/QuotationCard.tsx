@@ -48,10 +48,48 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({ quotation, onPress
     ? `${prefix}-${quotation.quotation_number}`
     : String(quotation.id || '').slice(0, 8).toUpperCase();
   const statusColor = STATUS_COLORS[quotation.status] || '#6B7280';
-  const clientName = quotation.company_name || quotation.lead_company_name || quotation.dealer_company_name || '—';
+  const clientName = quotation.lead_company_name || quotation.company_name || quotation.dealer_company_name || '—';
   const contactName = quotation.contact_name || quotation.lead_name || quotation.dealer_contact_name || '—';
   const dateStr = formatDate(quotation.quotation_date || quotation.date);
   const amountStr = formatAmount(quotation.grand_total);
+
+  // Shared layout for both compact and dashboard
+  const cardContent = (
+    <>
+      {/* Row 1: # Number (left) + Status (right) */}
+      <View style={s.row}>
+        <Text style={[s.qNumber, { color: theme.primaryColor }]}># {qNumber}</Text>
+        <View style={[s.statusBadge, { backgroundColor: statusColor + '20' }]}>
+          <Text style={[s.statusText, { color: statusColor }]}>{quotation.status}</Text>
+        </View>
+      </View>
+
+      <View style={s.cardDivider} />
+
+      {/* Row 2: Contact Name (left) + Company Name (right) */}
+      <View style={s.row}>
+        <View style={s.metaItem}>
+          <Ionicons name="person-outline" size={13} color={COLORS.textMuted} />
+          <Text style={s.metaText} numberOfLines={1}>{contactName}</Text>
+        </View>
+        <View style={s.metaItem}>
+          <Ionicons name="business-outline" size={13} color={COLORS.textMuted} />
+          <Text style={s.metaTextRight} numberOfLines={1}>{clientName}</Text>
+        </View>
+      </View>
+
+      <View style={s.cardDivider} />
+
+      {/* Row 3: Date (left) + Amount (right) */}
+      <View style={s.row}>
+        <View style={s.metaItem}>
+          <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
+          <Text style={s.metaText}>{dateStr}</Text>
+        </View>
+        <Text style={[s.amountValue, { color: theme.primaryColor }]}>{amountStr}</Text>
+      </View>
+    </>
+  );
 
   if (isCompact) {
     return (
@@ -61,49 +99,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({ quotation, onPress
         disabled={!onPress}
         onPress={onPress}
       >
-        <View style={s.quotationTopRow}>
-          <View style={s.quotationTypeRow}>
-            <View style={[s.dot, { backgroundColor: COLORS.blue }]} />
-            <Text style={s.quotationTypeText}>Product Quotation</Text>
-          </View>
-          <Text style={[s.statusTextLabel, { color: statusColor }]}>
-            • {quotation.status}
-          </Text>
-        </View>
-
-        <Text style={s.quotationTitle}># {qNumber}</Text>
-
-        <View style={s.cardDetailsList}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={[s.cardDetailItem, { flex: 1, marginRight: 8 }]}>
-              <Ionicons name="business-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-              <Text style={[s.cardDetailText, { fontWeight: '800', color: COLORS.textDark }]} numberOfLines={1}>
-                {clientName}
-              </Text>
-            </View>
-            <View style={[s.cardDetailItem, { flex: 1, justifyContent: 'flex-end' }]}>
-              <Ionicons name="person-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-              <Text style={s.cardDetailText} numberOfLines={1}>
-                {contactName}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={s.cardDivider} />
-
-        <View style={s.quotationBottomRow}>
-          <View style={s.leftMetrics}>
-            <View style={s.metricItem}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
-              <Text style={s.metricText}>{dateStr}</Text>
-            </View>
-          </View>
-          <View style={s.rightAmountCol}>
-            <Text style={s.amountLabel}>Amount</Text>
-            <Text style={s.amountValue}>{amountStr}</Text>
-          </View>
-        </View>
+        {cardContent}
       </TouchableOpacity>
     );
   }
@@ -116,41 +112,7 @@ export const QuotationCard: React.FC<QuotationCardProps> = ({ quotation, onPress
       activeOpacity={onPress ? 0.85 : 1}
       disabled={!onPress}
     >
-      {/* Header row: type label + status */}
-      <View style={s.quotationTopRow}>
-        <View style={s.quotationTypeRow}>
-          <View style={[s.dot, { backgroundColor: COLORS.blue }]} />
-          <Text style={s.quotationTypeText}>Product Quotation</Text>
-        </View>
-        <Text style={[s.statusTextLabel, { color: statusColor, fontWeight: '800' }]}>
-          • {quotation.status}
-        </Text>
-      </View>
-
-      {/* Quotation number & Lead/Contact Name side-by-side */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-        <Text style={s.cardId}># {qNumber}</Text>
-        <Text style={{ fontSize: 13.5, fontWeight: '700', color: COLORS.textDark, textAlign: 'right', flex: 1, marginLeft: 12 }} numberOfLines={1}>
-          {contactName}
-        </Text>
-      </View>
-
-      <View style={s.cardDivider} />
-
-      {/* Bottom row */}
-      <View style={s.quotationBottomRow}>
-        <View style={s.leftMetrics}>
-          <Text style={s.amountLabel}>Date</Text>
-          <View style={s.metricItem}>
-            <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 4 }} />
-            <Text style={s.metricText}>{dateStr}</Text>
-          </View>
-        </View>
-        <View style={s.rightAmountCol}>
-          <Text style={s.amountLabel}>Amount</Text>
-          <Text style={[s.amountValue, { color: theme.primaryColor }]}>{amountStr}</Text>
-        </View>
-      </View>
+      {cardContent}
     </TouchableOpacity>
   );
 };
@@ -161,97 +123,59 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 10,
-    gap: 3,
-    marginBottom: 5,
+    padding: 14,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1.5,
   },
-  quotationTopRow: {
+  row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  quotationTypeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  quotationTypeText: {
-    fontSize: 12.5,
+  qNumber: {
+    fontSize: 15,
     fontWeight: '800',
-    color: COLORS.blue,
   },
-  statusTextLabel: {
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  statusText: {
     fontSize: 11,
     fontWeight: '800',
   },
-  quotationTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.textDark,
-    marginTop: 2,
-  },
-  cardId: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.textDark,
-    marginTop: 0,
-  },
-  cardDetailsList: {
-    marginTop: 2,
-  },
-  cardDetailItem: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
+    flexShrink: 1,
   },
-  cardDetailText: {
-    fontSize: 12.5,
-    color: COLORS.textMuted,
+  metaText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: COLORS.textMuted,
+    flexShrink: 1,
+  },
+  metaTextRight: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 4,
-  },
-  quotationBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftMetrics: {
-    gap: 2,
-  },
-  metricItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metricText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  rightAmountCol: {
-    alignItems: 'flex-end',
-  },
-  amountLabel: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    marginBottom: 2,
+    backgroundColor: COLORS.border,
   },
   amountValue: {
     fontSize: 14.5,
-    fontWeight: '800',
+    fontWeight: '900',
     color: COLORS.textDark,
   },
 });
+

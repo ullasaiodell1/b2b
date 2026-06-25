@@ -131,8 +131,8 @@ export const AdvanceAccountCard: React.FC<AdvanceAccountCardProps> = ({
                   <Image source={{ uri: advanceProof }} style={styles.proofThumbnail} />
                 </TouchableOpacity>
               ) : (
-                <View style={styles.proofPlaceholder}>
-                  <Ionicons name="image-outline" size={20} color="#9CA3AF" />
+                <View style={[styles.proofPlaceholder, { borderColor: primaryColor }]}>
+                  <Ionicons name="image-outline" size={20} color={primaryColor} />
                 </View>
               )}
 

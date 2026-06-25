@@ -27,6 +27,90 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { serverDetails } from '@/config';
+import { CreateLeadAttachmentPayload, UploadAttachmentPayload, UploadAttachmentResponse } from '@/types/attachment';
+
+export const resolveFileUrl = (raw: string): string => {
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  const base = serverDetails.s3BucketURL.replace(/\/$/, '');
+  const path = raw.startsWith('/') ? raw : `/${raw}`;
+  return `${base}${path}`;
+};
+
+export function formatBytes(bytes: number, decimals = 2): string {
+  if (!bytes || bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+export function normalizeAttachment(item: any, index: number): AttachmentFile {
+  const rawName =
+    item.file_name || item.name || item.filename || item.original_name || `file_${index}`;
+
+  // Derive short type label from mime type or file extension
+  const mimeType = item.file_type || item.type || item.mime_type || '';
+  const extFromName = (rawName.split('.').pop() || 'FILE').toUpperCase();
+  const extFromMime = mimeType.split('/').pop()?.toUpperCase() || '';
+  // Normalise common mime suffixes
+  const mimeLabel =
+    extFromMime === 'JPEG' ? 'JPG' :
+    extFromMime === 'PDF'  ? 'PDF' :
+    extFromMime || extFromName;
+  const type = mimeLabel || extFromName;
+
+  // file_size_bytes comes as a string from the API
+  const sizeBytes = parseInt(String(item.file_size_bytes || item.file_size || item.size || '0'), 10);
+
+  return {
+    id: String(item.id ?? item.attachment_id ?? index),
+    name: rawName,
+    type,
+    size: formatBytes(sizeBytes),
+    uploadedBy:
+      item.uploaded_by_name ||
+      item.uploaded_by ||
+      item.created_by_name ||
+      item.user_name ||
+      'You',
+    uploadedAt: item.uploaded_at || item.created_at || item.date || new Date().toISOString(),
+    url: resolveFileUrl(item.file_url || item.url || item.path || ''),
+  };
+}
+
+export function getUploadedFileUrl(res: UploadAttachmentResponse, fallback?: string): string {
+  return (
+    res.file ||
+    res.data?.file ||
+    res.url ||
+    res.data?.url ||
+    res.file_url ||
+    res.data?.file_url ||
+    res.location ||
+    res.data?.location ||
+    res.path ||
+    res.data?.path ||
+    res.key ||
+    res.data?.key ||
+    fallback ||
+    ''
+  );
+}
+
+export function buildCreateAttachmentPayload(
+  fileUrl: string,
+  file: UploadAttachmentPayload
+): CreateLeadAttachmentPayload {
+  return {
+    file_url: fileUrl,
+    file_name: file.fileName || 'upload',
+    file_type: file.type || 'application/octet-stream',
+    file_size_bytes: file.size ?? 0,
+  };
+}
 
 export default function LeadAttachmentsScreen() {
   const router = useRouter();
@@ -694,7 +778,7 @@ const getStyles = (theme: any) =>
     dashPickerBox: {
       height: 120,
       borderWidth: 1.5,
-      borderColor: '#CBD5E1',
+      borderColor: theme.primaryColor,
       borderStyle: 'dashed',
       borderRadius: 10,
       alignItems: 'center',

@@ -749,7 +749,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: '#C5D0CB',
+    borderColor: theme.primaryColor,
     gap: 8,
     marginBottom: 8,
   },

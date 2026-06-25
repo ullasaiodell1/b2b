@@ -23,7 +23,7 @@ axiosInstance.interceptors.response.use(
   (response) => {
     return response.data;
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.includes('/auth/login');
       const processCode = error.response?.data?.details?.process_code || error.response?.data?.process_code;
@@ -33,7 +33,7 @@ axiosInstance.interceptors.response.use(
           type: 'error',
           text1: error.response?.data?.message || 'Unauthorized',
         });
-        clearAuthData();
+        await clearAuthData();
         router.replace('/sign-in');
       }
     }

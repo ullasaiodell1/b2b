@@ -20,12 +20,22 @@ export default function LeadQuotationFilterScreen() {
       qEndDate={params.qEndDate}
       onCancel={() => navigation.goBack()}
       onApply={(startDate, endDate) => {
-        navigation.navigate('lead-quotation', {
-          leadId: params.leadId,
-          qStartDate: startDate ? startDate.toISOString() : '',
-          qEndDate: endDate ? endDate.toISOString() : '',
-          qFilterApplied: (startDate || endDate) ? 'true' : '',
-        });
+        if (params.referrer === 'lead-details') {
+          navigation.navigate('lead-details', {
+            id: params.leadId,
+            activeTab: 'Quotation',
+            qStartDate: startDate ? startDate.toISOString() : '',
+            qEndDate: endDate ? endDate.toISOString() : '',
+            qFilterApplied: (startDate || endDate) ? 'true' : '',
+          });
+        } else {
+          navigation.navigate('lead-quotation', {
+            leadId: params.leadId,
+            qStartDate: startDate ? startDate.toISOString() : '',
+            qEndDate: endDate ? endDate.toISOString() : '',
+            qFilterApplied: (startDate || endDate) ? 'true' : '',
+          });
+        }
       }}
     />
   );

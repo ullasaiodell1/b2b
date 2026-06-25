@@ -27,6 +27,18 @@ const GRID_COLORS = [
   '#004D40', '#00695C', '#00897B', '#4DB6AC', '#B2DFDB', '#E0F2F1',
   '#37474F', '#455A64', '#546E7A', '#78909C', '#90A4AE', '#CFD8DC',
   '#212121', '#424242', '#616161', '#757575', '#9E9E9E', '#BDBDBD',
+  '#4F46E5', '#EC4899', '#F59E0B', '#06B6D4',
+];
+
+const APPLIED_SCREENS = [
+  'Dashboard / Home',
+  'Attendance Tracker',
+  'Leads Management',
+  'Company Directory',
+  'Orders & Quotations',
+  'Meetings Schedule',
+  'Tasks List',
+  'Profile Settings',
 ];
 
 export default function ThemeSettingsScreen() {
@@ -112,6 +124,16 @@ export default function ThemeSettingsScreen() {
               }}
               activeOpacity={0.8}
             />
+          ))}
+        </View>
+
+        {/* Applied Screens List */}
+        <Text style={styles.chooseLabel}>Theme Applied In:</Text>
+        <View style={styles.appliedScreensList}>
+          {APPLIED_SCREENS.map((screen, idx) => (
+            <Text key={idx} style={styles.screenText}>
+              • {screen}
+            </Text>
           ))}
         </View>
       </ScrollView>
@@ -246,5 +268,19 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  appliedScreensList: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 6,
+    marginTop: 8,
+  },
+  screenText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: COLORS.textMid,
   },
 });

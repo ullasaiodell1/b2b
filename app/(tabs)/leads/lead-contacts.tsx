@@ -8,6 +8,7 @@ import {
   useUpdateLeadContact,
 } from '@/hooks/useContacts';
 import { Ionicons } from '@expo/vector-icons';
+import * as Contacts from 'expo-contacts/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -56,6 +57,7 @@ export default function LeadContactsScreen() {
   const [notes, setNotes] = useState('');
   const [isPrimary, setIsPrimary] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveToPhone, setSaveToPhone] = useState(false);
 
   // ── API hooks ──────────────────────────────────────────────────
   const {
@@ -86,6 +88,7 @@ export default function LeadContactsScreen() {
     setDepartment('');
     setNotes('');
     setIsPrimary(contacts.length === 0);
+    setSaveToPhone(false);
     setModalVisible(true);
   };
 
@@ -98,6 +101,7 @@ export default function LeadContactsScreen() {
     setDepartment(contact.department);
     setNotes(contact.notes);
     setIsPrimary(contact.isPrimary);
+    setSaveToPhone(false);
     setModalVisible(true);
   };
 
@@ -133,6 +137,63 @@ export default function LeadContactsScreen() {
       errorMsg = err.error;
     }
     return errorMsg;
+  };
+
+  const saveToDeviceContacts = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const nameParts = fullName.trim().split(' ');
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ');
+
+        const contact: Contacts.Contact = {
+          contactType: Contacts.ContactTypes.Person,
+          name: fullName.trim(),
+          firstName: firstName,
+          lastName: lastName,
+          phoneNumbers: [
+            {
+              number: phone.trim(),
+              label: 'mobile',
+            },
+          ],
+          emails: email.trim()
+            ? [
+                {
+                  email: email.trim(),
+                  label: 'work',
+                },
+              ]
+            : [],
+          jobTitle: designation.trim(),
+          department: department.trim(),
+          note: notes.trim(),
+        };
+
+        try {
+          await Contacts.addContactAsync(contact);
+        } catch (addErr: any) {
+          console.warn('Direct contact add failed (e.g. Android 16 cloud default restrictions), trying to present form:', addErr);
+          try {
+            await Contacts.presentFormAsync(null, contact);
+          } catch (formErr: any) {
+            throw new Error(`Failed to save contact programmatically and native form failed: ${formErr.message || formErr}`);
+          }
+        }
+      } else {
+        Alert.alert(
+          'Permission Denied',
+          'Permission to access contacts was denied. The contact was saved in the app, but not on your phone.'
+        );
+      }
+    } catch (deviceErr: any) {
+      console.error('Failed to save to device contacts:', deviceErr);
+      Alert.alert(
+        'Device Save Failed',
+        `Failed to save contact to phone contacts: ${deviceErr?.message || 'Unknown error'}`
+      );
+    }
   };
 
   // ── Save (create or update) ────────────────────────────────────
@@ -171,9 +232,15 @@ export default function LeadContactsScreen() {
           contactId: selectedContact.id,
           data: payload,
         });
+        if (saveToPhone) {
+          await saveToDeviceContacts();
+        }
         Alert.alert('Success', 'Contact updated.');
       } else {
         await createMutation.mutateAsync(payload);
+        if (saveToPhone) {
+          await saveToDeviceContacts();
+        }
         Alert.alert('Success', 'Contact added.');
       }
       setModalVisible(false);
@@ -375,30 +442,34 @@ export default function LeadContactsScreen() {
       {/* ADD / EDIT MODAL */}
       <Modal
         visible={modalVisible}
-        transparent
+        transparent={false}
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View>
+            <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalBackBtn} activeOpacity={0.7}>
+                <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
+              </TouchableOpacity>
+
+              <View style={styles.modalHeaderCenter}>
                 <Text style={styles.modalTitle}>
-                  {selectedContact ? 'Edit Contact' : 'Add Contact'}
+                  {selectedContact ? 'EDIT CONTACT' : 'ADD CONTACT'}
                 </Text>
-                <Text style={styles.modalSubTitle}>
-                  Enter your contact details below to add it to your system.
+                <Text style={styles.modalSubTitle} numberOfLines={1}>
+                  {leadName}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} activeOpacity={0.7}>
-                <Ionicons name="close" size={22} color={COLORS.textDark} />
-              </TouchableOpacity>
+
+              {/* Balanced space placeholder */}
+              <View style={{ width: 36 }} />
             </View>
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.formContainer}
+              contentContainerStyle={[styles.formContainer, { padding: 16, paddingBottom: 40 }]}
             >
               {/* Full Name */}
               <View style={styles.inputGroup}>
@@ -496,10 +567,21 @@ export default function LeadContactsScreen() {
                   thumbColor={isPrimary ? theme.primaryColor : '#F1F5F9'}
                 />
               </View>
+
+              {/* Save to Phone switch */}
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Save to Phone Contacts</Text>
+                <Switch
+                  value={saveToPhone}
+                  onValueChange={setSaveToPhone}
+                  trackColor={{ false: '#CBD5E1', true: theme.primaryColor + '80' }}
+                  thumbColor={saveToPhone ? theme.primaryColor : '#F1F5F9'}
+                />
+              </View>
             </ScrollView>
 
             {/* Actions */}
-            <View style={styles.modalActionsRow}>
+            <View style={[styles.modalActionsRow, { paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => setModalVisible(false)}
@@ -706,37 +788,48 @@ const getStyles = (theme: any) =>
     // Modal
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-      justifyContent: 'flex-end',
+      backgroundColor: COLORS.bgPage,
     },
     modalContent: {
-      backgroundColor: '#FFFFFF',
-      borderTopLeftRadius: 10,
-      borderTopRightRadius: 10,
-      paddingTop: 12,
-      paddingBottom: Platform.OS === 'ios' ? 22 : 18,
-      paddingHorizontal: 12,
-      maxHeight: '95%',
+      flex: 1,
+      backgroundColor: COLORS.bgPage,
     },
     modalHeader: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: 16,
+      backgroundColor: COLORS.bgWhite,
+      paddingHorizontal: 10,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.border,
+    },
+    modalBackBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      backgroundColor: '#F4F7F5',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalHeaderCenter: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 1,
     },
     modalTitle: {
       fontSize: 15,
       fontWeight: '900',
+      letterSpacing: 0.4,
       color: COLORS.textDark,
     },
     modalSubTitle: {
       fontSize: 11,
       color: COLORS.textMuted,
       fontWeight: '600',
-      marginTop: 3,
-      maxWidth: '92%',
+      maxWidth: 180,
     },
-    formContainer: { gap: 1, paddingBottom: 2 },
+    formContainer: { gap: 16 },
     formRow: { flexDirection: 'row', gap: 12 },
     inputGroup: { gap: 3 },
     inputLabel: {
@@ -780,7 +873,10 @@ const getStyles = (theme: any) =>
     modalActionsRow: {
       flexDirection: 'row',
       gap: 12,
-      marginTop: 18,
+      backgroundColor: COLORS.bgWhite,
+      borderTopWidth: 1,
+      borderTopColor: COLORS.border,
+      paddingTop: 12,
     },
     cancelBtn: {
       flex: 1,

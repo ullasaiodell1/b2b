@@ -2,6 +2,7 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { OrderCard } from '@/components/order&quotations/OrderCard';
 import { activeOrderFilter, subscribeToOrders, updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useOrders } from '@/hooks/useOrders';
 import { cleanOrderParams } from '@/utils/orderHelper';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,6 +54,7 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const theme = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterState, setFilterState] = useState(activeOrderFilter);
@@ -188,7 +190,7 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
           <Ionicons
             name="funnel-outline"
             size={16}
-            color={!!filterState.status ? COLORS.primary : COLORS.textDark}
+            color={!!filterState.status ? theme.primaryColor : COLORS.textDark}
           />
           <Text style={[s.filterBtnText, !!filterState.status && s.filterBtnTextActive]}>Filters</Text>
         </TouchableOpacity>
@@ -238,12 +240,12 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={COLORS.primary} />
+          <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.primaryColor} />
         }
       >
         {isLoading && filteredOrders.length === 0 ? (
           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primaryColor} />
           </View>
         ) : filteredOrders.length > 0 ? (
           filteredOrders.map((order: any, idx: number) => (

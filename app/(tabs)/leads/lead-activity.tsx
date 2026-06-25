@@ -106,12 +106,14 @@ function matchesFilter(event: ActivityEvent, filter: FilterTab): boolean {
 // ─── Single event row ─────────────────────────────────────────────────────────
 const EventRow: React.FC<{ event: ActivityEvent; isLast: boolean }> = ({ event, isLast }) => {
   const cfg = getActionConfig(event.action_type);
+  const theme = useTheme();
+  const dotColor = cfg.color === '#6B7280' ? theme.primaryColor : cfg.color;
 
   return (
     <View style={r.eventRow}>
       <View style={r.timelineCol}>
-        <View style={[r.timelineDot, { backgroundColor: cfg.color }]} />
-        {!isLast && <View style={r.timelineLine} />}
+        <View style={[r.timelineDot, { backgroundColor: dotColor }]} />
+        {!isLast && <View style={[r.timelineLine, { backgroundColor: theme.primaryColor, opacity: 0.25 }]} />}
       </View>
 
       <View style={[r.eventContent, isLast && { paddingBottom: 0 }]}>

@@ -641,7 +641,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: COLORS.bgWhite,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: theme.primaryColor,
     padding: 12,
     alignItems: 'center',
     gap: 1,

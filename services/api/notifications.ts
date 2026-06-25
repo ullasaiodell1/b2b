@@ -25,8 +25,20 @@ export const unregisterPushToken = (): Promise<void> => {
     });
 };
 
+// GET /notifications — list notifications
+export const getNotifications = (params?: any): Promise<any> => {
+    const url = '/notifications';
+    console.log(`[API getNotifications] params:`, params);
+    return axios({
+        method: 'GET',
+        url,
+        params
+    });
+};
+
 export const notificationsApi = {
     registerPushToken,
     unregisterPushToken,
+    getNotifications,
 };
 

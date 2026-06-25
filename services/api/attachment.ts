@@ -1,3 +1,4 @@
+import { CreateLeadAttachmentPayload, UploadAttachmentPayload, UploadAttachmentResponse } from '@/types/attachment';
 import axios from './httpRequest';
 
 // GET /leads/:leadId/attachments
@@ -10,11 +11,7 @@ export const getLeadAttachments = (leadId: string, params?: { limit?: number; of
 };
 
 // POST /files/uploads?folder=attachments — upload file to storage
-export const uploadAttachmentFile = (data: {
-  uri: string;
-  type?: string;
-  fileName?: string;
-}): Promise<any> => {
+export const uploadAttachmentFile = (data: UploadAttachmentPayload): Promise<UploadAttachmentResponse> => {
   const formData = new FormData();
   // @ts-ignore
   formData.append('file', {
@@ -32,12 +29,7 @@ export const uploadAttachmentFile = (data: {
 };
 
 // POST /leads/:leadId/attachments — link uploaded file to lead
-export const createLeadAttachment = (leadId: string, data: {
-  file_url: string;
-  file_name: string;
-  file_type: string;
-  file_size_bytes?: number;
-}) => {
+export const createLeadAttachment = (leadId: string, data: CreateLeadAttachmentPayload) => {
   return axios({
     method: 'POST',
     url: `/leads/${leadId}/attachments`,

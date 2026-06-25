@@ -77,40 +77,45 @@ export default function CameraCaptureScreen() {
     if (sourceScreen === "Attendance") {
       setIsCapturing(true);
 
-      // ── 1. Get location ──────────────────────────────────────────
-      let locationStr: string | undefined;
-      let lat = 0;
-      let lng = 0;
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const locResult = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          lat = locResult.coords.latitude;
-          lng = locResult.coords.longitude;
-          const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-          if (geocode?.length) {
-            const addr = geocode[0];
-            locationStr = `${addr.city || addr.subregion || "Surat"}, ${addr.region || "Gujarat"}`;
-          } else {
-            locationStr = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-          }
-        }
-      } catch {
-        locationStr = undefined;
-      }
-
-      // ── 2. Compute local time string ─────────────────────────────
+      // ── Compute local time string immediately ─────────────────────
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
       try {
-        // Upload photoUri first to get S3 URL
-        console.log('[CameraCapture] Uploading photoUri to S3...', photoUri);
-        const uploadResult = await uploadFile(photoUri);
-        console.log('[CameraCapture] Upload result:', JSON.stringify(uploadResult));
+        // ── Run location fetch + image upload IN PARALLEL ─────────────
+        const [locationResult, uploadResult] = await Promise.all([
+          // Location task
+          (async () => {
+            try {
+              const { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== "granted") return { lat: 0, lng: 0, locationStr: undefined as string | undefined };
+              const locResult = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Low, // faster fix
+              });
+              const lat = locResult.coords.latitude;
+              const lng = locResult.coords.longitude;
+              try {
+                const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                const addr = geocode?.[0];
+                const locationStr = addr
+                  ? `${addr.city || addr.subregion || "Surat"}, ${addr.region || "Gujarat"}`
+                  : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                return { lat, lng, locationStr };
+              } catch {
+                return { lat, lng, locationStr: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+              }
+            } catch {
+              return { lat: 0, lng: 0, locationStr: undefined as string | undefined };
+            }
+          })(),
 
+          // Image upload task
+          uploadFile(photoUri),
+        ]);
+
+        const { lat, lng, locationStr } = locationResult;
+
+        // Resolve the uploaded URL from whatever shape the response has
         const uploadedUrl =
           (typeof uploadResult === 'string' ? uploadResult : null) ||
           uploadResult?.url ||
@@ -126,15 +131,16 @@ export default function CameraCaptureScreen() {
           null;
 
         if (!uploadedUrl) {
-          throw new Error('Failed to retrieve S3 upload URL');
+          throw new Error('Failed to retrieve upload URL from server');
         }
 
-        console.log('[CameraCapture] Uploaded S3 URL:', uploadedUrl);
-
         if (attendanceAction === "in") {
-          // Call API
-          await punchIn.mutateAsync({ checkin_image: uploadedUrl, latitude: lat, longitude: lng, location: locationStr });
-          // Optimistic local update (hook's onSuccess will also sync from server)
+          await punchIn.mutateAsync({
+            checkin_image: uploadedUrl,
+            latitude: lat,
+            longitude: lng,
+            location: locationStr,
+          });
           updateAttendanceState({
             stampedIn: true,
             inTime: timeStr,
@@ -142,8 +148,12 @@ export default function CameraCaptureScreen() {
             inLocation: locationStr ?? null,
           });
         } else {
-          // Call API
-          await punchOut.mutateAsync({ checkout_image: uploadedUrl, latitude: lat, longitude: lng, location: locationStr });
+          await punchOut.mutateAsync({
+            checkout_image: uploadedUrl,
+            latitude: lat,
+            longitude: lng,
+            location: locationStr,
+          });
 
           // Calculate work duration
           let workTimeStr = "--";

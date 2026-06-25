@@ -1,11 +1,11 @@
 import { MeetingCard } from '@/components/meeting/MeetingCard';
 import { updateMeetingsState } from '@/components/meeting/MeetingState';
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useMeetings } from '@/hooks/useMeetings';
 import { MeetingRecord, MeetingStatus } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -56,6 +56,7 @@ export function MeetingsComponent({
   const email = propEmail !== undefined ? propEmail : routeParams.email;
 
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   const initialDate = useRef(new Date()).current;
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
@@ -268,7 +269,7 @@ export function MeetingsComponent({
               style={[s.headerResetBtn, { top: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) + 4 }]}
               activeOpacity={0.7}
             >
-              <Ionicons name="refresh-outline" size={13} color={COLORS.primary} style={{ marginRight: 3 }} />
+              <Ionicons name="refresh-outline" size={13} color={theme.primaryColor} style={{ marginRight: 3 }} />
               <Text style={s.headerResetText}>Today</Text>
             </TouchableOpacity>
           )}
@@ -401,12 +402,12 @@ export function MeetingsComponent({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scrollContent, { paddingBottom: isEmbedded ? 20 : insets.bottom + 100 }]}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
         }
       >
         {isLoading && meetings.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primaryColor} />
             <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>
               Loading meetings...
             </Text>

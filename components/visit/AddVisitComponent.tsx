@@ -46,6 +46,8 @@ export interface AddVisitComponentProps {
   initialLeadName?: string;
   initialLeadCompany?: string;
   isEmbedded?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export function AddVisitComponent({
@@ -53,6 +55,8 @@ export function AddVisitComponent({
   initialLeadName,
   initialLeadCompany,
   isEmbedded = false,
+  onSuccess,
+  onCancel,
 }: AddVisitComponentProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -111,19 +115,23 @@ export function AddVisitComponent({
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const handleBack = () => {
-    navigation.goBack();
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigation.goBack();
+    }
   };
 
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        navigation.goBack();
+        handleBack();
         return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [])
+    }, [onCancel])
   );
 
   useEffect(() => {
@@ -324,7 +332,16 @@ export function AddVisitComponent({
       });
 
       Alert.alert('Success', 'Visit detail saved successfully!', [
-        { text: 'OK', onPress: () => handleBack() }
+        {
+          text: 'OK',
+          onPress: () => {
+            if (onSuccess) {
+              onSuccess();
+            } else {
+              handleBack();
+            }
+          }
+        }
       ]);
     } catch (err: any) {
       console.error('[AddVisit] save error:', err);

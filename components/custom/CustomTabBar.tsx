@@ -54,7 +54,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'add-meeting', 'meeting-details',
     'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner', 'edit-lead', 'select-category',
     'lead-activity', 'interested-products', 'lead-attachments', 'lead-contacts', 'add-reminder',
-    'add-order', 'order-details', 'order-filter',
+    'add-order', 'order-details', 'order-filter', 'edit-order',
     'add-quotation', 'quotation-details', 'quotation-filter',
     'add-task', 'task-details', 'task-filter',
     'add-visit', 'visit-details', 'visit-filter',
@@ -173,7 +173,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     bottom: 0,
     backgroundColor: COLORS.bgPage,
     paddingTop: 1,
-    borderTopWidth: 1,
+    borderTopWidth: 0,
     borderTopColor: COLORS.border,
   },
   // Outer row — positions the two elements side by side
