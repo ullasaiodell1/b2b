@@ -18,19 +18,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type PriorityType = 'High' | 'Normal' | 'Low';
-type StatusType = 'Completed' | 'Not Started' | 'In Progress' | 'Waiting For Input';
-
 export interface TaskFilterComponentProps {
   isEmbedded?: boolean;
-  onApplyFilters?: (filters: { priority: PriorityType; status: StatusType; startDate: Date; endDate: Date }) => void;
+  onApplyFilters?: (filters: { startDate: Date; endDate: Date }) => void;
   onResetFilters?: () => void;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
 export function TaskFilterComponent({
   isEmbedded = false,
   onApplyFilters,
   onResetFilters,
+  initialStartDate,
+  initialEndDate,
 }: TaskFilterComponentProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -38,15 +39,21 @@ export function TaskFilterComponent({
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
-  const [priority, setPriority] = useState<PriorityType>('High');
-  const [status, setStatus] = useState<StatusType>('Completed');
-
-  const [startDate, setStartDate] = useState<Date>(new Date(2022, 11, 28));
-  const [endDate, setEndDate] = useState<Date>(new Date(2023, 0, 10));
+  const [startDate, setStartDate] = useState<Date | null>(() => {
+    if (initialStartDate) return initialStartDate;
+    return null;
+  });
+  const [endDate, setEndDate] = useState<Date | null>(() => {
+    if (initialEndDate) return initialEndDate;
+    return null;
+  });
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const formatDateShort = (date: Date) => {
+  const today = new Date();
+
+  const formatDateShort = (date: Date | null) => {
+    if (!date) return 'Select Date';
     const day = date.getDate();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = monthNames[date.getMonth()];
@@ -55,10 +62,8 @@ export function TaskFilterComponent({
   };
 
   const handleResetAll = () => {
-    setPriority('High');
-    setStatus('Completed');
-    setStartDate(new Date(2022, 11, 28));
-    setEndDate(new Date(2023, 0, 10));
+    setStartDate(null);
+    setEndDate(null);
 
     if (onResetFilters) {
       onResetFilters();
@@ -68,14 +73,18 @@ export function TaskFilterComponent({
   };
 
   const handleApplyFilter = () => {
+    if (!startDate || !endDate) {
+      Alert.alert('Select Dates', 'Please select both a Start Date and an End Date.');
+      return;
+    }
     const rangeStr = `${formatDateShort(startDate)} – ${formatDateShort(endDate)}`;
 
     if (onApplyFilters) {
-      onApplyFilters({ priority, status, startDate, endDate });
+      onApplyFilters({ startDate, endDate });
     } else {
       Alert.alert(
         'Apply Filters',
-        `Filters Applied:\n- Priority: ${priority}\n- Date: ${rangeStr}\n- Status: ${status}`,
+        `Filters Applied:\n- Date: ${rangeStr}`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     }
@@ -116,32 +125,6 @@ export function TaskFilterComponent({
           </TouchableOpacity>
         </View>
 
-        {/* Priority Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Priority</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <View style={styles.prioritySegmentContainer}>
-            {(['High', 'Normal', 'Low'] as PriorityType[]).map(p => {
-              const isSelected = priority === p;
-              return (
-                <TouchableOpacity
-                  key={p}
-                  style={[styles.prioritySegmentBtn, isSelected && styles.prioritySegmentBtnActive]}
-                  onPress={() => setPriority(p)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.prioritySegmentText, isSelected && styles.prioritySegmentTextActive]}>
-                    {p}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
         {/* Date Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
@@ -157,7 +140,9 @@ export function TaskFilterComponent({
             >
               <View>
                 <Text style={styles.dateLabelText}>Start Date</Text>
-                <Text style={styles.dateText}>{formatDateShort(startDate)}</Text>
+                <Text style={[styles.dateText, !startDate && { color: COLORS.textMuted }]}>
+                  {formatDateShort(startDate)}
+                </Text>
               </View>
               <Ionicons name="calendar-outline" size={16} color={COLORS.textDark} />
             </TouchableOpacity>
@@ -169,7 +154,9 @@ export function TaskFilterComponent({
             >
               <View>
                 <Text style={styles.dateLabelText}>End Date</Text>
-                <Text style={styles.dateText}>{formatDateShort(endDate)}</Text>
+                <Text style={[styles.dateText, !endDate && { color: COLORS.textMuted }]}>
+                  {formatDateShort(endDate)}
+                </Text>
               </View>
               <Ionicons name="calendar-outline" size={16} color={COLORS.textDark} />
             </TouchableOpacity>
@@ -178,42 +165,14 @@ export function TaskFilterComponent({
           <TouchableOpacity
             style={styles.dateResetFullBtn}
             onPress={() => {
-              setStartDate(new Date(2022, 11, 28));
-              setEndDate(new Date(2023, 0, 10));
+              setStartDate(null);
+              setEndDate(null);
             }}
             activeOpacity={0.8}
           >
             <Text style={styles.dateResetFullBtnText}>Reset Range</Text>
             <Ionicons name="refresh-outline" size={14} color={COLORS.textDark} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
-        </View>
-
-        {/* Status Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Status</Text>
-            <View style={styles.sectionLine} />
-          </View>
-
-          <View style={styles.statusList}>
-            {(['Completed', 'Not Started', 'In Progress', 'Waiting For Input'] as StatusType[]).map(s => {
-              const isSelected = status === s;
-              return (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.statusCard, isSelected && styles.statusCardActive]}
-                  onPress={() => setStatus(s)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.statusText, isSelected && styles.statusTextActive]}>{s}</Text>
-
-                  <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                    {isSelected && <View style={styles.radioInner} />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
       </ScrollView>
@@ -248,9 +207,10 @@ export function TaskFilterComponent({
             >
               <View style={styles.calendarContent}>
                 <DateTimePicker
-                  value={startDate}
+                  value={startDate || today}
                   mode="date"
                   display="inline"
+                  maximumDate={today}
                   onChange={(event: any, selectedDate?: Date) => {
                     if (selectedDate) setStartDate(selectedDate);
                   }}
@@ -267,9 +227,10 @@ export function TaskFilterComponent({
           </Modal>
         ) : (
           <DateTimePicker
-            value={startDate}
+            value={startDate || today}
             mode="date"
             display="default"
+            maximumDate={today}
             onChange={(event: any, selectedDate?: Date) => {
               setShowStartPicker(false);
               if (selectedDate) setStartDate(selectedDate);
@@ -288,9 +249,11 @@ export function TaskFilterComponent({
             >
               <View style={styles.calendarContent}>
                 <DateTimePicker
-                  value={endDate}
+                  value={endDate || today}
                   mode="date"
                   display="inline"
+                  minimumDate={startDate || undefined}
+                  maximumDate={today}
                   onChange={(event: any, selectedDate?: Date) => {
                     if (selectedDate) setEndDate(selectedDate);
                   }}
@@ -307,9 +270,11 @@ export function TaskFilterComponent({
           </Modal>
         ) : (
           <DateTimePicker
-            value={endDate}
+            value={endDate || today}
             mode="date"
             display="default"
+            minimumDate={startDate || undefined}
+            maximumDate={today}
             onChange={(event: any, selectedDate?: Date) => {
               setShowEndPicker(false);
               if (selectedDate) setEndDate(selectedDate);

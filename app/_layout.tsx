@@ -3,14 +3,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/config/reactQuery';
-import Toast from 'react-native-toast-message';
 import { ThemeProvider as AppThemeProvider } from '@/context/ThemeContext';
-import { useEffect } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { requestNotificationPermission } from '@/utils/notifications';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -31,9 +31,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
-              <Stack.Screen name="index"          options={{ headerShown: false }} />
-              <Stack.Screen name="slides"         options={{ headerShown: false }} />
-              <Stack.Screen name="sign-in"        options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="slides" options={{ headerShown: false }} />
+              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
               <Stack.Screen
                 name="reset-password"
                 options={{
@@ -50,11 +50,10 @@ export default function RootLayout() {
                   animation: 'fade',
                 }}
               />
-              <Stack.Screen name="device-limit"    options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
-              <Stack.Screen name="camera-capture"  options={{ headerShown: false }} />
-              <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
-              <Stack.Screen name="test-editor"     options={{ headerShown: false }} />
+              <Stack.Screen name="device-limit" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="camera-capture" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

@@ -1,7 +1,7 @@
+import { COLORS } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '@/constants/theme';
 
 export interface TaskCardProps {
   task: any;
@@ -10,47 +10,53 @@ export interface TaskCardProps {
 }
 
 const getDisplayStatus = (status: string) => {
-  const s = String(status || '').toUpperCase();
-  if (s === 'COMPLETED') return 'Completed';
-  if (s === 'IN_PROGRESS') return 'in progress';
-  if (s === 'IN_REVIEW') return 'waiting for input';
-  return 'Not Started';
+  const s = String(status || '').trim().toUpperCase().replace(/[\s_]/g, '');
+  if (s === 'COMPLETED' || s === 'DONE') return 'Completed';
+  if (s === 'INPROGRESS') return 'In Progress';
+  if (s === 'INREVIEW' || s === 'WAITINGFORINPUT') return 'In Review';
+  if (s === 'CANCELLED' || s === 'CANCELED') return 'Cancelled';
+  if (s === 'TODO' || s === 'NOTSTARTED') return 'To Do';
+  return 'To Do';
 };
 
 const getDisplayPriority = (priority: string) => {
-  const p = String(priority || '').toUpperCase();
-  if (p === 'LOW') return 'Lowest';
+  const p = String(priority || '').trim().toUpperCase().replace(/[\s_]/g, '');
+  if (p === 'LOW' || p === 'LOWEST') return 'Low';
+  if (p === 'MEDIUM' || p === 'NORMAL') return 'Medium';
   if (p === 'HIGH') return 'High';
-  return 'Normal';
+  if (p === 'URGENT' || p === 'HOT') return 'Urgent';
+  return 'Medium';
 };
 
 const getStatusStyle = (status: string) => {
   const displayStatus = getDisplayStatus(status);
   switch (displayStatus) {
     case 'Completed':
-      return { color: '#10B981' };
-    case 'Not Started':
-      return { color: '#707A76' };
-    case 'waiting for input':
-      return { color: '#F97316' };
-    case 'in progress':
-      return { color: '#3B82F6' };
+      return { color: '#10B981', bgColor: '#ECFDF5' };
+    case 'In Progress':
+      return { color: '#3B82F6', bgColor: '#EFF6FF' };
+    case 'In Review':
+      return { color: '#F97316', bgColor: '#FFF3E0' };
+    case 'Cancelled':
+      return { color: '#707A76', bgColor: '#F4F7F5' };
+    case 'To Do':
     default:
-      return { color: '#707A76' };
+      return { color: '#EF4444', bgColor: '#FEF2F2' };
   }
 };
 
 const getPriorityStyle = (priority: string) => {
   const displayPriority = getDisplayPriority(priority);
   switch (displayPriority) {
+    case 'Urgent':
+      return { color: '#EF4444', bgColor: '#FEF2F2', icon: 'alert-circle-outline' as const };
     case 'High':
-      return { color: '#EF4444' };
-    case 'Normal':
-      return { color: '#3B82F6' };
-    case 'Lowest':
-      return { color: '#707A76' };
+      return { color: '#F97316', bgColor: '#FFF3E0', icon: 'arrow-up-circle-outline' as const };
+    case 'Medium':
+      return { color: '#3B82F6', bgColor: '#EFF6FF', icon: 'remove-circle-outline' as const };
+    case 'Low':
     default:
-      return { color: '#707A76' };
+      return { color: '#707A76', bgColor: '#F9FAFB', icon: 'arrow-down-circle-outline' as const };
   }
 };
 
@@ -98,7 +104,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onPress, onToggleCompl
           {task.title}
         </Text>
 
-        <View style={s.statusLabelContainer}>
+        <View style={[s.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <View style={[s.statusDot, { backgroundColor: statusConfig.color }]} />
           <Text style={[s.statusLabelText, { color: statusConfig.color }]}>
             {displayStatus}
@@ -112,9 +118,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onPress, onToggleCompl
           <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
           <Text style={s.metaText}>{formattedDue}</Text>
         </View>
-        <View style={s.metaRow}>
-          <Ionicons name="close-circle-outline" size={14} color={priorityConfig.color} />
-          <Text style={[s.metaText, { color: priorityConfig.color }]}>
+        <View style={[s.priorityBadge, { backgroundColor: priorityConfig.bgColor }]}>
+          <Ionicons name={priorityConfig.icon} size={14} color={priorityConfig.color} />
+          <Text style={[s.priorityText, { color: priorityConfig.color }]}>
             {getDisplayPriority(task.priority)}
           </Text>
         </View>
@@ -126,11 +132,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onPress, onToggleCompl
 const s = StyleSheet.create({
   taskCard: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 10,
-    marginBottom: 5,
+    marginBottom: 0,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -148,6 +154,7 @@ const s = StyleSheet.create({
   },
   taskTitle: {
     flex: 1,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.textDark,
@@ -157,10 +164,14 @@ const s = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: COLORS.textMuted,
   },
-  statusLabelContainer: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
     gap: 4,
+    flexShrink: 0,
   },
   statusLabelText: {
     fontSize: 11,
@@ -176,16 +187,29 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingLeft: 32,
-    marginTop: 4,
+    marginTop: 1,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   metaText: {
     fontSize: 11.5,
     fontWeight: '700',
     color: COLORS.textMuted,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+    flexShrink: 0,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

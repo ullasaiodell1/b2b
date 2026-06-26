@@ -98,9 +98,7 @@ export function cleanOrderParams(params?: any) {
       }
     });
 
-    if (params.dateRange && params.dateRange.trim() !== '') {
-      cleanedParams.dateRange = params.dateRange;
-    }
+    // dateRange is UI-only — not sent to backend
   }
   return cleanedParams;
 }

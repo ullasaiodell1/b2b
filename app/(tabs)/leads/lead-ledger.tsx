@@ -154,7 +154,6 @@ export default function LeadLedgerScreen() {
     category?: string;
     startDate?: string;
     endDate?: string;
-    filterApplied?: string;
   };
 
   const companyName = params.company || params.leadName || 'Lead';

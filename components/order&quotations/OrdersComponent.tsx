@@ -85,12 +85,12 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
   }, [orders, isLoading, cleanedFilter]);
 
   const leadOrders = leadId
-    ? (orders as any[]).filter((order: any) => String(order.lead_id || order.dealer_id || order.company_id || '') === String(leadId))
+    ? (orders as any[]).filter((order: any) =>
+        String(order.lead_id || order.dealer_id || order.company_id || '') === String(leadId)
+      )
     : orders;
 
-  // Search & Filter Logic
   const filteredOrders = (leadOrders as any[]).filter((order: any) => {
-    // A. Filter by Search Query
     const query = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !query ||
@@ -99,32 +99,73 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
       (order.contactPerson || '').toLowerCase().includes(query) ||
       (order.hotelLocation || '').toLowerCase().includes(query);
 
-    // B. Filter by Global Status Filter
-    const matchesStatus =
-      !filterState.status || order.status.toLowerCase() === filterState.status.toLowerCase();
+    if (!matchesSearch) return false;
 
-    // C. Filter by Date Range
+    // Date Range Filter
     let matchesDate = true;
-    if (filterState.dateRange) {
-      const dateRangeLower = filterState.dateRange.toLowerCase();
-      if (dateRangeLower.includes('') || dateRangeLower.includes('') || dateRangeLower.includes('') || dateRangeLower.includes('')) {
-        matchesDate = true;
-      } else {
-        const orderDateLower = order.date.toLowerCase();
-        if (dateRangeLower.includes('') && orderDateLower.includes('')) {
-          matchesDate = orderDateLower.includes('') || orderDateLower.includes('') || orderDateLower.includes('');
-        } else if (dateRangeLower.includes('') && orderDateLower.includes('')) {
-          matchesDate = orderDateLower.includes('') || orderDateLower.includes('') || orderDateLower.includes('');
-        } else if (dateRangeLower.includes('') && orderDateLower.includes('')) {
-          matchesDate = orderDateLower.includes('');
+    if (filterState.startDate || filterState.endDate) {
+      const rawDateStr = order.order_date || order.created_at || order.date;
+      if (rawDateStr) {
+        const orderDate = new Date(rawDateStr);
+        if (!isNaN(orderDate.getTime())) {
+          if (filterState.startDate) {
+            const startParts = filterState.startDate.split('-');
+            let start: Date;
+            if (startParts.length === 3) {
+              start = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+            } else {
+              start = new Date(filterState.startDate);
+            }
+            start.setHours(0, 0, 0, 0);
+            if (orderDate < start) matchesDate = false;
+          }
+          if (filterState.endDate) {
+            const endParts = filterState.endDate.split('-');
+            let end: Date;
+            if (endParts.length === 3) {
+              end = new Date(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
+            } else {
+              end = new Date(filterState.endDate);
+            }
+            end.setHours(23, 59, 59, 999);
+            if (orderDate > end) matchesDate = false;
+          }
         } else {
           matchesDate = false;
         }
+      } else {
+        matchesDate = false;
       }
     }
 
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesDate;
   });
+
+  // Total count of active API filters for the badge
+  const activeApiFilterCount = [
+    filterState.status,
+    filterState.payment_status,
+    filterState.order_type,
+    filterState.source_type,
+    filterState.startDate || filterState.endDate ? 'date' : '',
+  ].filter(Boolean).length;
+
+  const clearFilter = (field: Partial<typeof filterState>) => {
+    updateFilter({ ...filterState, ...field });
+  };
+
+  const clearAllFilters = () => {
+    updateFilter({
+      status: '',
+      dateRange: '',
+      payment_status: '',
+      order_type: '',
+      source_type: '',
+      startDate: '',
+      endDate: '',
+    });
+  };
+
 
   const handleFilterPress = () => {
     console.log('[OrdersComponent] handleFilterPress. Navigating/Callback. leadId:', leadId);
@@ -183,57 +224,100 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
         </View>
 
         <TouchableOpacity
-          style={[s.filterBtn, !!filterState.status && s.filterBtnActive]}
+          style={[s.filterBtn, activeApiFilterCount > 0 && s.filterBtnActive]}
           onPress={handleFilterPress}
           activeOpacity={0.8}
         >
           <Ionicons
             name="funnel-outline"
             size={16}
-            color={!!filterState.status ? theme.primaryColor : COLORS.textDark}
+            color={activeApiFilterCount > 0 ? theme.primaryColor : COLORS.textDark}
           />
-          <Text style={[s.filterBtnText, !!filterState.status && s.filterBtnTextActive]}>Filters</Text>
+          <Text style={[s.filterBtnText, activeApiFilterCount > 0 && s.filterBtnTextActive]}>
+            Filters{activeApiFilterCount > 0 ? ` (${activeApiFilterCount})` : ''}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* ── 3. ACTIVE FILTERS CHIPS ────────────────── */}
-      {(!!filterState.status || (!!filterState.dateRange && filterState.dateRange !== '' && filterState.dateRange !== '')) && (
+      {activeApiFilterCount > 0 && (
         <View style={s.chipsContainer}>
           {!!filterState.status && (
             <TouchableOpacity
               style={s.activeChip}
-              onPress={() => {
-                updateFilter({
-                  ...filterState,
-                  status: '',
-                });
-              }}
+              onPress={() => clearFilter({ status: '' })}
               activeOpacity={0.8}
             >
+              <Text style={s.activeChipText}>{filterState.status}</Text>
+              <Ionicons name="close" size={13} color={COLORS.textDark} />
+            </TouchableOpacity>
+          )}
+
+          {!!filterState.payment_status && (
+            <TouchableOpacity
+              style={s.activeChip}
+              onPress={() => clearFilter({ payment_status: '' })}
+              activeOpacity={0.8}
+            >
+              <Text style={s.activeChipText}>{filterState.payment_status}</Text>
+              <Ionicons name="close" size={13} color={COLORS.textDark} />
+            </TouchableOpacity>
+          )}
+
+          {!!filterState.order_type && (
+            <TouchableOpacity
+              style={s.activeChip}
+              onPress={() => clearFilter({ order_type: '' })}
+              activeOpacity={0.8}
+            >
+              <Text style={s.activeChipText}>{filterState.order_type.replace(/_/g, ' ')}</Text>
+              <Ionicons name="close" size={13} color={COLORS.textDark} />
+            </TouchableOpacity>
+          )}
+
+          {!!filterState.source_type && (
+            <TouchableOpacity
+              style={s.activeChip}
+              onPress={() => clearFilter({ source_type: '' })}
+              activeOpacity={0.8}
+            >
+              <Text style={s.activeChipText}>{filterState.source_type.replace(/_/g, ' ')}</Text>
+              <Ionicons name="close" size={13} color={COLORS.textDark} />
+            </TouchableOpacity>
+          )}
+
+          {(!!filterState.startDate || !!filterState.endDate) && (
+            <TouchableOpacity
+              style={s.activeChip}
+              onPress={() => clearFilter({ startDate: '', endDate: '', dateRange: '' })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="calendar-outline" size={12} color={COLORS.textDark} style={{ marginRight: 2 }} />
               <Text style={s.activeChipText}>
-                {STATUS_MAP_UI[filterState.status as keyof typeof STATUS_MAP_UI] || filterState.status}
+                {filterState.dateRange
+                  ? filterState.dateRange
+                  : filterState.startDate && filterState.endDate
+                  ? `${filterState.startDate} – ${filterState.endDate}`
+                  : filterState.startDate
+                  ? `From ${filterState.startDate}`
+                  : `To ${filterState.endDate}`}
               </Text>
               <Ionicons name="close" size={13} color={COLORS.textDark} />
             </TouchableOpacity>
           )}
 
-          {!!filterState.dateRange && filterState.dateRange !== '' && filterState.dateRange !== '' && (
+          {activeApiFilterCount > 1 && (
             <TouchableOpacity
-              style={s.activeChip}
-              onPress={() => {
-                updateFilter({
-                  ...filterState,
-                  dateRange: '', // Reset to default
-                });
-              }}
+              style={[s.activeChip, s.clearAllChip]}
+              onPress={clearAllFilters}
               activeOpacity={0.8}
             >
-              <Text style={s.activeChipText}>{filterState.dateRange}</Text>
-              <Ionicons name="close" size={13} color={COLORS.textDark} />
+              <Text style={[s.activeChipText, { color: '#EF4444' }]}>Clear All</Text>
             </TouchableOpacity>
           )}
         </View>
       )}
+
 
       {/* ── 4. LIST OF ORDERS ───────────────────────── */}
       <ScrollView
@@ -380,6 +464,10 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.textDark,
+  },
+  clearAllChip: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
   fab: {
     position: 'absolute',

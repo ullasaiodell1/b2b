@@ -1,6 +1,7 @@
 import { cameraResult, setCameraResult } from '@/components/custom/CameraState';
 import { CustomTimePicker } from '@/components/custom/CustomTimePicker';
 import { LeadSelectCard } from '@/components/lead/LeadSelectCard';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadDetails } from '@/hooks/useLeads';
@@ -33,13 +34,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const VISIT_TYPE_OPTIONS = [
-  { label: 'Site Visit', icon: 'map-outline' as const },
-  { label: 'Business Meet', icon: 'briefcase-outline' as const },
-  { label: 'Product Pitch', icon: 'trending-up-outline' as const },
-  { label: 'Follow-up', icon: 'repeat-outline' as const },
-  { label: 'Technical Support', icon: 'build-outline' as const },
-];
+const STANDARD_TYPES = ['Site Visit', 'Business Meet', 'Product Pitch', 'Follow-up', 'Technical Support'];
 
 export interface AddVisitComponentProps {
   initialLeadId?: string;
@@ -417,39 +412,29 @@ export function AddVisitComponent({
             />
           </View>
 
-          {/* Visit Type Selection (Pills + custom text input) */}
+          {/* Visit Type Selection (Dropdown + custom text input) */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
               Visit Type <Text style={{ color: COLORS.danger }}>*</Text>
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScrollContainer}>
-              {VISIT_TYPE_OPTIONS.map((opt) => {
-                const isActive = visitType === opt.label;
-                return (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={[styles.pill, isActive && styles.pillActive]}
-                    onPress={() => setVisitType(opt.label)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name={opt.icon} size={15} color={isActive ? theme.primaryColor : COLORS.textMuted} />
-                    <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={[styles.pill, !VISIT_TYPE_OPTIONS.some(o => o.label === visitType) && styles.pillActive]}
-                onPress={() => setVisitType('')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="create-outline" size={15} color={!VISIT_TYPE_OPTIONS.some(o => o.label === visitType) ? theme.primaryColor : COLORS.textMuted} />
-                <Text style={[styles.pillText, !VISIT_TYPE_OPTIONS.some(o => o.label === visitType) && styles.pillTextActive]}>Other</Text>
-              </TouchableOpacity>
-            </ScrollView>
+            <FilterDropdown
+              placeholder="Select Visit Type"
+              options={[...STANDARD_TYPES, 'Other']}
+              value={STANDARD_TYPES.includes(visitType) ? visitType : 'Other'}
+              onChange={(val) => {
+                if (val === 'Other') {
+                  setVisitType('');
+                } else {
+                  setVisitType(val);
+                }
+              }}
+              style={styles.visitTypeDropdown}
+              labelStyle={styles.visitTypeDropdownLabel}
+            />
 
-            {(!VISIT_TYPE_OPTIONS.some(opt => opt.label === visitType) || visitType === '') && (
+            {(!STANDARD_TYPES.includes(visitType) || visitType === '') && (
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { marginTop: 6 }]}
                 placeholder="Or enter custom visit type..."
                 placeholderTextColor="#9CA3AF"
                 value={visitType}
@@ -814,35 +799,22 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: COLORS.textDark,
   },
 
-  // Visit Type Option Pills
-  pillsScrollContainer: {
-    paddingVertical: 4,
-    gap: 8,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1.5,
+  // Visit Type Dropdown styles
+  visitTypeDropdown: {
+    alignSelf: 'stretch',
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: '#F4F7F5',
-    marginRight: 6,
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
   },
-  pillActive: {
-    borderColor: theme.primaryColor,
-    backgroundColor: theme.primaryLight,
-  },
-  pillText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  pillTextActive: {
-    color: theme.primaryColor,
-    fontWeight: '800',
+  visitTypeDropdownLabel: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: COLORS.textDark,
   },
 
   // Image Upload Dropzone

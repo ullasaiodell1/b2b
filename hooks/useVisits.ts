@@ -1,4 +1,4 @@
-import { createVisit, deleteVisit, getVisitByIdDirect, getVisitDetails, getVisits, updateVisit } from '@/services/api/visit';
+import { createVisit, deleteVisit, getVisitByIdDirect, getVisitDetails, getVisits, getLeadVisits, updateVisit } from '@/services/api/visit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const visitKeys = {
@@ -15,7 +15,40 @@ export const useVisits = (params?: any) => {
     queryKey: visitKeys.visitFilter(params),
     queryFn: async () => {
       console.log('[useVisits] Fetching visits with params:', JSON.stringify(params));
-      const res = await getVisits(params);
+      
+      const { lead_id, leadId, dateRange, ...rest } = params || {};
+      const activeLeadId = lead_id || leadId;
+      
+      let apiParams: any = { ...rest };
+      
+      if (dateRange && typeof dateRange === 'string') {
+        const parts = dateRange.split(' - ');
+        if (parts.length === 2) {
+          const parseDMY = (dmyStr: string) => {
+            const partsDMY = dmyStr.trim().split('/');
+            if (partsDMY.length === 3) {
+              const day = partsDMY[0];
+              const month = partsDMY[1];
+              const year = partsDMY[2];
+              return `${year}-${month}-${day}`;
+            }
+            return null;
+          };
+          const start = parseDMY(parts[0]);
+          const end = parseDMY(parts[1]);
+          if (start) apiParams.startDate = start;
+          if (end) apiParams.endDate = end;
+        }
+      }
+      
+      // Ensure default limit and offset are set
+      if (apiParams.limit === undefined) apiParams.limit = 10;
+      if (apiParams.offset === undefined) apiParams.offset = 0;
+      
+      const res = activeLeadId 
+        ? await getLeadVisits(activeLeadId, apiParams)
+        : await getVisits(apiParams);
+        
       console.log('[useVisits] Raw API Response:', JSON.stringify(res));
       return res;
     },

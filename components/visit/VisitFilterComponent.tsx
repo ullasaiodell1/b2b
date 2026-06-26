@@ -1,28 +1,21 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getCompanies } from '@/services/api/company';
-
-const STATUSES = ['Complete', 'Draft', 'Pending', 'Bounce'];
 
 const formatDate = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');
@@ -78,47 +71,12 @@ export function VisitFilterComponent({
     return null;
   });
 
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(params.status || null);
-  const [selectedCompany, setSelectedCompany] = useState<string>(params.company || 'Select Company');
-  const [companySearchQuery, setCompanySearchQuery] = useState('');
-
-  // Modals for Pickers
-  const [companyModalVisible, setCompanyModalVisible] = useState(false);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
-
-  const { data: companiesData, isLoading: isCompaniesLoading } = useQuery({
-    queryKey: ['companies', companySearchQuery],
-    queryFn: async () => {
-      const res = await getCompanies({ search: companySearchQuery });
-      return res;
-    },
-  });
-
-  // Extract companies list
-  let companiesList: any[] = [];
-  if (Array.isArray(companiesData)) {
-    companiesList = companiesData;
-  } else if (Array.isArray(companiesData?.data)) {
-    companiesList = companiesData.data;
-  } else if (Array.isArray(companiesData?.data?.data)) {
-    companiesList = companiesData.data.data;
-  }
-
-  const formattedCompanies = companiesList.map((item: any) => {
-    const name = item.display_name || item.name || 'N/A';
-    return {
-      id: String(item.id),
-      name,
-    };
-  });
 
   const handleResetAll = () => {
     setFromDate(null);
     setToDate(null);
-    setSelectedStatus(null);
-    setSelectedCompany('Select Company');
-    setCompanySearchQuery('');
   };
 
   const handleApplyFilter = () => {
@@ -128,8 +86,8 @@ export function VisitFilterComponent({
     }
     const targetScreen = params.leadId ? 'lead-visit' : 'index';
     navigation.navigate(targetScreen, {
-      status: selectedStatus || '',
-      company: selectedCompany !== 'Select Company' ? selectedCompany : '',
+      status: '',
+      company: '',
       dateRange: finalRange,
       leadId: params.leadId || '',
     });
@@ -226,53 +184,6 @@ export function VisitFilterComponent({
           </View>
         </View>
 
-        {/* STATUS SECTION */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Status</Text>
-            <View style={styles.separatorLine} />
-          </View>
-
-          <View style={styles.checkboxList}>
-            {STATUSES.map((status) => {
-              const isChecked = selectedStatus === status;
-              return (
-                <TouchableOpacity
-                  key={status}
-                  style={styles.checkboxRow}
-                  onPress={() => setSelectedStatus(isChecked ? null : status)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.checkboxLabel}>{status}</Text>
-                  <View style={[styles.checkboxOutline, isChecked && styles.checkboxOutlineActive]}>
-                    {isChecked && (
-                      <View style={styles.checkboxCheckedInner} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* COMPANY NAME SECTION */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Company Name</Text>
-            <View style={styles.separatorLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.companyDropdownTrigger}
-            onPress={() => setCompanyModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.companyDropdownValue, selectedCompany === 'Select Company' && styles.placeholderText]}>
-              {selectedCompany}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* FOOTER BUTTONS */}
@@ -294,79 +205,7 @@ export function VisitFilterComponent({
         </TouchableOpacity>
       </View>
 
-      {/* COMPANY SELECTION MODAL */}
-      <Modal transparent animationType="slide" visible={companyModalVisible}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setCompanyModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Company</Text>
-              <TouchableOpacity onPress={() => setCompanyModalVisible(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
 
-            {/* Modal Search Container */}
-            <View style={styles.modalSearchContainer}>
-              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search Company Name..."
-                placeholderTextColor="#9CA3AF"
-                value={companySearchQuery}
-                onChangeText={setCompanySearchQuery}
-              />
-              {companySearchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setCompanySearchQuery('')}>
-                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              <TouchableOpacity
-                style={styles.modalRowItem}
-                onPress={() => {
-                  setSelectedCompany('Select Company');
-                  setCompanyModalVisible(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalRowText, { color: COLORS.textMuted }]}>Clear Selection</Text>
-                <Ionicons name="close-circle-outline" size={16} color={COLORS.textMuted} />
-              </TouchableOpacity>
-
-              {isCompaniesLoading && formattedCompanies.length === 0 ? (
-                <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginVertical: 20 }} />
-              ) : null}
-
-              {formattedCompanies.map((comp) => (
-                <TouchableOpacity
-                  key={comp.id}
-                  style={styles.modalRowItem}
-                  onPress={() => {
-                    setSelectedCompany(comp.name);
-                    setCompanyModalVisible(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalRowText}>{comp.name}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-
-              {!isCompaniesLoading && formattedCompanies.length === 0 && (
-                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20, fontSize: 13 }}>
-                  No companies found
-                </Text>
-              )}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {showFromPicker && (
         <DateTimePicker
@@ -515,65 +354,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  // Checkbox lists styling
-  checkboxList: {
-    gap: 5,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    height: 44,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
-  },
-  checkboxLabel: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: COLORS.textDark,
-  },
-  checkboxOutline: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOutlineActive: {
-    borderColor: theme.primaryColor,
-  },
-  checkboxCheckedInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.primaryColor,
-  },
 
-  // Company selection dropdown styling
-  companyDropdownTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    height: 44,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
-  },
-  companyDropdownValue: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: COLORS.textDark,
-  },
-  placeholderText: {
-    color: '#9CA3AF',
-  },
 
   // Footer Buttons
   footerContainer: {
@@ -617,63 +398,5 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Modal styling
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '60%',
-    paddingBottom: 24,
-  },
-  modalSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    marginHorizontal: 20,
-    marginBottom: 10,
-  },
-  modalSearchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textDark,
-    fontWeight: '600',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  modalRowItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalRowText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
+
 });

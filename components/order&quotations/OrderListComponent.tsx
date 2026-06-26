@@ -58,10 +58,19 @@ export const OrderListComponent: React.FC<OrderListComponentProps> = ({
   }, [orders, isLoading, cleanedFilters]);
 
   const handleClearStatusFilter = () => {
-    updateOrderFilterState({
-      ...filters,
-      status: '',
-    });
+    updateOrderFilterState({ ...filters, status: '' });
+  };
+  const handleClearPaymentFilter = () => {
+    updateOrderFilterState({ ...filters, payment_status: '' });
+  };
+  const handleClearTypeFilter = () => {
+    updateOrderFilterState({ ...filters, order_type: '' });
+  };
+  const handleClearSourceFilter = () => {
+    updateOrderFilterState({ ...filters, source_type: '' });
+  };
+  const handleClearDateFilter = () => {
+    updateOrderFilterState({ ...filters, dateRange: '', startDate: '', endDate: '' });
   };
 
   const filteredOrders = (orders as any[]).filter((item: any) => {
@@ -70,7 +79,47 @@ export const OrderListComponent: React.FC<OrderListComponentProps> = ({
       (item.orderNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.contactPerson || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+
+    if (!matchesStatus || !matchesSearch) return false;
+
+    // Date Range Filter
+    let matchesDate = true;
+    if (filters.startDate || filters.endDate) {
+      const rawDateStr = item.order_date || item.created_at || item.date;
+      if (rawDateStr) {
+        const orderDate = new Date(rawDateStr);
+        if (!isNaN(orderDate.getTime())) {
+          if (filters.startDate) {
+            const startParts = filters.startDate.split('-');
+            let start: Date;
+            if (startParts.length === 3) {
+              start = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+            } else {
+              start = new Date(filters.startDate);
+            }
+            start.setHours(0, 0, 0, 0);
+            if (orderDate < start) matchesDate = false;
+          }
+          if (filters.endDate) {
+            const endParts = filters.endDate.split('-');
+            let end: Date;
+            if (endParts.length === 3) {
+              end = new Date(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
+            } else {
+              end = new Date(filters.endDate);
+            }
+            end.setHours(23, 59, 59, 999);
+            if (orderDate > end) matchesDate = false;
+          }
+        } else {
+          matchesDate = false;
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+
+    return matchesDate;
   });
 
   const handleBackPress = () => {
@@ -146,7 +195,7 @@ export const OrderListComponent: React.FC<OrderListComponentProps> = ({
         </View>
 
         {/* Dynamic Bubble Filters */}
-        {(filters.status !== '' || filters.dateRange !== '') && (
+        {(filters.status !== '' || filters.dateRange !== '' || filters.payment_status !== '' || filters.order_type !== '' || filters.source_type !== '') && (
           <View style={styles.bubbleRow}>
             {filters.status !== '' && (
               <View style={styles.bubble}>
@@ -156,10 +205,37 @@ export const OrderListComponent: React.FC<OrderListComponentProps> = ({
                 </TouchableOpacity>
               </View>
             )}
+            {filters.payment_status !== '' && (
+              <View style={styles.bubble}>
+                <Text style={styles.bubbleText}>{filters.payment_status}</Text>
+                <TouchableOpacity onPress={handleClearPaymentFilter}>
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {filters.order_type !== '' && (
+              <View style={styles.bubble}>
+                <Text style={styles.bubbleText}>{filters.order_type}</Text>
+                <TouchableOpacity onPress={handleClearTypeFilter}>
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {filters.source_type !== '' && (
+              <View style={styles.bubble}>
+                <Text style={styles.bubbleText}>{filters.source_type}</Text>
+                <TouchableOpacity onPress={handleClearSourceFilter}>
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            )}
             {filters.dateRange !== '' && (
               <View style={styles.bubble}>
                 <Ionicons name="calendar-outline" size={12} color={theme.primaryColor} style={{ marginRight: 4 }} />
                 <Text style={styles.bubbleText}>{filters.dateRange}</Text>
+                <TouchableOpacity onPress={handleClearDateFilter}>
+                  <Ionicons name="close-circle" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
               </View>
             )}
           </View>

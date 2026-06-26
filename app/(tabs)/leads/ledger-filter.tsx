@@ -1,10 +1,10 @@
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { router } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -13,14 +13,13 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const TYPES = ['All Types', 'Credit', 'Debit'];
-const CATEGORIES = ['All Categories', 'Sale', 'Payment', 'Refund', 'Discount', 'Other'];
+const TYPES = ['Credit', 'Debit'];
+const CATEGORIES = ['Sale', 'Payment', 'Refund', 'Discount', 'Other'];
 
 export default function LedgerFilterScreen() {
   const theme = useTheme();
@@ -62,23 +61,6 @@ export default function LedgerFilterScreen() {
   // Picker Show Toggles
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-
-  // Modals state
-  const [typeModalVisible, setTypeModalVisible] = useState(false);
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-
-  // Search filter inside dropdowns
-  const [typeSearch, setTypeSearch] = useState('');
-  const [categorySearch, setCategorySearch] = useState('');
-
-  const filteredTypes = TYPES.filter(t =>
-    t.toLowerCase().includes(typeSearch.toLowerCase())
-  );
-
-  const filteredCategories = CATEGORIES.filter(c =>
-    c.toLowerCase().includes(categorySearch.toLowerCase())
-  );
-
   const formatDateShort = (date: Date | null) => {
     if (!date) return 'Select Date';
     const day = String(date.getDate()).padStart(2, '0');
@@ -101,30 +83,46 @@ export default function LedgerFilterScreen() {
     const isApplied = !!(startDate || endDate);
 
     if (backTo === 'lead-details') {
-      router.navigate({
-        pathname: '/(tabs)/leads/lead-details',
-        params: {
-          id: params.leadId,
-          lType: selectedType,
-          lCategory: selectedCategory,
-          lStartDate: startStr,
-          lEndDate: endStr,
-          lFilterApplied: isApplied ? 'true' : '',
-          activeTab: 'Ledger',
-        },
+      // Dispatch a state-level reset on the current leads stack:
+      // remove ledger-filter (current screen) and update lead-details params
+      // in one atomic operation — no new screen is pushed.
+      navigation.dispatch((state: any) => {
+        // Drop the last route (ledger-filter) and update the one before it (lead-details)
+        const prevRoutes = state.routes.slice(0, -1);
+        const updatedRoutes = prevRoutes.map((route: any, index: number) => {
+          if (index === prevRoutes.length - 1) {
+            // This is lead-details — merge the filter params into it
+            return {
+              ...route,
+              params: {
+                ...route.params,
+                id: params.leadId,
+                lType: selectedType,
+                lCategory: selectedCategory,
+                lStartDate: startStr,
+                lEndDate: endStr,
+                lFilterApplied: isApplied ? 'true' : '',
+                activeTab: 'Ledger',
+              },
+            };
+          }
+          return route;
+        });
+        return CommonActions.reset({
+          ...state,
+          routes: updatedRoutes,
+          index: updatedRoutes.length - 1,
+        });
       });
     } else {
-      router.navigate({
-        pathname: `/(tabs)/leads/${backTo}` as any,
-        params: {
-          ...params,
-          type: selectedType,
-          category: selectedCategory,
-          startDate: startStr,
-          endDate: endStr,
-          filterApplied: isApplied ? 'true' : '',
-        },
-      });
+      navigation.navigate(backTo as never, {
+        ...params,
+        type: selectedType,
+        category: selectedCategory,
+        startDate: startStr,
+        endDate: endStr,
+        filterApplied: isApplied ? 'true' : '',
+      } as never);
     }
   };
 
@@ -153,7 +151,7 @@ export default function LedgerFilterScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: 120, paddingTop: 16, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Title and Reset Row */}
@@ -167,39 +165,32 @@ export default function LedgerFilterScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Dropdown 1: TYPE */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Transaction Type</Text>
+        {/* ── DROPDOWNS CARD ─────────────────────────────────────────── */}
+        <View style={styles.dropdownCard}>
+          <View style={styles.dropdownGridRow}>
+            <FilterDropdown
+              placeholder="All Types"
+              options={TYPES}
+              value={selectedType === 'All Types' ? '' : selectedType}
+              onChange={(val) => setSelectedType(val || 'All Types')}
+              style={styles.gridDropdown}
+              labelStyle={styles.gridDropdownLabel}
+            />
+            <FilterDropdown
+              placeholder="All Categories"
+              options={CATEGORIES}
+              value={selectedCategory === 'All Categories' ? '' : selectedCategory}
+              onChange={(val) => setSelectedCategory(val || 'All Categories')}
+              style={styles.gridDropdown}
+              labelStyle={styles.gridDropdownLabel}
+            />
           </View>
-          <TouchableOpacity
-            style={styles.dropdownTrigger}
-            onPress={() => setTypeModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.dropdownText}>{selectedType}</Text>
-            <Ionicons name="chevron-expand-outline" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
         </View>
 
-        {/* Dropdown 2: CATEGORY */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Category</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.dropdownTrigger}
-            onPress={() => setCategoryModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.dropdownText}>{selectedCategory}</Text>
-            <Ionicons name="chevron-expand-outline" size={16} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Custom Date Pickers: From / To */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+        {/* ── DATE RANGE SECTION ──────────────────────────────────── */}
+        <View style={styles.filterCard}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="calendar-outline" size={15} color={theme.primaryColor} />
             <Text style={styles.sectionLabel}>Date Range</Text>
           </View>
 
@@ -215,7 +206,7 @@ export default function LedgerFilterScreen() {
                   {formatDateShort(startDate)}
                 </Text>
               </View>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+              <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -229,7 +220,7 @@ export default function LedgerFilterScreen() {
                   {formatDateShort(endDate)}
                 </Text>
               </View>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textMuted} />
+              <Ionicons name="calendar-outline" size={15} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -253,126 +244,6 @@ export default function LedgerFilterScreen() {
           <Text style={styles.applyBtnText}>Apply Filter</Text>
         </TouchableOpacity>
       </View>
-
-      {/* TYPE SELECTION MODAL */}
-      <Modal transparent animationType="slide" visible={typeModalVisible} onRequestClose={() => setTypeModalVisible(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setTypeModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Transaction Type</Text>
-              <TouchableOpacity onPress={() => setTypeModalVisible(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Inline search bar in dropdown */}
-            <View style={styles.modalSearchRow}>
-              <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search..."
-                placeholderTextColor="#9CA3AF"
-                value={typeSearch}
-                onChangeText={setTypeSearch}
-                autoCorrect={false}
-              />
-            </View>
-
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {filteredTypes.map((t) => {
-                const isSelected = selectedType === t;
-                return (
-                  <TouchableOpacity
-                    key={t}
-                    style={styles.modalRowItem}
-                    onPress={() => {
-                      setSelectedType(t);
-                      setTypeModalVisible(false);
-                      setTypeSearch('');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color={isSelected ? theme.primaryColor : 'transparent'}
-                      />
-                      <Text style={[styles.modalRowText, isSelected && styles.modalRowTextActive]}>
-                        {t}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* CATEGORY SELECTION MODAL */}
-      <Modal transparent animationType="slide" visible={categoryModalVisible} onRequestClose={() => setCategoryModalVisible(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setCategoryModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Category</Text>
-              <TouchableOpacity onPress={() => setCategoryModalVisible(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Inline search bar in dropdown */}
-            <View style={styles.modalSearchRow}>
-              <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search..."
-                placeholderTextColor="#9CA3AF"
-                value={categorySearch}
-                onChangeText={setCategorySearch}
-                autoCorrect={false}
-              />
-            </View>
-
-            <ScrollView style={{ paddingHorizontal: 20 }}>
-              {filteredCategories.map((c) => {
-                const isSelected = selectedCategory === c;
-                return (
-                  <TouchableOpacity
-                    key={c}
-                    style={styles.modalRowItem}
-                    onPress={() => {
-                      setSelectedCategory(c);
-                      setCategoryModalVisible(false);
-                      setCategorySearch('');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color={isSelected ? theme.primaryColor : 'transparent'}
-                      />
-                      <Text style={[styles.modalRowText, isSelected && styles.modalRowTextActive]}>
-                        {c}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {/* ── SYSTEM DATE PICKERS ─────────────────────── */}
       {showStartPicker && (
@@ -518,33 +389,62 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: COLORS.danger,
   },
-  section: {
-    marginBottom: 5,
+  // Dropdowns card grid
+  dropdownCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  sectionHeader: {
-    marginBottom: 5,
+  dropdownGridRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  gridDropdown: {
+    flex: 1,
+    alignSelf: 'stretch',
+    height: 48,
+    borderRadius: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+  },
+  gridDropdownLabel: {
+    flex: 1,
+    maxWidth: '85%',
+  },
+
+  // Date/Filter Cards
+  filterCard: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
     color: COLORS.textDark,
   },
-  dropdownTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.2,
-    borderColor: '#E5ECE9',
-    borderRadius: 8,
-    height: 44,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  dropdownText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
+
   bottomStickyBar: {
     position: 'absolute',
     bottom: 0,
@@ -586,64 +486,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '50%',
-    paddingBottom: 24,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  modalSearchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    height: 38,
-  },
-  modalSearchInput: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textDark,
-    paddingVertical: 0,
-  },
-  modalRowItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalRowText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  modalRowTextActive: {
-    color: theme.primaryColor,
-    fontWeight: '800',
-  },
+
   // Custom Date Picker styles
   datePickerRow: {
     flexDirection: 'row',
@@ -654,12 +497,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1.2,
-    borderColor: '#E5ECE9',
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    height: 48,
-    backgroundColor: '#FFFFFF',
+    height: 52,
+    backgroundColor: '#FAFAFA',
   },
   dateLabelText: {
     fontSize: 9.5,
@@ -668,7 +511,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     marginBottom: 2,
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: COLORS.textDark,
   },

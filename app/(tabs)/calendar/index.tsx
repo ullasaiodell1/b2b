@@ -174,8 +174,8 @@ export default function CalendarScreen() {
 
   // ── Handlers ──────────────────────────────────────────────
   const handleBack = () => { navigation.goBack(); };
-  const handleOpenAddMeeting = () => { setIsSpeedDialOpen(false); navigation.navigate('meeting', { screen: 'AddMeeting' } as any); };
-  const handleOpenAddTask = () => { setIsSpeedDialOpen(false); navigation.navigate('task', { screen: 'AddTask' } as any); };
+  const handleOpenAddMeeting = () => { setIsSpeedDialOpen(false); navigation.navigate('add-meeting'); };
+  const handleOpenAddTask = () => { setIsSpeedDialOpen(false); navigation.navigate('add-task'); };
   const handleMeetingPress = (id: string) => {
     navigation.navigate('meeting', { screen: 'MeetingDetails', params: { id } } as any);
   };

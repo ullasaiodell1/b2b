@@ -1,6 +1,5 @@
 import { QuotationFilterComponent } from '@/components/order&quotations/QuotationFilterComponent';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { router } from 'expo-router';
+import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 import React from 'react';
 
 export default function LeadQuotationFilterScreen() {
@@ -21,30 +20,45 @@ export default function LeadQuotationFilterScreen() {
       qEndDate={params.qEndDate}
       onCancel={() => navigation.goBack()}
       onApply={(startDate, endDate) => {
+        const startStr = startDate ? startDate.toISOString() : '';
+        const endStr = endDate ? endDate.toISOString() : '';
+        const isApplied = !!(startDate || endDate);
+
         if (params.referrer === 'lead-details') {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-details',
-            params: {
-              id: params.leadId,
-              activeTab: 'Quotation',
-              qStartDate: startDate ? startDate.toISOString() : '',
-              qEndDate: endDate ? endDate.toISOString() : '',
-              qFilterApplied: (startDate || endDate) ? 'true' : '',
-            },
+          // Pop this filter screen and merge params into the existing lead-details route
+          navigation.dispatch((state: any) => {
+            const prevRoutes = state.routes.slice(0, -1);
+            const updatedRoutes = prevRoutes.map((route: any, index: number) => {
+              if (index === prevRoutes.length - 1) {
+                return {
+                  ...route,
+                  params: {
+                    ...route.params,
+                    id: params.leadId,
+                    activeTab: 'Quotation',
+                    qStartDate: startStr,
+                    qEndDate: endStr,
+                    qFilterApplied: isApplied ? 'true' : '',
+                  },
+                };
+              }
+              return route;
+            });
+            return CommonActions.reset({
+              ...state,
+              routes: updatedRoutes,
+              index: updatedRoutes.length - 1,
+            });
           });
         } else {
-          router.navigate({
-            pathname: '/(tabs)/leads/lead-quotation',
-            params: {
-              leadId: params.leadId,
-              qStartDate: startDate ? startDate.toISOString() : '',
-              qEndDate: endDate ? endDate.toISOString() : '',
-              qFilterApplied: (startDate || endDate) ? 'true' : '',
-            },
-          });
+          navigation.navigate('lead-quotation' as never, {
+            leadId: params.leadId,
+            qStartDate: startStr,
+            qEndDate: endStr,
+            qFilterApplied: isApplied ? 'true' : '',
+          } as never);
         }
       }}
     />
   );
 }
-

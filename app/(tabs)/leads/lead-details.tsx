@@ -167,13 +167,7 @@ export default function LeadDetailsScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => {
-            if (activeTab !== 'Overview') {
-              setActiveTab('Overview');
-            } else {
-              navigation.goBack();
-            }
-          }}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
@@ -243,6 +237,10 @@ export default function LeadDetailsScreen() {
           <QuotationTab
             leadId={leadId}
             dbLead={dbLead}
+            qStatus={params.qStatus}
+            qPriority={params.qPriority}
+            qStartDate={params.qStartDate}
+            qEndDate={params.qEndDate}
           />
         )}
 
@@ -250,6 +248,9 @@ export default function LeadDetailsScreen() {
           <OrderTab
             leadId={leadId}
             dbLead={dbLead}
+            oStatus={params.oStatus}
+            oStartDate={params.oStartDate}
+            oEndDate={params.oEndDate}
           />
         )}
 
@@ -257,6 +258,10 @@ export default function LeadDetailsScreen() {
           <LedgerTab
             leadId={leadId}
             dbLead={dbLead}
+            lType={params.lType}
+            lCategory={params.lCategory}
+            lStartDate={params.lStartDate}
+            lEndDate={params.lEndDate}
           />
         )}
       </ScrollView>

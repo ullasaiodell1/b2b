@@ -45,6 +45,7 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
     onError: (err: any) => {
       console.error('[useCreateTask] error:', err);
@@ -60,8 +61,10 @@ export function useUpdateTask() {
       const res = await updateTask(id, data) as any;
       return res?.data || res;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.details(variables.id) });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
     onError: (err: any) => {
       console.error('[useUpdateTask] error:', err);
@@ -76,6 +79,7 @@ export function useDeleteTask() {
     mutationFn: (id: string) => deleteTask(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
     onError: (err: any) => {
       console.error('[useDeleteTask] error:', err);

@@ -346,7 +346,15 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
 
   return (
     <View style={styles.profileCard}>
-      {showConfetti && <FirecrackerOverlay />}
+      <Modal
+        visible={showConfetti}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={() => setShowConfetti(false)}
+      >
+        <FirecrackerOverlay />
+      </Modal>
       <View style={styles.profileTopRow}>
         <View style={styles.profileInfoCol}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>

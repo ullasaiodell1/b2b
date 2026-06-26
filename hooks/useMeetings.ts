@@ -26,6 +26,7 @@ export const useCreateMeeting = () => {
     mutationFn: ({ leadId, ...payload }: any) => createMeeting(leadId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };
@@ -37,6 +38,7 @@ export const useUpdateMeeting = () => {
     mutationFn: ({ id, leadId, ...payload }: any) => updateMeeting(leadId, id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };
@@ -48,6 +50,7 @@ export const useDeleteMeeting = () => {
     mutationFn: ({ id, leadId }: { id: string; leadId: string }) => deleteMeeting(leadId, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };

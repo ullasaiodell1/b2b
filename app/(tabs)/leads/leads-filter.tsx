@@ -676,7 +676,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
-    paddingBottom: 16,
+    paddingBottom: 1,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
@@ -707,16 +707,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   sectionLabel: {
     fontSize: 11,

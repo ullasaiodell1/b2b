@@ -5,9 +5,12 @@ import {
 } from '@/components/attendance/AttendanceState';
 import CustomHeader from '@/components/custom/CustomHeader';
 import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
+import RichTextEditor from '@/components/RichTextEditor';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAttendanceHistory, useAttendanceStatus } from '@/hooks/useAttendance';
+import { useProfile } from '@/hooks/useProfile';
+import { useTasks } from '@/hooks/useTasks';
 import {
   AttendanceHistoryParams,
   AttendanceHistoryQueryParams,
@@ -276,6 +279,16 @@ export default function AttendanceScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportHtml, setReportHtml] = useState('');
+  const [reportInitialized, setReportInitialized] = useState(false);
+
+  const { profile } = useProfile();
+  const tasksQuery = useTasks(
+    profile?.id
+      ? { assigned_to: profile.id, status: 'COMPLETED' }
+      : undefined,
+  );
 
   // Dynamic date for today
   const formattedToday = React.useMemo(() => {
@@ -293,6 +306,45 @@ export default function AttendanceScreen() {
     statusFilter === 'All' ? undefined : statusFilter,
   );
 
+  useEffect(() => {
+    if (!reportModalVisible) {
+      // Reset so next open re-initialises
+      setReportInitialized(false);
+      setReportHtml('');
+      return;
+    }
+
+    // Wait until profile is loaded and tasks query has settled
+    if (reportInitialized) return;
+    if (!profile?.id) return;
+    if (tasksQuery.isLoading || tasksQuery.isFetching) return;
+
+    const rawTasks = tasksQuery.data;
+    const tasksList: any[] = Array.isArray(rawTasks)
+      ? rawTasks
+      : Array.isArray((rawTasks as any)?.data)
+        ? (rawTasks as any).data
+        : [];
+
+    if (tasksList.length > 0) {
+      const lines: string[] = [];
+      tasksList.forEach((t: any) => {
+        lines.push(`• ${t.title || 'No Title'}`);
+        if (t.description && t.description.trim()) {
+          lines.push(`  ${t.description.trim()}`);
+        }
+        lines.push('');
+      });
+      const formattedHtml = lines
+        .map((line) => line.trim() ? `<p>${line}</p>` : '<br/>')
+        .join('');
+      setReportHtml(formattedHtml);
+    } else {
+      setReportHtml('');
+    }
+    setReportInitialized(true);
+  }, [reportModalVisible, reportInitialized, profile?.id, tasksQuery.data, tasksQuery.isLoading, tasksQuery.isFetching]);
+
   const { attendance: attState } = useAttendance();
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -308,9 +360,20 @@ export default function AttendanceScreen() {
 
   const handlePunchOut = () => {
     if (!attState.stampedIn || attState.stampedOut) return;
+    // Do NOT clear reportHtml here — the useEffect will build it from tasks
+    setReportInitialized(false);
+    setReportModalVisible(true);
+  };
+
+  const handleConfirmPunchOut = () => {
+    setReportModalVisible(false);
     router.push({
       pathname: '/camera-capture',
-      params: { sourceScreen: 'Attendance', attendanceAction: 'out' },
+      params: {
+        sourceScreen: 'Attendance',
+        attendanceAction: 'out',
+        extra: reportHtml,
+      },
     });
   };
 
@@ -642,6 +705,62 @@ export default function AttendanceScreen() {
           {selectedImage && (
             <Image source={{ uri: selectedImage }} style={styles.fullScreenImage} resizeMode="contain" />
           )}
+        </View>
+      </Modal>
+
+      {/* ── DAILY UPDATE REPORT MODAL (FULL SCREEN) ── */}
+      <Modal visible={reportModalVisible} transparent={false} animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
+        <View style={[styles.fullScreenReportContainer, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16), paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
+          <View style={styles.fullScreenReportHeader}>
+            <TouchableOpacity onPress={() => setReportModalVisible(false)} style={styles.modalCloseBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={24} color="#0D0F0E" />
+            </TouchableOpacity>
+            <Text style={styles.fullScreenReportTitle}>DAILY UPDATE REPORT</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.fullScreenReportContent} keyboardShouldPersistTaps="handled">
+            <Text style={styles.fullScreenReportSubtitle}>
+              Please write a summary of the tasks and updates completed today before punching out.
+            </Text>
+
+            {(tasksQuery.isLoading || tasksQuery.isFetching || !reportInitialized) && reportModalVisible ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color={theme.primaryColor} />
+                <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 13, fontWeight: '600' }}>
+                  Fetching completed tasks...
+                </Text>
+              </View>
+            ) : (
+              <RichTextEditor
+                key={reportHtml ? `editor-${reportHtml.length}` : 'editor-empty'}
+                initialHTML={reportHtml}
+                placeholder="Describe your work updates for today..."
+                onChange={(html) => setReportHtml(html)}
+                minHeight={250}
+                autoFocus={true}
+              />
+            )}
+
+            {/* Footer Buttons inside ScrollView */}
+            <View style={styles.fullScreenReportFooter}>
+              <TouchableOpacity
+                style={styles.fullScreenCancelBtn}
+                onPress={() => setReportModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.fullScreenCancelBtnText}>CANCEL</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.fullScreenConfirmBtn}
+                onPress={handleConfirmPunchOut}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.fullScreenConfirmBtnText}>CONFIRM & PUNCH OUT</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -1055,5 +1174,74 @@ const getStyles = (theme: any) => StyleSheet.create({
   fullScreenImage: {
     width: '100%',
     height: '80%',
+  },
+  fullScreenReportContainer: {
+    flex: 1,
+    backgroundColor: COLORS.bgWhite,
+  },
+  fullScreenReportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  fullScreenReportTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0D0F0E',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    flex: 1,
+  },
+  fullScreenReportContent: {
+    padding: 10,
+    gap: 6,
+  },
+  fullScreenReportSubtitle: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+
+  fullScreenReportFooter: {
+    flexDirection: 'row',
+    gap: 2,
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.bgWhite,
+  },
+  fullScreenCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  fullScreenCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#374151',
+  },
+  fullScreenConfirmBtn: {
+    flex: 2,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#F87171',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullScreenConfirmBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

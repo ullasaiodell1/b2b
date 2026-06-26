@@ -48,4 +48,9 @@ export interface OrderRecord {
 export interface OrderFilterState {
   status: string;
   dateRange: string;
+  payment_status: string;
+  order_type: string;
+  source_type: string;
+  startDate: string;
+  endDate: string;
 }

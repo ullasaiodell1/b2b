@@ -8,6 +8,7 @@ export default function TaskLayout() {
       <Stack.Screen name="task-filter"  options={{ title: 'Task Filter' }} />
       <Stack.Screen name="task-details" options={{ title: 'Task Details' }} />
       <Stack.Screen name="add-task"     options={{ title: 'Add Task' }} />
+      <Stack.Screen name="edit-task"    options={{ title: 'Edit Task' }} />
     </Stack>
   );
 }

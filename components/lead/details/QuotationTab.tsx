@@ -29,9 +29,20 @@ function formatDate(dateStr?: string | null) {
 interface QuotationTabProps {
   leadId: string;
   dbLead: any;
+  qStatus?: string;
+  qPriority?: string;
+  qStartDate?: string;
+  qEndDate?: string;
 }
 
-export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
+export default function QuotationTab({
+  leadId,
+  dbLead,
+  qStatus: qStatusProp,
+  qPriority: qPriorityProp,
+  qStartDate: qStartDateProp,
+  qEndDate: qEndDateProp,
+}: QuotationTabProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
@@ -41,7 +52,13 @@ export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
   const [quotationSearchQuery, setQuotationSearchQuery] = useState('');
   const isNavigatingRef = useRef(false);
 
-  const qFilterActive = !!(params.qStatus || params.qPriority || params.qStartDate || params.qEndDate);
+  // Prefer props (passed from lead-details params) over route.params
+  const qStatus = qStatusProp !== undefined ? qStatusProp : (params.qStatus || '');
+  const qPriority = qPriorityProp !== undefined ? qPriorityProp : (params.qPriority || '');
+  const qStartDate = qStartDateProp !== undefined ? qStartDateProp : (params.qStartDate || '');
+  const qEndDate = qEndDateProp !== undefined ? qEndDateProp : (params.qEndDate || '');
+
+  const qFilterActive = !!(qStatus || qPriority || qStartDate || qEndDate);
 
   const quotationsQuery = useQuotations({ lead_id: leadId });
   const { isLoading: isQuotationsLoading } = quotationsQuery;
@@ -52,17 +69,17 @@ export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
     let list = Array.isArray(raw) ? raw : (Array.isArray(raw.data) ? raw.data : (Array.isArray(raw.data?.data) ? raw.data.data : []));
     list = list.filter((q: any) => String(q.lead_id) === String(leadId) || String(q.dealer_id) === String(leadId));
     
-    if (params.qStatus) {
-      list = list.filter((q: any) => q.status?.toLowerCase() === params.qStatus?.toLowerCase());
+    if (qStatus) {
+      list = list.filter((q: any) => q.status?.toLowerCase() === qStatus.toLowerCase());
     }
-    if (params.qPriority) {
+    if (qPriority) {
       if (list.length > 0 && 'priority' in list[0]) {
-        list = list.filter((q: any) => q.priority?.toLowerCase() === params.qPriority?.toLowerCase());
+        list = list.filter((q: any) => q.priority?.toLowerCase() === qPriority.toLowerCase());
       }
     }
-    if (params.qStartDate && params.qEndDate) {
-      const start = new Date(params.qStartDate);
-      const end = new Date(params.qEndDate);
+    if (qStartDate && qEndDate) {
+      const start = new Date(qStartDate);
+      const end = new Date(qEndDate);
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
       list = list.filter((q: any) => {
@@ -87,7 +104,7 @@ export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
       });
     }
     return list;
-  }, [quotationsQuery.data, params.qStatus, params.qPriority, params.qStartDate, params.qEndDate, quotationSearchQuery, leadId]);
+  }, [quotationsQuery.data, qStatus, qPriority, qStartDate, qEndDate, quotationSearchQuery, leadId]);
 
   const handleClearQuotationFilters = () => {
     navigation.setParams({
@@ -131,8 +148,8 @@ export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
           onPress={() => navigation.navigate('lead-quotation-filter' as never, {
             referrer: 'lead-details',
             leadId: leadId,
-            qStartDate: params.qStartDate || '',
-            qEndDate: params.qEndDate || '',
+            qStartDate: qStartDate || '',
+            qEndDate: qEndDate || '',
           } as never)}
           activeOpacity={0.8}
         >
@@ -156,52 +173,52 @@ export default function QuotationTab({ leadId, dbLead }: QuotationTabProps) {
 
       {qFilterActive && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, marginVertical: 4 }}>
-          {!!params.qStatus && (
+          {!!qStatus && (
             <TouchableOpacity
               style={styles.filterChip}
               onPress={() => {
                 navigation.setParams({
                   qStatus: '',
-                  qFilterApplied: params.qPriority || (params.qStartDate && params.qEndDate) ? 'true' : ''
+                  qFilterApplied: qPriority || (qStartDate && qEndDate) ? 'true' : ''
                 } as any);
               }}
               activeOpacity={0.8}
             >
               <Ionicons name="funnel" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Status: {params.qStatus}</Text>
+              <Text style={styles.filterChipText}>Status: {qStatus}</Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
-          {!!params.qPriority && (
+          {!!qPriority && (
             <TouchableOpacity
               style={styles.filterChip}
               onPress={() => {
                 navigation.setParams({
                   qPriority: '',
-                  qFilterApplied: params.qStatus || (params.qStartDate && params.qEndDate) ? 'true' : ''
+                  qFilterApplied: qStatus || (qStartDate && qEndDate) ? 'true' : ''
                 } as any);
               }}
               activeOpacity={0.8}
             >
               <Ionicons name="flag" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Priority: {params.qPriority}</Text>
+              <Text style={styles.filterChipText}>Priority: {qPriority}</Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
-          {!!(params.qStartDate && params.qEndDate) && (
+          {!!(qStartDate && qEndDate) && (
             <TouchableOpacity
               style={styles.filterChip}
               onPress={() => {
                 navigation.setParams({
                   qStartDate: '',
                   qEndDate: '',
-                  qFilterApplied: params.qStatus || params.qPriority ? 'true' : ''
+                  qFilterApplied: qStatus || qPriority ? 'true' : ''
                 } as any);
               }}
               activeOpacity={0.8}
             >
               <Ionicons name="calendar" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Date: {formatDate(params.qStartDate)} - {formatDate(params.qEndDate)}</Text>
+              <Text style={styles.filterChipText}>Date: {formatDate(qStartDate)} - {formatDate(qEndDate)}</Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}

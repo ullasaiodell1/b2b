@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const LogoImage = require('@/assets/images/icon.png');
 
@@ -43,6 +44,41 @@ export default function CustomHeader({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
+  const { data: notificationsData } = useNotifications();
+  const count = React.useMemo(() => {
+    let list: any[] = [];
+    if (Array.isArray(notificationsData)) {
+      list = notificationsData;
+    } else if (Array.isArray(notificationsData?.data)) {
+      list = notificationsData.data;
+    } else if (Array.isArray(notificationsData?.data?.data)) {
+      list = notificationsData.data.data;
+    }
+
+    const hasReadStatus = list.some(
+      (item: any) =>
+        item.is_read !== undefined ||
+        item.read !== undefined ||
+        item.isRead !== undefined
+    );
+
+    if (hasReadStatus) {
+      const unreadList = list.filter(
+        (item: any) =>
+          item.is_read === false ||
+          item.read === false ||
+          item.isRead === false ||
+          item.is_read === 0 ||
+          item.read === 0
+      );
+      return unreadList.length;
+    }
+
+    return list.length;
+  }, [notificationsData]);
+
+  const displayCount = count > 99 ? '99+' : String(count);
+
   useEffect(() => {
     Animated.parallel([
       Animated.spring(slideAnim, {
@@ -66,6 +102,7 @@ export default function CustomHeader({
       router.navigate('/(tabs)/notification' as any);
     }
   };
+
   return (
     <Animated.View
       style={[
@@ -112,9 +149,11 @@ export default function CustomHeader({
           >
             <Ionicons name="notifications-outline" size={22} color={COLORS.textDark} />
             {/* Notification badge */}
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
+            {count > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{displayCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -205,7 +244,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    width: 16,
+    minWidth: 16,
     height: 16,
     borderRadius: 8,
     backgroundColor: '#EF4444',
@@ -213,6 +252,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
+    paddingHorizontal: 2,
   },
   badgeText: {
     fontSize: 8,

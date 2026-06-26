@@ -26,6 +26,7 @@ interface RichTextEditorProps {
   viewOnly?: boolean;
   minHeight?: number;
   maxHeight?: number;
+  autoFocus?: boolean;
 }
 
 interface SelectionRange {
@@ -72,7 +73,8 @@ export default function RichTextEditor({
   disabled = false,
   viewOnly = false,
   minHeight = 250,
-  maxHeight = 450,
+  maxHeight,
+  autoFocus = false,
 }: RichTextEditorProps) {
   const inputRef = useRef<TextInput>(null);
   const [content, setContent] = useState(() => htmlToPlain(initialHTML));
@@ -526,29 +528,37 @@ export default function RichTextEditor({
           editable={!disabled}
           textAlignVertical="top"
           scrollEnabled={false}
+          autoFocus={autoFocus}
+          importantForAutofill="no"
+          autoComplete="off"
+          textContentType="none"
         />
       </ScrollView>
 
       {/* Footer Buttons */}
-      <View style={styles.footer}>
-        {onCancel && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={onCancel}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelText}>CANCEL</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.saveButton, disabled && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={disabled}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.saveText}>SAVE CHANGES</Text>
-        </TouchableOpacity>
-      </View>
+      {!viewOnly && (onSave || onCancel) && (
+        <View style={styles.footer}>
+          {onCancel && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onCancel}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelText}>CANCEL</Text>
+            </TouchableOpacity>
+          )}
+          {onSave && (
+            <TouchableOpacity
+              style={[styles.saveButton, disabled && styles.disabledButton]}
+              onPress={handleSave}
+              disabled={disabled}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveText}>SAVE CHANGES</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 }

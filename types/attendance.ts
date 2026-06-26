@@ -76,6 +76,7 @@ export interface PunchOutPayload {
   latitude: number;
   longitude: number;
   location?: string;
+  work_summary?: string;
 }
 
 export function buildPunchInData(data: PunchInPayload) {
@@ -91,5 +92,6 @@ export function buildPunchOutData(data: PunchOutPayload) {
     checkout_latitude: data.latitude,
     checkout_longitude: data.longitude,
     checkout_image: data.checkout_image,
+    work_summary: data.work_summary,
   };
 }

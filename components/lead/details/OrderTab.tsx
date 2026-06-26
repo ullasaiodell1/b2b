@@ -31,9 +31,18 @@ function formatDate(dateStr?: string | null) {
 interface OrderTabProps {
   leadId: string;
   dbLead: any;
+  oStatus?: string;
+  oStartDate?: string;
+  oEndDate?: string;
 }
 
-export default function OrderTab({ leadId, dbLead }: OrderTabProps) {
+export default function OrderTab({
+  leadId,
+  dbLead,
+  oStatus: oStatusProp,
+  oStartDate: oStartDateProp,
+  oEndDate: oEndDateProp,
+}: OrderTabProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
@@ -43,7 +52,12 @@ export default function OrderTab({ leadId, dbLead }: OrderTabProps) {
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const isNavigatingRef = useRef(false);
 
-  const oFilterActive = !!(params.oStatus || params.oStartDate || params.oEndDate);
+  // Prefer props (passed from lead-details params) over route.params
+  const oStatus = oStatusProp !== undefined ? oStatusProp : (params.oStatus || '');
+  const oStartDate = oStartDateProp !== undefined ? oStartDateProp : (params.oStartDate || '');
+  const oEndDate = oEndDateProp !== undefined ? oEndDateProp : (params.oEndDate || '');
+
+  const oFilterActive = !!(oStatus || oStartDate || oEndDate);
 
   const ordersByLeadQuery = useQuery({
     queryKey: ['orders', { lead_id: leadId }],
@@ -91,19 +105,41 @@ export default function OrderTab({ leadId, dbLead }: OrderTabProps) {
     let list = Array.from(uniqueMap.values());
     list = list.map(getOrderField);
 
-    if (params.oStatus) {
-      list = list.filter((o: any) => o.status?.toLowerCase() === params.oStatus?.toLowerCase());
+    if (oStatus) {
+      list = list.filter((o: any) => o.status?.toLowerCase() === oStatus.toLowerCase());
     }
-    if (params.oStartDate && params.oEndDate) {
-      const start = new Date(params.oStartDate);
-      const end = new Date(params.oEndDate);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
+    if (oStartDate || oEndDate) {
       list = list.filter((o: any) => {
         const oDateStr = o.date || o.created_at;
         if (!oDateStr) return false;
         const oDate = new Date(oDateStr);
-        return oDate >= start && oDate <= end;
+        if (isNaN(oDate.getTime())) return false;
+
+        if (oStartDate) {
+          let start: Date;
+          const startParts = oStartDate.split('-');
+          if (startParts.length === 3 && !oStartDate.includes('T')) {
+            start = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+          } else {
+            start = new Date(oStartDate);
+          }
+          start.setHours(0, 0, 0, 0);
+          if (oDate < start) return false;
+        }
+
+        if (oEndDate) {
+          let end: Date;
+          const endParts = oEndDate.split('-');
+          if (endParts.length === 3 && !oEndDate.includes('T')) {
+            end = new Date(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
+          } else {
+            end = new Date(oEndDate);
+          }
+          end.setHours(23, 59, 59, 999);
+          if (oDate > end) return false;
+        }
+
+        return true;
       });
     }
     if (orderSearchQuery.trim()) {
@@ -122,7 +158,7 @@ export default function OrderTab({ leadId, dbLead }: OrderTabProps) {
       });
     }
     return list;
-  }, [ordersByLeadQuery.data, ordersByDealerQuery.data, params.oStatus, params.oStartDate, params.oEndDate, orderSearchQuery, leadId]);
+  }, [ordersByLeadQuery.data, ordersByDealerQuery.data, oStatus, oStartDate, oEndDate, orderSearchQuery, leadId]);
 
   const handleClearOrderFilters = () => {
     navigation.setParams({
@@ -186,36 +222,42 @@ export default function OrderTab({ leadId, dbLead }: OrderTabProps) {
 
       {oFilterActive && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, marginVertical: 4 }}>
-          {!!params.oStatus && (
+          {!!oStatus && (
             <TouchableOpacity
               style={styles.filterChip}
               onPress={() => {
                 navigation.setParams({
                   oStatus: '',
-                  oFilterApplied: (params.oStartDate && params.oEndDate) ? 'true' : ''
+                  oFilterApplied: (oStartDate || oEndDate) ? 'true' : ''
                 } as any);
               }}
               activeOpacity={0.8}
             >
               <Ionicons name="funnel" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Status: {params.oStatus}</Text>
+              <Text style={styles.filterChipText}>Status: {oStatus}</Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
-          {!!(params.oStartDate && params.oEndDate) && (
+          {(!!oStartDate || !!oEndDate) && (
             <TouchableOpacity
               style={styles.filterChip}
               onPress={() => {
                 navigation.setParams({
                   oStartDate: '',
                   oEndDate: '',
-                  oFilterApplied: params.oStatus ? 'true' : ''
+                  oFilterApplied: oStatus ? 'true' : ''
                 } as any);
               }}
               activeOpacity={0.8}
             >
               <Ionicons name="calendar" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Date: {formatDate(params.oStartDate)} - {formatDate(params.oEndDate)}</Text>
+              <Text style={styles.filterChipText}>
+                {oStartDate && oEndDate
+                  ? `Date: ${formatDate(oStartDate)} - ${formatDate(oEndDate)}`
+                  : oStartDate
+                  ? `From: ${formatDate(oStartDate)}`
+                  : `To: ${formatDate(oEndDate)}`}
+              </Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}

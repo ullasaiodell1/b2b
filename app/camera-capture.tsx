@@ -153,6 +153,7 @@ export default function CameraCaptureScreen() {
             latitude: lat,
             longitude: lng,
             location: locationStr,
+            work_summary: params.extra,
           });
 
           // Calculate work duration

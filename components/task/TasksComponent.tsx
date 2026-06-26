@@ -32,7 +32,26 @@ export interface TasksComponentProps {
   phone?: string;
   email?: string;
   isEmbedded?: boolean;
+  startDate?: string;
+  endDate?: string;
 }
+
+const formatDateToYYYYMMDD = (dateVal: string | Date | undefined | null, addOneDay = false) => {
+  if (!dateVal) return undefined;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return undefined;
+    if (addOneDay) {
+      d.setDate(d.getDate() + 1);
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return undefined;
+  }
+};
 
 export function TasksComponent({
   leadId,
@@ -41,6 +60,8 @@ export function TasksComponent({
   phone,
   email,
   isEmbedded = false,
+  startDate,
+  endDate,
 }: TasksComponentProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -54,12 +75,29 @@ export function TasksComponent({
   const effectiveCompany = company !== undefined ? company : routeParams.company;
   const effectivePhone = phone !== undefined ? phone : routeParams.phone;
   const effectiveEmail = email !== undefined ? email : routeParams.email;
+  const effectiveStartDate = startDate !== undefined ? startDate : routeParams.startDate;
+  const effectiveEndDate = endDate !== undefined ? endDate : routeParams.endDate;
 
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | TaskStatus>('All');
 
-  const { data: responseData, isLoading, isFetching, refetch } = useTasks(effectiveLeadId ? { lead_id: effectiveLeadId } : undefined) as any;
+  const apiParams: any = {};
+  if (effectiveLeadId) {
+    apiParams.lead_id = effectiveLeadId;
+  }
+  const formattedStart = formatDateToYYYYMMDD(effectiveStartDate);
+  const formattedEnd = formatDateToYYYYMMDD(effectiveEndDate, true);
+  if (formattedStart) {
+    apiParams.startDate = formattedStart;
+  }
+  if (formattedEnd) {
+    apiParams.endDate = formattedEnd;
+  }
+  apiParams.limit = 10;
+  apiParams.offset = 0;
+
+  const { data: responseData, isLoading, isFetching, refetch } = useTasks(apiParams) as any;
   const tasks = Array.isArray(responseData)
     ? responseData
     : (Array.isArray(responseData?.data)

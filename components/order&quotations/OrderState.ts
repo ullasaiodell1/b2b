@@ -105,6 +105,11 @@ export let ordersState: OrderRecord[] = [...INITIAL_ORDERS];
 export let activeOrderFilter: OrderFilterState = {
   status: '',
   dateRange: '',
+  payment_status: '',
+  order_type: '',
+  source_type: '',
+  startDate: '',
+  endDate: '',
 };
 
 const listeners = new Set<() => void>();
@@ -124,6 +129,11 @@ export const resetOrdersState = () => {
   activeOrderFilter = {
     status: '',
     dateRange: '',
+    payment_status: '',
+    order_type: '',
+    source_type: '',
+    startDate: '',
+    endDate: '',
   };
   listeners.forEach((listener) => listener());
 };

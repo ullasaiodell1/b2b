@@ -67,17 +67,37 @@ export function MeetingsComponent({
     ? `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`
     : undefined;
 
-  const query = useMeetings({
-    startDate: dateParam,
-    lead_id: leadId,
-  });
+  // Fetch all meetings (no date filter sent to API — filter client-side)
+  const query = useMeetings(
+    leadId ? { lead_id: leadId } : undefined,
+  );
 
   const { isLoading, isFetching, refetch } = query;
   const rawMeetings: any[] = Array.isArray(query.data)
     ? query.data
     : (query.data?.data || query.data?.followups || query.data?.results || []);
 
-  const meetings = rawMeetings.map((item: any): MeetingRecord => {
+  // Build a set of all dates that have at least one meeting (for dot indicators)
+  const meetingDateSet = React.useMemo(() => {
+    const set = new Set<string>();
+    rawMeetings.forEach((item: any) => {
+      if (item.scheduled_at) {
+        const d = new Date(item.scheduled_at);
+        set.add(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      }
+    });
+    return set;
+  }, [rawMeetings]);
+
+  const meetings = rawMeetings
+    .filter((item: any) => {
+      // Client-side date filter: only show meetings for the selected date
+      if (!item.scheduled_at) return false;
+      const d = new Date(item.scheduled_at);
+      const dStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      return dStr === dateParam;
+    })
+    .map((item: any): MeetingRecord => {
     const dateObj = item.scheduled_at ? new Date(item.scheduled_at) : new Date();
     const fromTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     const toDateObj = new Date(dateObj);
@@ -176,6 +196,11 @@ export function MeetingsComponent({
       return d;
     });
   };
+
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const hasMeetings = (d: Date) => meetingDateSet.has(dayKey(d));
 
   const getMonthGridDays = (baseDate: Date) => {
     const year = baseDate.getFullYear();
@@ -284,6 +309,7 @@ export function MeetingsComponent({
           <View style={s.weeklyRow}>
             {getWeekDays(selectedDate).map((day, index) => {
               const isActive = isSameDay(day, selectedDate);
+              const hasEvent = hasMeetings(day);
               return (
                 <TouchableOpacity
                   key={`week-${index}`}
@@ -303,6 +329,7 @@ export function MeetingsComponent({
                     </Text>
                     {isActive && <View style={s.activeDot} />}
                   </View>
+                  {hasEvent && !isActive && <View style={s.eventDot} />}
                 </TouchableOpacity>
               );
             })}
@@ -333,6 +360,7 @@ export function MeetingsComponent({
             {getMonthGridDays(currentMonthDate).map((day, i) => {
               const isActive = isSameDay(day, selectedDate);
               const isCurrentMonth = day.getMonth() === currentMonthDate.getMonth();
+              const hasEvent = hasMeetings(day);
               return (
                 <TouchableOpacity
                   key={`month-cell-${i}`}
@@ -354,6 +382,8 @@ export function MeetingsComponent({
                       {day.getDate()}
                     </Text>
                   </View>
+                  {hasEvent && !isActive && <View style={s.monthEventDot} />}
+                  {hasEvent && isActive && <View style={s.activeDot} />}
                 </TouchableOpacity>
               );
             })}
@@ -397,6 +427,18 @@ export function MeetingsComponent({
         </View>
       </View>
 
+      {/* SELECTED DATE LABEL */}
+      <View style={s.selectedDateBar}>
+        <Ionicons name="calendar-outline" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
+        <Text style={s.selectedDateLabel}>
+          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+        </Text>
+        <View style={{ flex: 1 }} />
+        <Text style={s.meetingCountLabel}>
+          {meetings.length} meeting{meetings.length !== 1 ? 's' : ''}
+        </Text>
+      </View>
+
       {/* MEETING CARDS LIST */}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -423,7 +465,7 @@ export function MeetingsComponent({
         ) : (
           <View style={s.emptyState}>
             <Ionicons name="calendar-clear-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-            <Text style={s.emptyStateText}>No meetings match this filter.</Text>
+            <Text style={s.emptyStateText}>No meetings on this day.</Text>
             <Text style={s.emptyStateSubtext}>{"Tap the \"+\" button below to schedule a new one."}</Text>
           </View>
         )}
@@ -680,6 +722,43 @@ const s = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
     zIndex: 100,
+  },
+  eventDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.primary,
+    marginTop: 2,
+  },
+  monthEventDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.primary,
+    marginTop: 1,
+  },
+  selectedDateBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.bgWhite,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  selectedDateLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  meetingCountLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   backBtn: {
     position: 'absolute',

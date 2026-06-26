@@ -2,10 +2,19 @@ import { VisitFilterState, VisitRecord } from '@/types/visit';
 import axios from './httpRequest';
 
 // GET /visits — list visits
-export const getVisits = (params?: Partial<VisitFilterState>) => {
+export const getVisits = (params?: any) => {
   return axios({
     method: 'GET',
     url: `/visits`,
+    params
+  }) as Promise<VisitRecord[]>;
+};
+
+// GET /leads/:leadId/visits — list lead visits
+export const getLeadVisits = (leadId: string, params?: any) => {
+  return axios({
+    method: 'GET',
+    url: `/leads/${leadId}/visits`,
     params
   }) as Promise<VisitRecord[]>;
 };

@@ -23,12 +23,45 @@ import {
 const defaultStartDateStr = new Date(2026, 5, 1).toISOString(); // 01 June 2026
 const defaultEndDateStr = new Date(2026, 5, 30).toISOString();  // 30 June 2026
 
+function normalizeLedgerEntry(item: any, index: number) {
+  const prefix = item.prefix || '';
+  const serial = item.serial_number || '';
+  const refNo = prefix && serial ? `${prefix}/${serial}` : String(item.id ?? index);
+
+  return {
+    id: String(item.id ?? index),
+    date: item.date || item.created_at || new Date().toISOString(),
+    entryType: String(item.type || '').toLowerCase() === 'credit' ? 'credit' : 'debit',
+    _type: item._type || '',
+    category: item.category || '',
+    amount: Math.abs(Number(item.amount || 0)),
+    closingBalance: Number(item.closing_balance ?? 0),
+    previousBalance: Number(item.previous_balance ?? 0),
+    prefix,
+    serialNumber: String(serial),
+    refNo,
+    accountName: item.account_name || '',
+    createdByName: item.created_by_name || '',
+  };
+}
+
 interface LedgerTabProps {
   leadId: string;
   dbLead: any;
+  lType?: string;
+  lCategory?: string;
+  lStartDate?: string;
+  lEndDate?: string;
 }
 
-export default function LedgerTab({ leadId, dbLead }: LedgerTabProps) {
+export default function LedgerTab({
+  leadId,
+  dbLead,
+  lType,
+  lCategory,
+  lStartDate,
+  lEndDate,
+}: LedgerTabProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
@@ -38,17 +71,22 @@ export default function LedgerTab({ leadId, dbLead }: LedgerTabProps) {
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
   const [ledgerDownloading, setLedgerDownloading] = useState(false);
 
-  const filterType = params.lType || 'All Types';
-  const filterCategory = params.lCategory || 'All Categories';
-  const filterStartDate = params.lStartDate || defaultStartDateStr;
-  const filterEndDate = params.lEndDate || defaultEndDateStr;
+  const filterType = lType !== undefined ? lType : (params.lType || 'All Types');
+  const filterCategory = lCategory !== undefined ? lCategory : (params.lCategory || 'All Categories');
+  const filterStartDate = lStartDate !== undefined ? lStartDate : (params.lStartDate || defaultStartDateStr);
+  const filterEndDate = lEndDate !== undefined ? lEndDate : (params.lEndDate || defaultEndDateStr);
 
   const lFilterActive = filterType !== 'All Types' ||
     filterCategory !== 'All Categories' ||
     filterStartDate !== defaultStartDateStr ||
     filterEndDate !== defaultEndDateStr;
 
-  const { data: apiLedger } = useLeadLedger(leadId);
+  const apiParams = useMemo(() => ({
+    startDate: filterStartDate,
+    endDate: filterEndDate,
+  }), [filterStartDate, filterEndDate]);
+
+  const { data: apiLedger } = useLeadLedger(leadId, apiParams);
 
   const handleDownloadLedger = async () => {
     setLedgerDownloading(true);
@@ -104,7 +142,10 @@ export default function LedgerTab({ leadId, dbLead }: LedgerTabProps) {
     }
   };
 
-  const ledgerItems = apiLedger?.items ?? [];
+  const rawItems = apiLedger?.items ?? [];
+  const ledgerItems = useMemo(() => {
+    return rawItems.map((item: any, idx: number) => normalizeLedgerEntry(item, idx));
+  }, [rawItems]);
   const openingBalance = apiLedger?.openingBalance ?? 0;
 
   // Format helpers
