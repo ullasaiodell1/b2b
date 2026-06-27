@@ -98,44 +98,46 @@ export function MeetingsComponent({
       return dStr === dateParam;
     })
     .map((item: any): MeetingRecord => {
-    const dateObj = item.scheduled_at ? new Date(item.scheduled_at) : new Date();
-    const fromTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const toDateObj = new Date(dateObj);
-    toDateObj.setHours(toDateObj.getHours() + 1);
-    const toTime = toDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const scheduledAt = item.scheduled_at
-      ? dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) +
-      ' · ' +
-      dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-      : '';
-    const scheduledDateStr = item.scheduled_at
-      ? `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`
-      : '';
-    let status: MeetingStatus = 'Pending';
-    if (item.status === 'COMPLETED') status = 'Complete';
-    else if (item.status === 'IN_PROGRESS' || item.status === 'RESCHEDULED') status = 'In-Process';
+      const dateObj = item.scheduled_at ? new Date(item.scheduled_at) : new Date();
+      const fromTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const toDateObj = new Date(dateObj);
+      toDateObj.setHours(toDateObj.getHours() + 1);
+      const toTime = toDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const scheduledAt = item.scheduled_at
+        ? dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) +
+        ' · ' +
+        dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : '';
+      const scheduledDateStr = item.scheduled_at
+        ? `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`
+        : '';
+      let status: MeetingStatus = 'Pending';
+      if (item.status === 'COMPLETED') status = 'Complete';
+      else if (item.status === 'IN_PROGRESS' || item.status === 'RESCHEDULED') status = 'In-Process';
 
-    return {
-      id: String(item.id || ''),
-      title: item.purpose || item.follow_up_method || 'Follow-up',
-      venue: item.remarks || '',
-      location: item.follow_up_method || 'Hybrid',
-      isAllDay: false,
-      fromTime,
-      toTime,
-      host: item.assigned_to_name || item.lead_name || '',
-      status,
-      notes: item.remarks ? [item.remarks] : [],
-      attachments: [],
-      createdTime: item.created_at || '',
-      modifiedTime: item.updated_at || '',
-      purpose: item.purpose || '',
-      method: item.follow_up_method || '',
-      scheduledAt,
-      scheduledDate: scheduledDateStr,
-      leadId: item.lead_id ? String(item.lead_id) : undefined,
-    };
-  });
+      return {
+        id: String(item.id || ''),
+        title: item.purpose || item.follow_up_method || 'Follow-up',
+        venue: item.remarks || '',
+        location: item.follow_up_method || 'Hybrid',
+        isAllDay: false,
+        fromTime,
+        toTime,
+        host: item.assigned_to_name || item.lead_name || '',
+        status,
+        notes: item.remarks ? [item.remarks] : [],
+        attachments: [],
+        createdTime: item.created_at || '',
+        modifiedTime: item.updated_at || '',
+        purpose: item.purpose || '',
+        method: item.follow_up_method || '',
+        scheduledAt,
+        scheduledDate: scheduledDateStr,
+        leadId: item.lead_id ? String(item.lead_id) : undefined,
+        created_by_name: item.created_by_name || '',
+        modified_by_name: item.modified_by_name || item.updated_by_name || '',
+      };
+    });
 
   useEffect(() => {
     if (query.data) {

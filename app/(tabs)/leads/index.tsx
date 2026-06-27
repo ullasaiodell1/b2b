@@ -376,8 +376,14 @@ export default function LeadsScreen() {
             >
               {/* Top row: Name & Tag */}
               <View style={styles.cardTopRow}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text style={styles.cardName}>{lead.name}</Text>
+                  {(lead.is_verified === true || lead.is_verified === 1 || String(lead.is_verified) === 'true') ? (
+                    <Ionicons name="shield-checkmark-outline" size={14} color="#16A34A" />
+                  ) : null}
+                  {(lead.is_customer === true || lead.is_customer === 1 || String(lead.is_customer) === 'true' || lead.lead_type === 'CUSTOMER' || lead.leadType === 'CUSTOMER') ? (
+                    <Ionicons name="checkmark-circle-outline" size={14} color="#2563EB" />
+                  ) : null}
                   {lead.priority === 'High' && (
                     <View style={[styles.priorityTag, { backgroundColor: '#FEE2E2' }]}>
                       <Text style={{ fontSize: 9, color: COLORS.danger, fontWeight: '900' }}>HIGH</Text>

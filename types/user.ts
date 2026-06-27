@@ -9,18 +9,17 @@ export interface OTPVerificationCredentials {
 }
 
 export interface ForgotPasswordPayload {
-  identifier: string;
+  email: string;
 }
 
 export interface VerifyForgotOTPPayload {
-  identifier: string;
-  otp: string;
+  token: string;
+  code: string;
 }
 
 export interface ResetPasswordPayload {
-  identifier: string;
-  otp: string;
-  new_password: string;
+  token: string;
+  password: string;
 }
 
 export interface RoleAssignment {

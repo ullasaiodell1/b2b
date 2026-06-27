@@ -1,23 +1,23 @@
 import { COLORS } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Ionicons } from '@expo/vector-icons';
+import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/hooks/use-theme';
-import { useRouter } from 'expo-router';
-import { useNotifications } from '@/hooks/useNotifications';
-import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 
 interface NotificationItemProps {
   title: string;
@@ -172,7 +172,7 @@ export default function NotificationScreen() {
   const handleAction = (item: any) => {
     const type = item.type;
     const metadata = item.data ? (typeof item.data === 'string' ? JSON.parse(item.data) : item.data) : {};
-    
+
     switch (type) {
       case 'download-bill':
         Alert.alert('Download', 'Downloading E-Way Bill PDF...');
@@ -190,9 +190,9 @@ export default function NotificationScreen() {
       case 'new-lead':
         router.navigate('/(tabs)/leads' as any);
         break;
-      case 'meeting':
-      case 'meeting-scheduled':
-        router.navigate('/(tabs)/meeting' as any);
+      case 'follow-ups':
+      case 'follow-ups-scheduled':
+        router.navigate('/(tabs)/follow-ups' as any);
         break;
       case 'quotation':
         router.navigate('/(tabs)/Quotation' as any);

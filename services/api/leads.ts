@@ -70,4 +70,43 @@ export const getLeadTags = () => {
   });
 };
 
+// POST /leads/:id/verification — verify lead
+export const verifyLead = (id: string, data: {
+  number_of_properties: number;
+  cities_of_operation: string[];
+  currently_purchasing_from: string;
+  verification_notes: string;
+}) => {
+  return axios({
+    method: 'POST',
+    url: `/leads/${id}/verification`,
+    data
+  });
+};
+
+// PATCH /leads/:id/verification — update lead verification
+export const updateLeadVerification = (id: string, data: {
+  number_of_properties: number;
+  cities_of_operation: string[];
+  currently_purchasing_from: string;
+  verification_notes: string;
+}) => {
+  return axios({
+    method: 'PATCH',
+    url: `/leads/${id}/verification`,
+    data
+  });
+};
+
+// POST /leads/:id/convert-to-customer — convert lead to customer
+export const convertLeadToCustomer = (id: string, data?: any) => {
+  return axios({
+    method: 'POST',
+    url: `/leads/${id}/convert-to-customer`,
+    data
+  });
+};
+
+
+
 

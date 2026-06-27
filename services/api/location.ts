@@ -9,3 +9,11 @@ export const getCityStateCountry = (params?: any) => {
   });
 };
 
+// GET /city-state-country/city — search cities (combobox)
+export const getCities = (search: string = '', limit: number = 20) => {
+  return axios({
+    method: 'GET',
+    url: `/city-state-country/city`,
+    params: { search, limit, combobox: true },
+  });
+};

@@ -27,7 +27,7 @@ export default function TabLayout() {
         <Tabs.Screen name="leave" options={{ href: null }} />
         <Tabs.Screen name="call" options={{ href: null }} />
         <Tabs.Screen name="company" options={{ href: null }} />
-        <Tabs.Screen name="meeting" options={{ href: null }} />
+        <Tabs.Screen name="follow-ups" options={{ href: null }} />
         <Tabs.Screen name="task" options={{ href: null }} />
         <Tabs.Screen name="Order" options={{ href: null }} />
         <Tabs.Screen name="Quotation" options={{ href: null }} />

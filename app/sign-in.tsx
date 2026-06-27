@@ -29,7 +29,7 @@ export default function SignInScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [error, setError] = useState('');
@@ -74,19 +74,36 @@ export default function SignInScreen() {
     return () => clearTimeout(timer);
   };
 
+  const isEmail = (val: string) => {
+    return /[a-zA-Z]/.test(val) || val.includes('@');
+  };
+
   // Sign In handler with validation and mutation
   const handleSignIn = () => {
     setError('');
-    if (!phoneNumber.trim()) {
-      showError('Please enter your phone number.');
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      showError('Please enter your email or mobile number.');
       shake();
       return;
     }
-    if (phoneNumber.trim().length < 10) {
-      showError('Please enter a valid 10-digit phone number.');
-      shake();
-      return;
+
+    if (isEmail(trimmed)) {
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(trimmed)) {
+        showError('Please enter a valid email address.');
+        shake();
+        return;
+      }
+    } else {
+      const phoneRegex = /^\d{10}$/;
+      if (!phoneRegex.test(trimmed)) {
+        showError('Please enter a valid 10-digit mobile number.');
+        shake();
+        return;
+      }
     }
+
     if (!password.trim()) {
       showError('Please enter your password.');
       shake();
@@ -94,13 +111,13 @@ export default function SignInScreen() {
     }
 
     loginMutation.mutate(
-      { identifier: phoneNumber.trim(), password },
+      { identifier: trimmed, password },
       {
         onSuccess: async (data: any) => {
           if (data?.token_type === 'otp') {
             router.push({
               pathname: '/otp',
-              params: { code: phoneNumber, token: data.token, password }
+              params: { code: trimmed, token: data.token, password }
             });
           } else if (data?.token) {
             const { saveAuthToken, saveUserData } = require('@/utils/storage');
@@ -112,7 +129,7 @@ export default function SignInScreen() {
           } else {
             router.push({
               pathname: '/otp',
-              params: { code: phoneNumber, token: data?.token || '', password }
+              params: { code: trimmed, token: data?.token || '', password }
             });
           }
         },
@@ -127,7 +144,7 @@ export default function SignInScreen() {
               params: {
                 sessions: JSON.stringify(sessions),
                 token: token,
-                phoneNumber: phoneNumber.trim(),
+                phoneNumber: trimmed,
                 password: password,
               }
             });
@@ -191,19 +208,25 @@ export default function SignInScreen() {
 
         {/* Form */}
         <View style={styles.form}>
-          {/* Phone Number */}
+          {/* Email or Mobile Number */}
           <View style={styles.inputBlock}>
-            <Text style={styles.label}>PHONE NUMBER</Text>
+            <Text style={styles.label}>EMAIL OR MOBILE NUMBER</Text>
             <View style={styles.inputWrap}>
-              <Text style={styles.countryCode}>+91</Text>
+              <Ionicons
+                name={isEmail(identifier) ? "mail-outline" : "call-outline"}
+                size={18}
+                color="#8F9995"
+                style={{ marginRight: 10 }}
+              />
               <TextInput
                 style={styles.input}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Enter 10-digit mobile number"
+                value={identifier}
+                onChangeText={setIdentifier}
+                placeholder="you@company.com or 9876543210"
                 placeholderTextColor="#B0BAB6"
-                keyboardType="phone-pad"
-                maxLength={10}
+                keyboardType="default"
+                autoCapitalize="none"
+                autoCorrect={false}
                 editable={!loginMutation.isPending}
               />
             </View>

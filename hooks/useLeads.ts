@@ -1,4 +1,5 @@
-import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, getLeadTags, updateLead } from '@/services/api/leads';
+import { getCities } from '@/services/api/location';
+import { createLead, deleteLead, getLeadDetails, getLeads, getLeadSources, getLeadStatuses, getLeadTags, updateLead, verifyLead, convertLeadToCustomer, updateLeadVerification } from '@/services/api/leads';
 import { getUsers } from '@/services/api/users';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -12,6 +13,7 @@ export const leadKeys = {
   sources: () => [...leadKeys.all, 'sources'] as const,
   users: () => [...leadKeys.all, 'users'] as const,
   tags: () => [...leadKeys.all, 'tags'] as const,
+  cities: (search: string) => ['cities', search] as const,
 };
 
 // ── READ ───────────────────────────────────────────────────────────
@@ -117,6 +119,31 @@ export function useUpdateLead() {
   });
 }
 
+// ── VERIFY ────────────────────────────────────────────────────────
+export function useVerifyLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data, isUpdate }: { id: string; data: any; isUpdate?: boolean }) =>
+      isUpdate ? updateLeadVerification(id, data) : verifyLead(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
+    }
+  });
+}
+// ── CONVERT TO CUSTOMER ───────────────────────────────────────────
+export function useConvertLeadToCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      convertLeadToCustomer(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.details(variables.id) });
+    }
+  });
+}
+
 // ── DELETE ────────────────────────────────────────────────────────
 export function useDeleteLead() {
   const queryClient = useQueryClient();
@@ -125,5 +152,21 @@ export function useDeleteLead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
     }
+  });
+}
+
+// ── CITIES ────────────────────────────────────────────────────────
+export function useCities(search: string = '') {
+  return useQuery({
+    queryKey: leadKeys.cities(search),
+    queryFn: async () => {
+      const res = await getCities(search, 20);
+      // API returns: { data: [...] } or { data: { data: [...] } } or []
+      if (Array.isArray(res?.data?.data)) return res.data.data;
+      if (Array.isArray(res?.data)) return res.data;
+      if (Array.isArray(res)) return res;
+      return [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 min cache
   });
 }

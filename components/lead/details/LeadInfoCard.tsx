@@ -2,21 +2,22 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeadStatuses, useUpdateLead } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import confetti from 'canvas-confetti';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Linking,
-  Platform,
-  Animated
+  View
 } from 'react-native';
-import confetti from 'canvas-confetti';
 
 const STATUS_COLORS: Record<string, string> = {
   HOT: '#EF4444',
@@ -322,6 +323,7 @@ interface LeadInfoCardProps {
 export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadInfoCardProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const navigation = useNavigation<any>();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -358,8 +360,16 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
       <View style={styles.profileTopRow}>
         <View style={styles.profileInfoCol}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
-            <Text style={styles.profileName}>{leadName}</Text>
-            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={styles.profileName}>{leadName}</Text>
+              {(dbLead?.is_verified === true || dbLead?.is_verified === 1 || String(dbLead?.is_verified) === 'true') ? (
+                <Ionicons name="shield-checkmark-outline" size={15} color="#16A34A" />
+              ) : null}
+              {(dbLead?.is_customer === true || dbLead?.is_customer === 1 || String(dbLead?.is_customer) === 'true' || dbLead?.lead_type === 'CUSTOMER' || dbLead?.leadType === 'CUSTOMER' || rawLead?.lead_type === 'CUSTOMER' || rawLead?.leadType === 'CUSTOMER') ? (
+                <Ionicons name="checkmark-circle-outline" size={15} color="#2563EB" />
+              ) : null}
+            </View>
+
             <TouchableOpacity
               onPress={() => setStatusModalVisible(true)}
               activeOpacity={0.75}
@@ -411,19 +421,6 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
             </TouchableOpacity>
           )}
 
-          {leadPhone !== '----' && (
-            <TouchableOpacity
-              style={styles.profileDetailLine}
-              onPress={() => Linking.openURL(`tel:${leadPhone}`)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="call-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-              <Text style={[styles.profileDetailText, { color: '#2563EB', textDecorationLine: 'underline' }]}>
-                {leadPhone}
-              </Text>
-            </TouchableOpacity>
-          )}
-
           {locationStr ? (
             <TouchableOpacity
               style={styles.profileDetailLine}
@@ -436,6 +433,38 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
               </Text>
             </TouchableOpacity>
           ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+            {leadPhone !== '----' ? (
+              <TouchableOpacity
+                style={styles.profileDetailLine}
+                onPress={() => Linking.openURL(`tel:${leadPhone}`)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="call-outline" size={13} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+                <Text style={[styles.profileDetailText, { color: '#2563EB', textDecorationLine: 'underline' }]}>
+                  {leadPhone}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View />
+            )}
+
+            {/* ── Verify Button ── */}
+            <TouchableOpacity
+              style={[styles.verifyBtn, { borderColor: theme.primaryColor, backgroundColor: theme.primaryColor + '12', marginTop: 0 }]}
+              onPress={() =>
+                navigation.navigate('lead-verify' as never, {
+                  id: dbLead?.id,
+                  leadName: dbLead?.name || rawLead?.name || '',
+                } as never)
+              }
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-checkmark-outline" size={13} color={theme.primaryColor} style={{ marginRight: 5 }} />
+              <Text style={[styles.verifyBtnText, { color: theme.primaryColor }]}>Verify Lead</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -610,5 +639,20 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     fontWeight: '600',
+  },
+  verifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  verifyBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

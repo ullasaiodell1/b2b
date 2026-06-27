@@ -127,8 +127,14 @@ export function LeadSelectCard({
 
           <View style={styles.selectedLeadInfo}>
             <View style={styles.cardTopRow}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={styles.cardName}>{selectedLead.name}</Text>
+                {(selectedLead.is_verified === true || selectedLead.is_verified === 1 || String(selectedLead.is_verified) === 'true') ? (
+                  <Ionicons name="shield-checkmark-outline" size={14} color="#16A34A" />
+                ) : null}
+                {(selectedLead.is_customer === true || selectedLead.is_customer === 1 || String(selectedLead.is_customer) === 'true' || selectedLead.lead_type === 'CUSTOMER' || selectedLead.leadType === 'CUSTOMER') ? (
+                  <Ionicons name="checkmark-circle-outline" size={14} color="#2563EB" />
+                ) : null}
                 {selectedLead.priority ? (
                   <View style={[
                     styles.priorityTag,
@@ -266,7 +272,15 @@ export function LeadSelectCard({
                       activeOpacity={0.7}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.modalRowText}>{lead.name || 'No Name'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.modalRowText}>{lead.name || 'No Name'}</Text>
+                          {(lead.is_verified === true || lead.is_verified === 1 || String(lead.is_verified) === 'true') ? (
+                            <Ionicons name="shield-checkmark-outline" size={14} color="#16A34A" />
+                          ) : null}
+                          {(lead.is_customer === true || lead.is_customer === 1 || String(lead.is_customer) === 'true' || lead.lead_type === 'CUSTOMER' || lead.leadType === 'CUSTOMER') ? (
+                            <Ionicons name="checkmark-circle-outline" size={14} color="#2563EB" />
+                          ) : null}
+                        </View>
                         <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, fontWeight: '600' }}>
                           {lead.company || 'No Company'} • {lead.phone || 'No Phone'}
                         </Text>

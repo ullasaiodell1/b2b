@@ -128,11 +128,13 @@ export default function OtpScreen() {
         }
       }
     );
+  };  const isEmail = (val: string) => {
+    return /[a-zA-Z]/.test(val) || val.includes('@');
   };
 
   const handleResend = () => {
     if (!mobileNumber) {
-      setErrorMessage('Phone number is missing.');
+      setErrorMessage(isEmail(mobileNumber || '') ? 'Email is missing.' : 'Phone number is missing.');
       shakeError();
       return;
     }
@@ -146,7 +148,7 @@ export default function OtpScreen() {
           setErrorMessage('');
           setVerified(false);
           inputRefs.current[0]?.focus();
-          alert('A new verification code has been sent to your mobile number.');
+          alert(`A new verification code has been sent to your ${isEmail(mobileNumber || '') ? 'email' : 'mobile number'}.`);
         },
         onError: (err: any) => {
           setErrorMessage(err.message || 'Failed to resend OTP. Please try again.');
@@ -185,10 +187,9 @@ export default function OtpScreen() {
           <>
             <Text style={styles.sheetTitle}>Verify OTP</Text>
             <Text style={styles.sheetSub}>
-              Enter the {OTP_LENGTH}-digit verification code sent to your mobile number:
-              <Text style={{ fontWeight: '700', color: theme.primaryColor }}> +91 {mobileNumber}</Text>
+              Enter the {OTP_LENGTH}-digit verification code sent to your {isEmail(mobileNumber || '') ? 'email' : 'mobile number'}:
+              <Text style={{ fontWeight: '700', color: theme.primaryColor }}> {isEmail(mobileNumber || '') ? mobileNumber : `+91 ${mobileNumber}`}</Text>
             </Text>
-
             {/* OTP Boxes */}
             <Animated.View style={[styles.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
               {otp.map((digit, index) => (

@@ -1,19 +1,18 @@
-import { COLORS } from '@/constants/theme';
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Animated,
-  StyleSheet,
-  Platform,
-  StatusBar,
-  Dimensions,
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '@/hooks/use-theme';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -242,7 +241,7 @@ export default function SlidesScreen() {
     {
       id: 3,
       title: 'Never Miss a Follow-Up',
-      desc: 'Get smart reminders for calls, meetings, and important customer actions.',
+      desc: 'Get smart reminders for calls, follow-upss, and important customer actions.',
       blobColor: '#EEF2F6',
       accentColor: '#3B82F6',
     },

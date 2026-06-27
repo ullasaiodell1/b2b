@@ -27,11 +27,11 @@ export default function ResetPasswordScreen() {
   const styles = getStyles(theme);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
   const [step, setStep] = useState<'forgot' | 'verify' | 'new-password' | 'success'>('forgot');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
-  const [verifiedOtp, setVerifiedOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetAuthorizedToken, setResetAuthorizedToken] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -52,24 +52,27 @@ export default function ResetPasswordScreen() {
   const resetPasswordMutation = useResetPassword();
 
   const handleResetPassword = () => {
-    if (phoneNumber.length !== 10) {
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid Phone Number',
-        text2: 'Please enter a valid 10-digit mobile number.',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.',
       });
       return;
     }
     forgotPasswordMutation.mutate(
-      { identifier: phoneNumber },
+      { email: email.trim() },
       {
-        onSuccess: () => {
+        onSuccess: (res: any) => {
+          const token = res?.token || '';
+          setResetToken(token);
           setStep('verify');
           setErrorMessage('');
           Toast.show({
             type: 'success',
             text1: 'OTP Sent',
-            text2: 'A verification code has been sent to your phone number.',
+            text2: 'A verification code has been sent to your email address.',
           });
         },
         onError: (error: any) => {
@@ -87,10 +90,11 @@ export default function ResetPasswordScreen() {
       return;
     }
     verifyOTPMutation.mutate(
-      { identifier: phoneNumber, otp: code },
+      { token: resetToken, code },
       {
-        onSuccess: () => {
-          setVerifiedOtp(code);
+        onSuccess: (res: any) => {
+          const authToken = res?.token || '';
+          setResetAuthorizedToken(authToken);
           setErrorMessage('');
           setStep('new-password');
         },
@@ -107,13 +111,15 @@ export default function ResetPasswordScreen() {
     setErrorMessage('');
     inputRefs.current[0]?.focus();
     forgotPasswordMutation.mutate(
-      { identifier: phoneNumber },
+      { email: email.trim() },
       {
-        onSuccess: () => {
+        onSuccess: (res: any) => {
+          const token = res?.token || '';
+          setResetToken(token);
           Toast.show({
             type: 'success',
             text1: 'OTP Resent',
-            text2: 'A new verification code has been sent to your phone number.',
+            text2: 'A new verification code has been sent to your email address.',
           });
         },
         onError: (error: any) => {
@@ -140,7 +146,7 @@ export default function ResetPasswordScreen() {
     setPasswordError('');
 
     resetPasswordMutation.mutate(
-      { identifier: phoneNumber, otp: verifiedOtp, new_password: newPassword },
+      { token: resetAuthorizedToken, password: newPassword },
       {
         onSuccess: () => {
           setStep('success');
@@ -208,24 +214,24 @@ export default function ResetPasswordScreen() {
           <View style={styles.content}>
             <Text style={styles.title}>Forgot password</Text>
             <Text style={styles.subtitle}>
-              Please enter your phone number to reset the password
+              Please enter your email to reset the password
             </Text>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Your Phone Number</Text>
+              <Text style={styles.inputLabel}>Your Email Address</Text>
               <View style={[
                 styles.inputWrapper,
                 isFocused && { borderColor: theme.primaryColor, borderWidth: 2 }
               ]}>
-                <Text style={styles.countryCode}>+91</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  placeholder="Enter your phone number"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
                   placeholderTextColor="#B0BAB6"
-                  keyboardType="phone-pad"
-                  maxLength={10}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                 />
@@ -235,9 +241,9 @@ export default function ResetPasswordScreen() {
             <TouchableOpacity
               style={[
                 styles.primaryButton,
-                (phoneNumber.length < 10 || forgotPasswordMutation.isPending) && styles.disabledButton
+                (email.length < 5 || forgotPasswordMutation.isPending) && styles.disabledButton
               ]}
-              disabled={phoneNumber.length < 10 || forgotPasswordMutation.isPending}
+              disabled={email.length < 5 || forgotPasswordMutation.isPending}
               onPress={handleResetPassword}
               activeOpacity={0.8}
             >
@@ -252,9 +258,9 @@ export default function ResetPasswordScreen() {
 
         {step === 'verify' && (
           <View style={styles.content}>
-            <Text style={styles.title}>Check your phone</Text>
+            <Text style={styles.title}>Check your email</Text>
             <Text style={styles.subtitle}>
-              We sent a reset code to +91 ******{phoneNumber.slice(-4)} — enter the 6-digit code from the SMS
+              We sent a reset code to {email} — enter the 6-digit code from the email
             </Text>
 
             <View style={styles.otpContainer}>
@@ -314,7 +320,6 @@ export default function ResetPasswordScreen() {
             </TouchableOpacity>
           </View>
         )}
-
         {step === 'new-password' && (
           <View style={styles.content}>
             <Text style={styles.title}>Set a new password</Text>
