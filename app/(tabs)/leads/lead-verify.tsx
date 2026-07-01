@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useCities, useConvertLeadToCustomer, useLeadDetails, useVerifyLead } from '@/hooks/useLeads';
+import { useCities, useLeadDetails, useVerifyLead } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useRef, useState } from 'react';
@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -249,18 +250,27 @@ export default function LeadVerifyScreen() {
   const [currentlyPurchasingFrom, setCurrentlyPurchasingFrom] = useState('');
   const [verificationNotes, setVerificationNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  // Conversion state & hook
-  const convertLeadMutation = useConvertLeadToCustomer();
-  const [convertModalVisible, setConvertModalVisible] = useState(false);
-  const [openingBalance, setOpeningBalance] = useState('0.00');
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+
 
   // Pre-fill form when lead details load
   React.useEffect(() => {
     if (lead) {
-      if (lead.opening_balance !== undefined && lead.opening_balance !== null) {
-        setOpeningBalance(String(lead.opening_balance));
-      }
       if (lead.verification_details) {
         const details = lead.verification_details;
         if (details.number_of_properties !== undefined && details.number_of_properties !== null) {
@@ -347,40 +357,7 @@ export default function LeadVerifyScreen() {
     }
   };
 
-  const handleConvert = async () => {
-    try {
-      const balanceNum = parseFloat(openingBalance) || 0;
-      const payload = {
-        opening_balance: balanceNum,
-        number_of_properties: parseInt(numProperties, 10) || 0,
-        cities_of_operation: selectedCities.map((c) => c.label || c.name),
-        currently_purchasing_from: currentlyPurchasingFrom,
-        verification_notes: verificationNotes,
-      };
 
-      await convertLeadMutation.mutateAsync({
-        id: params.id,
-        data: payload,
-      });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Lead successfully converted to customer',
-      });
-
-      setConvertModalVisible(false);
-      navigation.goBack();
-    } catch (err: any) {
-      console.error('[LeadVerify] Convert error:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Failed to convert lead to customer';
-      Toast.show({
-        type: 'error',
-        text1: 'Conversion Failed',
-        text2: msg,
-      });
-    }
-  };
 
   const isFormValid = true; // button always active
   const isPending = isSubmitting || verifyLeadMutation.isPending;
@@ -403,7 +380,12 @@ export default function LeadVerifyScreen() {
         {lead?.is_verified && lead?.lead_type !== 'CUSTOMER' ? (
           <TouchableOpacity
             style={[styles.convertBtn, { backgroundColor: primaryColor }]}
-            onPress={() => setConvertModalVisible(true)}
+            onPress={() =>
+              navigation.navigate('convert-customer' as never, {
+                id: params.id,
+                leadName: lead?.name || leadName,
+              } as never)
+            }
             activeOpacity={0.8}
           >
             <Text style={styles.convertBtnText}>Convert to Customer</Text>
@@ -411,7 +393,7 @@ export default function LeadVerifyScreen() {
         ) : (
           <TouchableOpacity
             style={[styles.verifyBadge, { backgroundColor: primaryColor + '18', borderColor: primaryColor + '40' }]}
-            onPress={() => {}}
+            onPress={() => { }}
             disabled={true}
             activeOpacity={1}
           >
@@ -434,7 +416,7 @@ export default function LeadVerifyScreen() {
       ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 90, 110), paddingTop: 20 }}
+          contentContainerStyle={{ paddingBottom: keyboardVisible ? 240 : Math.max(insets.bottom + 30, 40), paddingTop: 20 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -504,102 +486,33 @@ export default function LeadVerifyScreen() {
               onChangeText={setVerificationNotes}
             />
           </View>
+
+          {/* ── Bottom Action Bar ── */}
+          <View style={styles.bottomBarInline}>
+            <TouchableOpacity
+              style={[
+                styles.submitBtn,
+                { backgroundColor: primaryColor },
+                (isPending || isLoadingDetails) && { opacity: 0.6 }
+              ]}
+              onPress={handleSubmit}
+              disabled={isPending || isLoadingDetails}
+              activeOpacity={0.85}
+            >
+              {isPending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="shield-checkmark" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.submitBtnText}>Submit Verification</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       )}
 
-      {/* ── Bottom Action Bar ── */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.cancelBtnText}>Cancel</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.submitBtn,
-            { backgroundColor: primaryColor },
-            (isPending || isLoadingDetails) && { opacity: 0.6 }
-          ]}
-          onPress={handleSubmit}
-          disabled={isPending || isLoadingDetails}
-          activeOpacity={0.85}
-        >
-          {isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark" size={16} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.submitBtnText}>Submit Verification</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Convert to Customer Modal */}
-      <Modal
-        visible={convertModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!convertLeadMutation.isPending) setConvertModalVisible(false);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Convert Lead to Customer</Text>
-            <Text style={styles.modalSubtitle}>
-              This will permanently convert this lead to a customer. Please enter the opening balance for this new customer.
-            </Text>
-
-            <View style={styles.modalFieldGroup}>
-              <View style={styles.modalFieldLabelRow}>
-                <Text style={styles.modalFieldLabel}>OPENING BALANCE (₹)</Text>
-                <Text style={{ color: COLORS.danger, fontWeight: '700' }}> *</Text>
-              </View>
-              <TextInput
-                style={styles.modalInput}
-                keyboardType="numeric"
-                value={openingBalance}
-                onChangeText={setOpeningBalance}
-                placeholder="0.00"
-                placeholderTextColor="#94A3B8"
-              />
-              <Text style={styles.modalInputSubtext}>
-                Enter the initial balance for this customer's ledger.
-              </Text>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setConvertModalVisible(false)}
-                disabled={convertLeadMutation.isPending}
-              >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalSubmitBtn,
-                  { backgroundColor: primaryColor },
-                  convertLeadMutation.isPending && { opacity: 0.6 }
-                ]}
-                onPress={handleConvert}
-                disabled={convertLeadMutation.isPending}
-              >
-                {convertLeadMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.modalSubmitBtnText}>Convert to Customer</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
     </KeyboardAvoidingView>
   );
@@ -857,6 +770,12 @@ const getStyles = (theme: any) =>
       borderTopColor: '#F1F5F9',
       gap: 10,
     },
+    bottomBarInline: {
+      flexDirection: 'row',
+      paddingTop: 12,
+      gap: 10,
+      marginTop: 20,
+    },
     cancelBtn: {
       flex: 1,
       height: 48,
@@ -873,7 +792,7 @@ const getStyles = (theme: any) =>
       color: '#64748B',
     },
     submitBtn: {
-      flex: 2,
+      flex: 1,
       height: 48,
       borderRadius: 10,
       flexDirection: 'row',

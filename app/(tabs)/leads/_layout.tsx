@@ -38,6 +38,10 @@ export default function LeadsLayout() {
       <Stack.Screen name="lead-visit-filter" options={{ title: 'Lead Visit Filter' }} />
       <Stack.Screen name="lead-order-filter" options={{ title: 'Lead Order Filter' }} />
       <Stack.Screen name="lead-quotation-filter" options={{ title: 'Lead Quotation Filter' }} />
+      <Stack.Screen name="lead-proforma" options={{ title: 'Lead Proformas' }} />
+      <Stack.Screen name="lead-proforma-details" options={{ title: 'Lead Proforma Details' }} />
+      <Stack.Screen name="lead-proforma-filter" options={{ title: 'Lead Proforma Filter' }} />
+      <Stack.Screen name="convert-customer" options={{ title: 'Convert to Customer' }} />
     </Stack>
   );
 }

@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: "@auth_token",
   USER_DATA: "@user_data",
   LANGUAGE: "@app_language",
+  USER_PASSWORD: "@user_password",
 };
 
 // Save auth token
@@ -78,12 +79,44 @@ export const removeUserData = async (): Promise<void> => {
   }
 };
 
+// Save user password
+export const saveUserPassword = async (password: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_PASSWORD, password);
+  } catch (error) {
+    console.error("Error saving user password:", error);
+    throw error;
+  }
+};
+
+// Get user password
+export const getUserPassword = async (): Promise<string | null> => {
+  try {
+    const password = await AsyncStorage.getItem(STORAGE_KEYS.USER_PASSWORD);
+    return password;
+  } catch (error) {
+    console.error("Error getting user password:", error);
+    return null;
+  }
+};
+
+// Remove user password
+export const removeUserPassword = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.USER_PASSWORD);
+  } catch (error) {
+    console.error("Error removing user password:", error);
+    throw error;
+  }
+};
+
 // Clear all auth data
 export const clearAuthData = async (): Promise<void> => {
   try {
     // 1. Clear physical AsyncStorage
     await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+    await AsyncStorage.removeItem(STORAGE_KEYS.USER_PASSWORD);
 
     // 2. Clear TanStack React Query client cache
     queryClient.clear();

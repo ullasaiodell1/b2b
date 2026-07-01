@@ -1,15 +1,11 @@
-import { serverDetails } from '@/config';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDealerDetails } from '@/hooks/useDealers';
 import { useLeadDetails } from '@/hooks/useLeads';
 import { useOrderDetails } from '@/hooks/useOrders';
-import { getAuthToken } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,6 +23,10 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { serverDetails } from '@/config';
+import { getAuthToken } from '@/utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +36,27 @@ const DOCUMENTS = [
   { label: 'E-WAY BILL', desc: 'Transport E-Waybill', icon: 'bus-outline' },
   { label: 'BILTY BILL', desc: 'Lorry Receipt / LR', icon: 'receipt-outline' },
 ];
+
+const getDocUrl = (label: string, order: any): string | null => {
+  if (!order) return null;
+  if (label === 'SHELL BILL' && order.sale_ref_id) {
+    return `${serverDetails.serverProxyURL}/transactions/${order.sale_ref_id}/tax-invoice`;
+  }
+  if (!order.meta || !order.meta.attachments) return null;
+  const attachments = order.meta.attachments;
+  switch (label) {
+    case 'SHELL BILL':
+      return attachments.shell_bill || attachments.invoice || order.invoice_url || null;
+    case 'E-INVOICE':
+      return attachments.einvoice || null;
+    case 'E-WAY BILL':
+      return attachments.eway_bill || null;
+    case 'BILTY BILL':
+      return attachments.bilty_lr || null;
+    default:
+      return null;
+  }
+};
 
 export interface OrderDetailsComponentProps {
   id: string;
@@ -99,8 +120,7 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
 
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [courierSlipDownloading, setCourierSlipDownloading] = useState(false);
-  const [courierSlipSuccess, setCourierSlipSuccess] = useState(false);
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
 
   const handleDownload = () => {
     console.log('[OrderDetailsComponent] Downloading order PDF for ID:', id);
@@ -112,57 +132,76 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
     }, 1200);
   };
 
-  const handleDownloadCourierSlip = async () => {
-    if (!id) return;
-    console.log('[OrderDetailsComponent] Downloading courier slip for order ID:', id);
-    setCourierSlipDownloading(true);
+  const handleDownloadDoc = async (label: string, url: string | null) => {
+    if (!url) {
+      Alert.alert('Unavailable', 'This document has not been uploaded yet.');
+      return;
+    }
+    
+    // Extract file name from URL or create a default one
+    let ext = url.split('.').pop()?.split('?')[0] || 'pdf';
+    if (ext.length > 4 || ext.includes('/')) {
+      ext = 'pdf';
+    }
+    const orderNo = order?.orderNo || (order?.order_number ? `OD-${order.order_number}` : '') || id.slice(0, 8);
+    const cleanLabel = label.replace(/\s+/g, '_').toLowerCase();
+    const filename = `${orderNo}_${cleanLabel}.${ext}`;
+
+    console.log(`[OrderDetailsComponent] Downloading document ${label} from URL: ${url}`);
+    setDownloadingDoc(label);
+
     try {
       const token = await getAuthToken();
-      const downloadUrl = `${serverDetails.serverProxyURL}/orders/${id}/courier-slip`;
-      console.log('[OrderDetailsComponent] Courier slip download URL:', downloadUrl);
+      const isApiUrl = url.includes('/api/');
 
       if (Platform.OS === 'web') {
-        const response = await fetch(downloadUrl, {
-          headers: { Authorization: token || '' },
-        });
-        if (!response.ok) throw new Error('Failed to download courier slip');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `courier-slip-${id.slice(0, 8).toUpperCase()}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        setCourierSlipSuccess(true);
+        if (isApiUrl) {
+          const response = await fetch(url, {
+            headers: token ? { Authorization: token } : {},
+          });
+          if (!response.ok) throw new Error(`Failed to download ${label} from server`);
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        } else {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
       } else {
-        const localUri = FileSystem.documentDirectory + `courier-slip-${id.slice(0, 8).toUpperCase()}.pdf`;
-        console.log('[OrderDetailsComponent] Downloading to local URI:', localUri);
+        const localUri = FileSystem.documentDirectory + filename;
+        const downloadOptions = isApiUrl && token ? { headers: { Authorization: token } } : undefined;
         const { uri } = await FileSystem.downloadAsync(
-          downloadUrl,
+          url,
           localUri,
-          { headers: { Authorization: token || '' } }
+          downloadOptions
         );
-        console.log('[OrderDetailsComponent] Download complete. URI:', uri);
+        console.log(`[OrderDetailsComponent] File downloaded to: ${uri}`);
+
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: 'Share Courier Slip',
-            UTI: 'com.adobe.pdf',
+            mimeType: ext === 'pdf' ? 'application/pdf' : `image/${ext}`,
+            dialogTitle: `Share ${label}`,
           });
-          setCourierSlipSuccess(true);
         } else {
-          Alert.alert('Downloaded', `Courier slip saved to:\n${uri}`);
+          Alert.alert('Downloaded', `${label} downloaded successfully to:\n${uri}`);
         }
       }
     } catch (err: any) {
-      console.error('[OrderDetailsComponent] CourierSlip Download Error:', err);
-      Alert.alert('Error', err?.message || 'Failed to download courier slip PDF.');
+      console.error('[Download Doc Error]:', err);
+      Alert.alert('Error', err?.message || `Failed to download ${label}.`);
     } finally {
-      setCourierSlipDownloading(false);
-      setTimeout(() => setCourierSlipSuccess(false), 3000);
+      setDownloadingDoc(null);
     }
   };
 
@@ -587,50 +626,123 @@ export const OrderDetailsComponent: React.FC<OrderDetailsComponentProps> = ({
           )}
         </View>
 
+        {/* ── COURIER SLIP DOWNLOAD CARD ──────────────────────────── */}
         <TouchableOpacity
-          style={[styles.downloadBox, { backgroundColor: theme.primaryDark }]}
-          activeOpacity={0.8}
-          onPress={handleDownloadCourierSlip}
-          disabled={courierSlipDownloading}
+          style={styles.courierSlipCard}
+          activeOpacity={0.85}
+          disabled={downloadingDoc === 'COURIER_SLIP'}
+          onPress={async () => {
+            setDownloadingDoc('COURIER_SLIP');
+            try {
+              const token = await getAuthToken();
+              const courierUrl = `${serverDetails.serverProxyURL}/orders/${order.id}/courier-slip`;
+              const orderNo = order.orderNo || (order.order_number ? `OD-${order.order_number}` : id.slice(0, 8));
+              const filename = `${orderNo}_courier_slip.pdf`;
+              console.log(`[CourierSlip] Downloading from: ${courierUrl}`);
+
+              if (Platform.OS === 'web') {
+                const response = await fetch(courierUrl, {
+                  headers: token ? { Authorization: token } : {},
+                });
+                if (!response.ok) throw new Error('Failed to download courier slip');
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+              } else {
+                const localUri = FileSystem.documentDirectory + filename;
+                const { uri } = await FileSystem.downloadAsync(
+                  courierUrl,
+                  localUri,
+                  token ? { headers: { Authorization: token } } : undefined
+                );
+                console.log(`[CourierSlip] Saved to: ${uri}`);
+                const isAvailable = await Sharing.isAvailableAsync();
+                if (isAvailable) {
+                  await Sharing.shareAsync(uri, {
+                    mimeType: 'application/pdf',
+                    dialogTitle: 'Share Courier Slip',
+                  });
+                } else {
+                  Alert.alert('Downloaded', `Courier Slip saved to:\n${uri}`);
+                }
+              }
+            } catch (err: any) {
+              console.error('[CourierSlip Error]:', err);
+              Alert.alert('Error', err?.message || 'Failed to download courier slip.');
+            } finally {
+              setDownloadingDoc(null);
+            }
+          }}
         >
-          <View>
-            <Text style={styles.downloadTitle}>Download Courier Slip</Text>
-            <Text style={styles.downloadSubtitle}>Export Shipping Label As PDF</Text>
+          <View style={styles.courierSlipLeft}>
+            <Ionicons name="print-outline" size={22} color="#FFFFFF" />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.courierSlipTitle}>Download Courier Slip</Text>
+              <Text style={styles.courierSlipDesc}>Export Shipping Label As PDF</Text>
+            </View>
           </View>
-          <View style={styles.downloadIconCircle}>
-            {courierSlipDownloading ? (
-              <ActivityIndicator size="small" color={theme.primaryColor} />
-            ) : (
-              <Ionicons
-                name={courierSlipSuccess ? 'checkmark' : 'receipt-outline'}
-                size={16}
-                color={theme.primaryColor}
-              />
-            )}
-          </View>
+          {downloadingDoc === 'COURIER_SLIP' ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <View style={styles.courierSlipIconBox}>
+              <Ionicons name="download-outline" size={18} color={theme.primaryColor} />
+            </View>
+          )}
         </TouchableOpacity>
 
-
         <View style={styles.docGrid}>
-          {DOCUMENTS.map((doc, index) => (
-            <View key={index} style={styles.docCard}>
-              <View style={styles.docHeader}>
-                <Ionicons name={doc.icon as any} size={22} color={theme.primaryColor} />
-                <View style={styles.docTitles}>
-                  <Text style={styles.docLabelText}>{doc.label}</Text>
-                  <Text style={styles.docDescText}>{doc.desc}</Text>
+          {DOCUMENTS.map((doc, index) => {
+            const url = getDocUrl(doc.label, order);
+            const isAvailable = !!url;
+            const isDownloading = downloadingDoc === doc.label;
+
+            return (
+              <View key={index} style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <Ionicons name={doc.icon as any} size={22} color={theme.primaryColor} />
+                  <View style={styles.docTitles}>
+                    <Text style={styles.docLabelText}>{doc.label}</Text>
+                    <Text style={styles.docDescText}>{doc.desc}</Text>
+                  </View>
                 </View>
+                <TouchableOpacity
+                  style={[
+                    styles.docBtn,
+                    !isAvailable && styles.docBtnDisabled
+                  ]}
+                  activeOpacity={0.8}
+                  disabled={!isAvailable || isDownloading}
+                  onPress={() => handleDownloadDoc(doc.label, url)}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color={theme.primaryColor} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={isAvailable ? "download-outline" : "close-circle-outline"}
+                        size={13}
+                        color={isAvailable ? theme.primaryColor : COLORS.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.docBtnText,
+                          !isAvailable && styles.docBtnTextDisabled
+                        ]}
+                      >
+                        {isAvailable ? "Download" : "Unavailable"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.docBtn}
-                activeOpacity={0.8}
-                onPress={handleDownload}
-              >
-                <Ionicons name="download-outline" size={13} color={theme.primaryColor} />
-                <Text style={styles.docBtnText}>Download</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -819,29 +931,37 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
   },
-  downloadBox: {
-    backgroundColor: theme.primaryColor,
-    borderRadius: 10,
-    height: 50,
+
+  courierSlipCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    backgroundColor: theme.primaryColor,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 2,
   },
-  downloadTitle: {
-    fontSize: 13,
-    fontWeight: '800',
+  courierSlipLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  courierSlipTitle: {
+    fontSize: 14,
+    fontWeight: '900',
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
-  downloadSubtitle: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
-    marginTop: 1,
+  courierSlipDesc: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginTop: 2,
   },
-  downloadIconCircle: {
-    width: 32,
-    height: 32,
+  courierSlipIconBox: {
+    width: 34,
+    height: 34,
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
@@ -891,10 +1011,17 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 4,
     backgroundColor: '#FFFFFF',
   },
+  docBtnDisabled: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
   docBtnText: {
     fontSize: 9.5,
     fontWeight: '800',
     color: theme.primaryColor,
+  },
+  docBtnTextDisabled: {
+    color: COLORS.textMuted,
   },
   statusBadge: {
     paddingHorizontal: 8,

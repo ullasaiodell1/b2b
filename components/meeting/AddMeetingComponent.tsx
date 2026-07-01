@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
+import { useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,7 +28,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
 
 const STATUS_OPTIONS = ['SCHEDULED', 'CANCELLED', 'RESCHEDULED'] as const;
 type MeetingStatus = typeof STATUS_OPTIONS[number];
@@ -169,9 +169,9 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
       });
 
       try {
-        await scheduleMeetingNotification(purpose || 'Meeting', combined);
+        await scheduleMeetingNotification(purpose || 'follow up', combined);
       } catch (notiErr) {
-        console.warn('Failed to schedule meeting notification:', notiErr);
+        console.warn('Failed to schedule follow up notification:', notiErr);
       }
 
       if (onSuccess) {
@@ -180,8 +180,8 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
         navigation.goBack();
       }
     } catch (err: any) {
-      console.error('[AddMeetingComponent] save error:', err);
-      Alert.alert('Error', err?.message || 'Failed to save meeting. Please try again.');
+      console.error('[Add follow up Component] save error:', err);
+      Alert.alert('Error', err?.message || 'Failed to save follow up. Please try again.');
     }
   };
 
@@ -222,7 +222,7 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>
               <Text style={{ color: primaryColor }}>ADD </Text>
-              <Text style={{ color: COLORS.textDark }}>MEETING</Text>
+              <Text style={{ color: COLORS.textDark }}>FOLLOW UP</Text>
             </Text>
             <Text style={styles.headerSubtitle}>Fill in the Details Below</Text>
           </View>
@@ -370,7 +370,7 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
           />
         )}
 
-        {/* ── SAVE MEETING BUTTON ───────────────────────── */}
+        {/* ── SAVE follow up BUTTON ───────────────────────── */}
         <View style={styles.nonStickySaveContainer}>
           <TouchableOpacity
             onPress={handleSave}
@@ -381,7 +381,7 @@ export const AddMeetingComponent: React.FC<AddMeetingComponentProps> = ({
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveBtnText}>SAVE MEETING</Text>
+              <Text style={styles.saveBtnText}>SAVE FOLLOW-UP</Text>
             )}
           </TouchableOpacity>
         </View>

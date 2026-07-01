@@ -381,7 +381,8 @@ export default function LeadAttachmentsScreen() {
       {/* UPLOAD MODAL */}
       <Modal
         visible={uploadModalVisible}
-        transparent={false}
+        transparent={true}
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setUploadModalVisible(false)}
       >

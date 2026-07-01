@@ -1,19 +1,21 @@
+import { MeetingCard } from '@/components/meeting/MeetingCard';
+import { TaskCard } from '@/components/task/TaskCard';
+import { ProformaCard } from '@/components/order&quotations/ProformaCard';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useProformas } from '@/hooks/useProforma';
 import { useLeadActivity } from '@/hooks/useActivity';
 import { useLeadAttachments } from '@/hooks/useAttachments';
 import { useCalls } from '@/hooks/useCalls';
 import { useLeadContacts } from '@/hooks/useContacts';
 import { useLeadInterestedProducts } from '@/hooks/useInterestedProducts';
-import { useVisits } from '@/hooks/useVisits';
 import { useMeetings } from '@/hooks/useMeetings';
-import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { useReminders } from '@/hooks/useReminders';
-import { MeetingCard } from '@/components/meeting/MeetingCard';
-import { TaskCard } from '@/components/task/TaskCard';
+import { useTasks, useUpdateTask } from '@/hooks/useTasks';
+import { useVisits } from '@/hooks/useVisits';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -130,6 +132,12 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
   const { data: dbCallsRaw } = useCalls();
   const { data: dbActivity = [] } = useLeadActivity(leadId);
   const updateTaskMutation = useUpdateTask();
+  const proformasQuery = useProformas({ lead_id: leadId });
+
+  const dbProformas = useMemo(() => {
+    const raw = proformasQuery.data || [];
+    return raw.filter((p: any) => String(p.lead_id) === String(leadId));
+  }, [proformasQuery.data, leadId]);
 
   const dbVisits = useMemo(() => {
     const raw = visitsQuery.data as any;
@@ -172,8 +180,8 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
   }, [dbCallsRaw, leadId]);
 
   // Accordion expansion states
-  const [leadInfoExpanded, setLeadInfoExpanded] = useState(true);
-  const [addressExpanded, setAddressExpanded] = useState(true);
+  const [leadInfoExpanded, setLeadInfoExpanded] = useState(false);
+  const [addressExpanded, setAddressExpanded] = useState(false);
   const [interestedProductsExpanded, setInterestedProductsExpanded] = useState(false);
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
   const [contactsExpanded, setContactsExpanded] = useState(false);
@@ -183,6 +191,7 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
   const [callExpanded, setCallExpanded] = useState(false);
   const [reminderExpanded, setReminderExpanded] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
+  const [proformaExpanded, setProformaExpanded] = useState(false);
 
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const isNavigatingRef = useRef(false);
@@ -214,7 +223,7 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
     }
   };
 
-  const handleViewList = (type: 'Call' | 'Meeting' | 'Task' | 'Visit') => {
+  const handleViewList = (type: 'Call' | 'Meeting' | 'Task' | 'Visit' | 'Proforma') => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
     if (type === 'Call') {
@@ -234,6 +243,7 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
         Meeting: 'lead-meeting',
         Task: 'lead-task',
         Visit: 'lead-visit',
+        Proforma: 'lead-proforma',
       };
       navigation.navigate(localScreenMap[type] as never, {
         leadId,
@@ -802,7 +812,7 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
         >
           <View style={styles.accordionTitleLeft}>
             <View style={styles.indicatorBar} />
-            <Text style={styles.accordionTitleText}>MEETING</Text>
+            <Text style={styles.accordionTitleText}>FOLLOW UP</Text>
             <View style={styles.badgeCountChip}>
               <Text style={styles.badgeCountText}>{dbMeetings.length}</Text>
             </View>
@@ -841,7 +851,7 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
         {meetingExpanded && (
           <View style={styles.accordionContent}>
             {dbMeetings.length === 0 ? (
-              <Text style={styles.noDataText}>No meetings found.</Text>
+              <Text style={styles.noDataText}>No FOLLOW UP found.</Text>
             ) : (
               dbMeetings.map((meeting: any, index: number) => (
                 <MeetingCard
@@ -1032,6 +1042,67 @@ export default function OverviewTab({ leadId, dbLead, rawLead }: OverviewTabProp
                   </View>
                 );
               })
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Accordion 9.5: PROFORMA */}
+      <View style={styles.accordionCard}>
+        <TouchableOpacity
+          style={styles.accordionHeader}
+          onPress={() => setProformaExpanded(!proformaExpanded)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.accordionTitleLeft}>
+            <View style={styles.indicatorBar} />
+            <Text style={styles.accordionTitleText}>PROFORMA</Text>
+            <View style={styles.badgeCountChip}>
+              <Text style={styles.badgeCountText}>{dbProformas.length}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.addBtnCircle}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleViewList('Proforma');
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="list" size={12} color={theme.primaryColor} />
+            </TouchableOpacity>
+            <View style={styles.chevronBg}>
+              <Ionicons
+                name={proformaExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color={COLORS.textDark}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {proformaExpanded && (
+          <View style={[styles.accordionContent, { gap: 8, paddingVertical: 8 }]}>
+            {dbProformas.length === 0 ? (
+              <Text style={styles.noDataText}>No proformas found.</Text>
+            ) : (
+              dbProformas.map((item: any, index: number) => (
+                <ProformaCard
+                  key={item.id || index}
+                  proforma={item}
+                  isCompact={true}
+                  onPress={() => {
+                    if (isNavigatingRef.current) return;
+                    isNavigatingRef.current = true;
+                    navigation.navigate('lead-proforma-details' as never, {
+                      id: item.id,
+                      leadId,
+                    } as never);
+                    setTimeout(() => { isNavigatingRef.current = false; }, 1000);
+                  }}
+                />
+              ))
             )}
           </View>
         )}

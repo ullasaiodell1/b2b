@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -124,9 +125,12 @@ export default function EditProfileScreen() {
   };
 
   const launchCamera = () => {
-    navigation.navigate('CameraCapture', {
-      sourceScreen: 'edit-profile',
-      target: 'profile',
+    router.push({
+      pathname: '/camera-capture',
+      params: {
+        sourceScreen: 'edit-profile',
+        target: 'profile',
+      },
     });
   };
 

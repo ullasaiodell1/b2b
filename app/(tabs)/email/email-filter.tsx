@@ -196,13 +196,13 @@ export default function EmailFilterScreen() {
       </View>
 
       {/* COMPANY SELECTION MODAL */}
-      <Modal transparent animationType="slide" visible={companyModalVisible}>
+      <Modal transparent animationType="slide" visible={companyModalVisible} statusBarTranslucent={true}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setCompanyModalVisible(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Company</Text>
               <TouchableOpacity onPress={() => setCompanyModalVisible(false)}>

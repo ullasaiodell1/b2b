@@ -373,7 +373,7 @@ export default function CalendarScreen() {
 
       {/* Speed Dial Menu */}
       {isSpeedDialOpen && (
-        <View style={[styles.speedDialContainer, { bottom: Math.max(insets.bottom + 160, 170) }]} pointerEvents="box-none">
+        <View style={[styles.speedDialContainer, { bottom: Math.max(insets.bottom + 190, 200) }]} pointerEvents="box-none">
           <Animated.View style={[styles.speedDialItemWrapper, { opacity: speedDialOpacity, transform: [{ translateY: speedDialTranslation }, { scale: speedDialScale }] }]}>
             <View style={styles.speedDialLabel}><Text style={styles.speedDialLabelText}>Add Task</Text></View>
             <TouchableOpacity style={styles.speedDialBtn} activeOpacity={0.8} onPress={handleOpenAddTask}>
@@ -391,7 +391,7 @@ export default function CalendarScreen() {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.mainFab, { bottom: Math.max(insets.bottom + 90, 100) }]}
+        style={[styles.mainFab, { bottom: Math.max(insets.bottom + 120, 130) }]}
         activeOpacity={0.85}
         onPress={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
       >

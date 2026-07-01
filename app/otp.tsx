@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 
 import { useLocalSearchParams } from 'expo-router';
 import { useOTPVerification, useResendOTP } from '@/hooks/useAuth';
-import { saveAuthToken, saveUserData } from '@/utils/storage';
+import { saveAuthToken, saveUserData, saveUserPassword } from '@/utils/storage';
 import { useTheme } from '@/hooks/use-theme';
 
 const { width, height } = Dimensions.get('window');
@@ -108,6 +108,9 @@ export default function OtpScreen() {
           // Save user data and token
           await saveAuthToken(data.token);
           await saveUserData(data.user);
+          if (password) {
+            await saveUserPassword(password);
+          }
 
           // Success animation
           setVerified(true);

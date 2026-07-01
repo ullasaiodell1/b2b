@@ -1,11 +1,10 @@
 import CustomHeader from '@/components/custom/CustomHeader';
-import { QuotationCard } from '@/components/order&quotations/QuotationCard';
+import { ProformaCard } from '@/components/order&quotations/ProformaCard';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useQuotations } from '@/hooks/useQuotations';
-import { QuotationFilterState } from '@/types/quotation';
+import { useProformas } from '@/hooks/useProforma';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -23,26 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: '#6B7280',
-  SENT: '#F59E0B',
-  VIEWED: '#3B82F6',
-  ACCEPTED: '#10B981',
-  REJECTED: '#EF4444',
-  EXPIRED: '#9CA3AF',
-  REVISED: '#8B5CF6',
-  CANCELLED: '#EF4444',
-  APPROVED: '#10B981',
-  ORDER_CREATED: '#0EA5E9',
-  PROFORMA_CREATED: '#6366F1',
-};
-
-function formatAmount(amount?: number) {
-  if (!amount && amount !== 0) return '—';
-  return '₹ ' + Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-}
-
-function formatDate(dateStr?: string) {
+function formatDate(dateStr?: string | null) {
   if (!dateStr) return '—';
   try {
     return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -53,58 +33,18 @@ function formatDate(dateStr?: string) {
   }
 }
 
-function cleanQuotationParams(params?: Partial<QuotationFilterState>) {
-  const cleanedParams: any = {};
-  if (params) {
-    const allowedParams = [
-      'company_id',
-      'lead_id',
-      'dealer_id',
-      'user_id',
-      'status',
-      'search',
-      'offset',
-      'limit',
-      'startDate',
-      'endDate',
-      'exclude_dealer',
-      'dealer_only',
-      'sort_by',
-      'sort_direction'
-    ];
-
-    allowedParams.forEach((key) => {
-      const value = params[key as keyof QuotationFilterState];
-      if (value !== undefined && value !== null && String(value).trim() !== '') {
-        cleanedParams[key] = value;
-      }
-    });
-  }
-  return cleanedParams;
-}
-
-export interface QuotationsComponentProps {
+export interface ProformasComponentProps {
   leadId?: string;
-  leadName?: string;
-  company?: string;
-  phone?: string;
-  email?: string;
   isEmbedded?: boolean;
-  onAddQuotation?: () => void;
   onFilterPress?: () => void;
-  onQuotationDetails?: (id: string) => void;
+  onProformaDetails?: (id: string) => void;
 }
 
-export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
+export const ProformasComponent: React.FC<ProformasComponentProps> = ({
   leadId,
-  leadName,
-  company,
-  phone,
-  email,
   isEmbedded = false,
-  onAddQuotation,
   onFilterPress,
-  onQuotationDetails,
+  onProformaDetails,
 }) => {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -112,109 +52,106 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{
-    qStartDate?: string;
-    qEndDate?: string;
-    qFilterApplied?: string;
+    pStartDate?: string;
+    pEndDate?: string;
+    pFilterApplied?: string;
   }>();
-  const qFilterActive = !!(params.qStartDate || params.qEndDate);
+  const pFilterActive = !!(params.pStartDate || params.pEndDate);
 
   const [searchQuery, setSearchQuery] = useState('');
 
   const filterParams = React.useMemo(() => {
-    return cleanQuotationParams({
-      startDate: params.qStartDate || undefined,
-      endDate: params.qEndDate || undefined,
-      search: searchQuery || undefined,
-      lead_id: leadId || undefined,
-    });
-  }, [params.qStartDate, params.qEndDate, searchQuery, leadId]);
+    const cleanedParams: any = {};
+    if (params.pStartDate) cleanedParams.startDate = params.pStartDate;
+    if (params.pEndDate) cleanedParams.endDate = params.pEndDate;
+    if (searchQuery) cleanedParams.search = searchQuery;
+    if (leadId) cleanedParams.lead_id = leadId;
+    return cleanedParams;
+  }, [params.pStartDate, params.pEndDate, searchQuery, leadId]);
 
-  const { data: quotations = [], isLoading, isFetching, refetch } = useQuotations(filterParams);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      refetch();
-    }, [refetch])
-  );
+  const { data: proformas = [], isLoading, isFetching, refetch } = useProformas(filterParams);
 
   const handleClearFilters = () => {
     (navigation as any).setParams({
-      qStartDate: '',
-      qEndDate: '',
-      qFilterApplied: ''
+      pStartDate: '',
+      pEndDate: '',
+      pFilterApplied: ''
     });
-  };
-
-  const handleAddPress = () => {
-    if (onAddQuotation) {
-      onAddQuotation();
-    } else {
-      const targetScreen = leadId ? 'lead-add-quotation' : 'add-quotation';
-      (navigation as any).navigate(targetScreen, { leadId });
-    }
   };
 
   const handleFilterPress = () => {
     if (onFilterPress) {
       onFilterPress();
     } else {
-      const targetScreen = leadId ? 'lead-quotation-filter' : 'quotation-filter';
+      const targetScreen = leadId ? 'lead-proforma-filter' : 'proforma-filter';
       (navigation as any).navigate(targetScreen, {
-        referrer: leadId ? 'lead-quotation' : 'quotations-index',
-        qStartDate: params.qStartDate || '',
-        qEndDate: params.qEndDate || '',
+        referrer: leadId ? 'lead-proforma' : 'proformas-index',
+        pStartDate: params.pStartDate || '',
+        pEndDate: params.pEndDate || '',
         leadId,
       });
     }
   };
 
   const handleDetailsPress = (id: string) => {
-    if (onQuotationDetails) {
-      onQuotationDetails(id);
+    if (onProformaDetails) {
+      onProformaDetails(id);
     } else {
-      const targetScreen = leadId ? 'lead-quotation-details' : 'quotation-details';
+      const targetScreen = leadId ? 'lead-proforma-details' : 'proforma-details';
       (navigation as any).navigate(targetScreen, { id, leadId });
     }
   };
 
-  const leadQuotations = leadId
-    ? quotations.filter((q) => String(q.lead_id || q.dealer_id || '') === String(leadId))
-    : quotations;
+  // Filter by search, leadId, and date range locally just in case
+  const filtered = proformas.filter((p) => {
+    // Lead ID filter
+    const matchesLead = !leadId || String(p.lead_id || '') === String(leadId);
 
-  // Filter by tab + search
-  const filtered = leadQuotations.filter((q) => {
+    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
-      String(q.quotation_number || '').toLowerCase().includes(searchLower) ||
-      (q.lead_name || '').toLowerCase().includes(searchLower) ||
-      (q.lead_company_name || '').toLowerCase().includes(searchLower) ||
-      (q.company_name || '').toLowerCase().includes(searchLower) ||
-      (q.dealer_company_name || '').toLowerCase().includes(searchLower);
+      String(p.formatted_proforma_number || '').toLowerCase().includes(searchLower) ||
+      String(p.proforma_number || '').includes(searchLower) ||
+      (p.lead_name || '').toLowerCase().includes(searchLower) ||
+      (p.lead_company_name || '').toLowerCase().includes(searchLower) ||
+      (p.company_name || '').toLowerCase().includes(searchLower) ||
+      (p.dealer_company_name || '').toLowerCase().includes(searchLower) ||
+      (p.customer_name || '').toLowerCase().includes(searchLower);
 
+    // Date filter
     let matchesDate = true;
-    if (params.qStartDate && params.qEndDate) {
-      const start = new Date(params.qStartDate);
-      const end = new Date(params.qEndDate);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-
-      const qDateStr = q.quotation_date || q.date;
-      if (qDateStr) {
-        const qDate = new Date(qDateStr);
-        matchesDate = qDate >= start && qDate <= end;
-      } else {
-        matchesDate = false;
+    if (params.pStartDate) {
+      const pDate = p.created_at || p.quotation_date;
+      if (pDate) {
+        const time = new Date(pDate).getTime();
+        const start = new Date(params.pStartDate).getTime();
+        if (time < start) matchesDate = false;
+      }
+    }
+    if (params.pEndDate) {
+      const pDate = p.created_at || p.quotation_date;
+      if (pDate) {
+        const time = new Date(pDate).getTime();
+        const end = new Date(params.pEndDate).getTime();
+        if (time > end) matchesDate = false;
       }
     }
 
-    return matchesSearch && matchesDate;
+    return matchesLead && matchesSearch && matchesDate;
   });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgWhite} />
-      <CustomHeader title="Quotation" showSearch={false} />
+      {!isEmbedded && (
+        <CustomHeader
+          title="Proforma Invoices"
+          showSearch={false}
+          showBack={!!leadId}
+          onBackPress={() => navigation.goBack()}
+        />
+      )}
 
       {/* SEARCH & FILTER */}
       <View style={styles.searchSection}>
@@ -222,7 +159,7 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
           <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={{ marginRight: 6 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search quotation..."
+            placeholder="Search proforma..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -238,14 +175,14 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
           onPress={handleFilterPress}
           activeOpacity={0.8}
         >
-          <Ionicons name="funnel-outline" size={16} color={qFilterActive ? theme.primaryColor : COLORS.textDark} style={{ marginRight: 4 }} />
-          <Text style={[styles.filterBtnText, qFilterActive && { color: theme.primaryColor }]}>
-            {qFilterActive ? 'Filters (Active)' : 'Filters'}
+          <Ionicons name="funnel-outline" size={16} color={pFilterActive ? theme.primaryColor : COLORS.textDark} style={{ marginRight: 4 }} />
+          <Text style={[styles.filterBtnText, pFilterActive && { color: theme.primaryColor }]}>
+            {pFilterActive ? 'Filters (Active)' : 'Filters'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {qFilterActive && (
+      {pFilterActive && (
         <View style={styles.activeFiltersRow}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6 }}>
             <TouchableOpacity
@@ -254,7 +191,7 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
               activeOpacity={0.8}
             >
               <Ionicons name="calendar" size={12} color="#0369A1" style={{ marginRight: 6 }} />
-              <Text style={styles.filterChipText}>Date: {formatDate(params.qStartDate)} - {formatDate(params.qEndDate)}</Text>
+              <Text style={styles.filterChipText}>Date: {formatDate(params.pStartDate)} - {formatDate(params.pEndDate)}</Text>
               <Ionicons name="close" size={12} color="#0369A1" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </ScrollView>
@@ -273,7 +210,7 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
       {isLoading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primaryColor} />
-          <Text style={styles.loaderText}>Loading quotations...</Text>
+          <Text style={styles.loaderText}>Loading proformas...</Text>
         </View>
       ) : (
         <ScrollView
@@ -284,9 +221,9 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
           }
         >
           {filtered.map((item, index) => (
-            <QuotationCard
+            <ProformaCard
               key={item.id + '_' + index}
-              quotation={item}
+              proforma={item}
               onPress={() => handleDetailsPress(item.id)}
             />
           ))}
@@ -294,21 +231,12 @@ export const QuotationsComponent: React.FC<QuotationsComponentProps> = ({
           {filtered.length === 0 && !isLoading && (
             <View style={styles.emptyArea}>
               <Ionicons name="document-text-outline" size={48} color="#C2D3CC" />
-              <Text style={styles.emptyTitle}>No quotations found</Text>
-              <Text style={styles.emptySub}>Try searching another keyword or change the status tab</Text>
+              <Text style={styles.emptyTitle}>No proformas found</Text>
+              <Text style={styles.emptySub}>Try searching another keyword or change parameters</Text>
             </View>
           )}
         </ScrollView>
       )}
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 120, 130) }]}
-        onPress={handleAddPress}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 };
@@ -371,22 +299,6 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   emptySub: {
     fontSize: 12.5, color: COLORS.textMuted, fontWeight: '600', textAlign: 'center'
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: theme.primaryColor,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 100,
   },
   activeFiltersRow: {
     flexDirection: 'row',

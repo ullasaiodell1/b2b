@@ -2,7 +2,7 @@ import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDeleteLead, useLeadDetails } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -46,6 +46,12 @@ export default function LeadDetailsScreen() {
 
   const { data: rawLead, isLoading, refetch } = useLeadDetails(params.id || '');
   const { mutateAsync: deleteLead } = useDeleteLead();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const dbLead = React.useMemo(() => {
     if (!rawLead) return null;
@@ -269,7 +275,7 @@ export default function LeadDetailsScreen() {
       {/* TAB FLOATING ACTION BUTTON */}
       {(activeTab === 'Quotation' || activeTab === 'Order') && (
         <TouchableOpacity
-          style={styles.fabBtn}
+          style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 120, 130) }]}
           onPress={() => {
             if (isNavigatingRef.current) return;
             isNavigatingRef.current = true;

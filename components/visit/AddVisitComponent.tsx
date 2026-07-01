@@ -187,9 +187,12 @@ export function AddVisitComponent({
 
   const handleImagePick = async (useCamera: boolean) => {
     if (useCamera) {
-      navigation.navigate('CameraCapture', {
-        sourceScreen: 'add-visit',
-        target: 'visit',
+      router.push({
+        pathname: '/camera-capture',
+        params: {
+          sourceScreen: 'add-visit',
+          target: 'visit',
+        },
       });
       return;
     }

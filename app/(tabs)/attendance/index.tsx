@@ -19,7 +19,7 @@ import {
   AttendanceStatusResponse,
 } from '@/types/attendance';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,6 +27,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -299,11 +300,18 @@ export default function AttendanceScreen() {
   }, []);
 
   // Status query syncs local AttendanceState automatically via the hook's onSuccess
-  useAttendanceStatus();
+  const statusQuery = useAttendanceStatus();
   const historyQuery = useAttendanceHistory(
     selectedMonth.getMonth() + 1,
     selectedMonth.getFullYear(),
     statusFilter === 'All' ? undefined : statusFilter,
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      statusQuery.refetch();
+      historyQuery.refetch();
+    }, [statusQuery, historyQuery])
   );
 
   useEffect(() => {
@@ -408,6 +416,17 @@ export default function AttendanceScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={statusQuery.isFetching || historyQuery.isFetching}
+            onRefresh={() => {
+              statusQuery.refetch();
+              historyQuery.refetch();
+            }}
+            colors={[theme.primaryColor]}
+            tintColor={theme.primaryColor}
+          />
+        }
       >
         {/* ── TODAY'S ATTENDANCE CARD ────────────────── */}
         <View style={styles.card}>

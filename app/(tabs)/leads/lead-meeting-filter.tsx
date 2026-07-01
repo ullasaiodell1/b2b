@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
+import React from 'react';
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LeadMeetingFilterScreen() {
   const theme = useTheme();
@@ -18,11 +18,11 @@ export default function LeadMeetingFilterScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>MEETING FILTER</Text>
+        <Text style={styles.headerTitle}>FOLLOW UP FILTER</Text>
         <View style={{ width: 36 }} />
       </View>
       <View style={styles.content}>
-        <Text style={styles.placeholderText}>Meeting filters are managed directly on the meetings calendar screen.</Text>
+        <Text style={styles.placeholderText}>Follow up filters are managed directly on the follow up calendar screen.</Text>
       </View>
       <View style={styles.footer}>
         <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>

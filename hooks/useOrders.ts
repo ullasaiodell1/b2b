@@ -1,6 +1,6 @@
 import { getOrderField } from '@/utils/orderHelper';
 import { OrderFilterState } from '@/components/order&quotations/OrderState';
-import { createOrder, deleteOrder, getInventoryReservations, getOrderBarcodes, getOrderDetails, getOrders, updateOrder } from '@/services/api/order';
+import { createOrder, deleteOrder, getInventoryReservations, getOrderBarcodes, getOrderDetails, getOrders, updateOrder, releaseInventoryReservations } from '@/services/api/order';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const orderKeys = {
@@ -121,6 +121,20 @@ export function useDeleteOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
+    },
+  });
+}
+
+// ── RELEASE INVENTORY RESERVATIONS ────────────────────────────────
+export function useReleaseInventoryReservations() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ refId, refType = 'QUOTATION' }: { refId: string; refType?: string }) => {
+      const response = await releaseInventoryReservations(refId, refType);
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'reservations', variables.refId] });
     },
   });
 }

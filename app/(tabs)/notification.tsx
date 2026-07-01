@@ -3,11 +3,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Ionicons } from '@expo/vector-icons';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -26,6 +28,7 @@ interface NotificationItemProps {
   type: 'download-bill' | 'payment-badge' | 'track' | 'confirm-order' | 'app-update';
   buttonLabel?: string;
   onPressButton?: () => void;
+  isLocal?: boolean;
 }
 
 function NotificationItem({
@@ -35,64 +38,81 @@ function NotificationItem({
   type,
   buttonLabel,
   onPressButton,
+  isLocal,
 }: NotificationItemProps) {
   const theme = useTheme();
   const styles = getStyles(theme);
 
   return (
     <View style={styles.card}>
-      {/* Header */}
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.timeText}>• {time}</Text>
-      </View>
+      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+        <Image
+          source={require('@/assets/images/icon.png')}
+          style={{ width: 32, height: 32, borderRadius: 6, marginTop: 2 }}
+          resizeMode="contain"
+        />
+        <View style={{ flex: 1 }}>
+          {/* Header */}
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+              <Text style={styles.cardTitle}>{title}</Text>
+              {isLocal && (
+                <View style={{ backgroundColor: theme.primaryLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 8, fontWeight: '800', color: theme.primaryColor }}>REMINDER</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.timeText}>• {time}</Text>
+          </View>
 
-      {/* Body */}
-      <Text style={styles.cardBody}>{body}</Text>
+          {/* Body */}
+          <Text style={styles.cardBody}>{body}</Text>
 
-      {/* Action Element based on Type */}
-      {type === 'download-bill' && (
-        <TouchableOpacity
-          style={styles.outlineBtn}
-          activeOpacity={0.8}
-          onPress={onPressButton}
-        >
-          <Text style={styles.outlineBtnText}>{buttonLabel || 'Download E-Way Bill'}</Text>
-        </TouchableOpacity>
-      )}
+          {/* Action Element based on Type */}
+          {type === 'download-bill' && (
+            <TouchableOpacity
+              style={styles.outlineBtn}
+              activeOpacity={0.8}
+              onPress={onPressButton}
+            >
+              <Text style={styles.outlineBtnText}>{buttonLabel || 'Download E-Way Bill'}</Text>
+            </TouchableOpacity>
+          )}
 
-      {type === 'payment-badge' && (
-        <View style={styles.paymentBadge}>
-          <Text style={styles.paymentBadgeText}>{buttonLabel || 'Paid - HDFC-4521'}</Text>
+          {type === 'payment-badge' && (
+            <View style={styles.paymentBadge}>
+              <Text style={styles.paymentBadgeText}>{buttonLabel || 'Paid - HDFC-4521'}</Text>
+            </View>
+          )}
+
+          {type === 'track' && (
+            <TouchableOpacity
+              style={styles.blackBtn}
+              activeOpacity={0.8}
+              onPress={onPressButton}
+            >
+              <Text style={styles.blackBtnText}>{buttonLabel || 'Track'}</Text>
+            </TouchableOpacity>
+          )}
+
+          {type === 'confirm-order' && (
+            <TouchableOpacity
+              style={styles.confirmBtn}
+              activeOpacity={0.8}
+              onPress={onPressButton}
+            >
+              <Text style={styles.confirmBtnText}>{buttonLabel || 'Confirm Order'}</Text>
+              <Ionicons name="arrow-forward" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          )}
+
+          {type === 'app-update' && (
+            <TouchableOpacity activeOpacity={0.7} onPress={onPressButton}>
+              <Text style={styles.updateLinkText}>{buttonLabel || "Tap To See What's New ?"}</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      )}
-
-      {type === 'track' && (
-        <TouchableOpacity
-          style={styles.blackBtn}
-          activeOpacity={0.8}
-          onPress={onPressButton}
-        >
-          <Text style={styles.blackBtnText}>{buttonLabel || 'Track'}</Text>
-        </TouchableOpacity>
-      )}
-
-      {type === 'confirm-order' && (
-        <TouchableOpacity
-          style={styles.confirmBtn}
-          activeOpacity={0.8}
-          onPress={onPressButton}
-        >
-          <Text style={styles.confirmBtnText}>{buttonLabel || 'Confirm Order'}</Text>
-          <Ionicons name="arrow-forward" size={14} color={theme.primaryColor} style={{ marginLeft: 4 }} />
-        </TouchableOpacity>
-      )}
-
-      {type === 'app-update' && (
-        <TouchableOpacity activeOpacity={0.7} onPress={onPressButton}>
-          <Text style={styles.updateLinkText}>{buttonLabel || "Tap To See What's New ?"}</Text>
-        </TouchableOpacity>
-      )}
+      </View>
     </View>
   );
 }
@@ -132,19 +152,70 @@ export default function NotificationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data, isLoading, isFetching, refetch } = useNotifications();
+  const { data, isLoading: apiLoading, isFetching: apiFetching, refetch } = useNotifications();
+
+  const [localNotifications, setLocalNotifications] = React.useState<any[]>([]);
+  const [localLoading, setLocalLoading] = React.useState(false);
+
+  const fetchLocalNotifications = async () => {
+    try {
+      if (Platform.OS === 'web') return;
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const formatted = scheduled.map((notif) => {
+        let triggerDateStr = new Date().toISOString();
+        if (notif.trigger && typeof notif.trigger === 'object') {
+          const triggerObj = notif.trigger as any;
+          if (triggerObj.value) {
+            triggerDateStr = new Date(triggerObj.value).toISOString();
+          } else if (triggerObj.date) {
+            triggerDateStr = new Date(triggerObj.date).toISOString();
+          }
+        }
+        return {
+          id: notif.identifier,
+          title: notif.content.title || 'Notification',
+          body: notif.content.body || '',
+          created_at: triggerDateStr,
+          type: notif.content.data?.type || 'app-update',
+          data: notif.content.data || {},
+          isLocal: true,
+        };
+      });
+      setLocalNotifications(formatted);
+    } catch (e) {
+      console.warn('Failed to fetch local notifications:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    setLocalLoading(true);
+    fetchLocalNotifications().finally(() => setLocalLoading(false));
+  }, []);
+
+  const handleRefresh = async () => {
+    await refetch();
+    await fetchLocalNotifications();
+  };
 
   const notificationsList = React.useMemo(() => {
-    let list: any[] = [];
+    let apiList: any[] = [];
     if (Array.isArray(data)) {
-      list = data;
+      apiList = data;
     } else if (Array.isArray(data?.data)) {
-      list = data.data;
+      apiList = data.data;
     } else if (Array.isArray(data?.data?.data)) {
-      list = data.data.data;
+      apiList = data.data.data;
     }
-    return list;
-  }, [data]);
+
+    const combined = [...apiList, ...localNotifications];
+    combined.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || a.time || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || b.time || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return combined;
+  }, [data, localNotifications]);
 
   const { todayList, yesterdayList, earlierList } = React.useMemo(() => {
     return groupNotifications(notificationsList);
@@ -190,6 +261,7 @@ export default function NotificationScreen() {
       case 'new-lead':
         router.navigate('/(tabs)/leads' as any);
         break;
+      case 'meeting':
       case 'follow-ups':
       case 'follow-ups-scheduled':
         router.navigate('/(tabs)/follow-ups' as any);
@@ -226,6 +298,8 @@ export default function NotificationScreen() {
     }
   };
 
+  const isLoading = apiLoading || localLoading;
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -260,7 +334,7 @@ export default function NotificationScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} colors={[theme.primaryColor]} />
+          <RefreshControl refreshing={apiFetching} onRefresh={handleRefresh} colors={[theme.primaryColor]} />
         }
       >
         {notificationsList.length === 0 ? (
@@ -288,6 +362,7 @@ export default function NotificationScreen() {
                     type={getType(item.type)}
                     buttonLabel={item.buttonLabel || item.button_label || undefined}
                     onPressButton={() => handleAction(item)}
+                    isLocal={item.isLocal}
                   />
                 ))}
               </>
@@ -310,6 +385,7 @@ export default function NotificationScreen() {
                     type={getType(item.type)}
                     buttonLabel={item.buttonLabel || item.button_label || undefined}
                     onPressButton={() => handleAction(item)}
+                    isLocal={item.isLocal}
                   />
                 ))}
               </>
@@ -332,6 +408,7 @@ export default function NotificationScreen() {
                     type={getType(item.type)}
                     buttonLabel={item.buttonLabel || item.button_label || undefined}
                     onPressButton={() => handleAction(item)}
+                    isLocal={item.isLocal}
                   />
                 ))}
               </>
@@ -351,7 +428,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     backgroundColor: COLORS.bgWhite,
     paddingBottom: 12,
     borderBottomWidth: 1,
@@ -363,9 +440,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     letterSpacing: 0.2,
   },
   scrollContent: {
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 130,
+    paddingHorizontal: 8,
+    paddingTop: 3,
+    paddingBottom: 100,
   },
 
   // Centered section dividers
@@ -373,8 +450,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 14,
-    gap: 12,
+    marginVertical: 5,
+    gap: 1,
   },
   dividerLine: {
     flex: 1,
@@ -391,11 +468,11 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Cards
   card: {
     backgroundColor: COLORS.bgWhite,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    marginBottom: 12,
+    padding: 10,
+    marginBottom: 5,
   },
   cardHeader: {
     flexDirection: 'row',

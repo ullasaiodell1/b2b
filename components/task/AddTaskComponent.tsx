@@ -434,7 +434,7 @@ export function AddTaskComponent({
       {!isEmbedded && (
         <View style={[styles.header, { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 16) }]}>
           <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
+            <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>
@@ -875,9 +875,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     backgroundColor: COLORS.bgWhite,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -885,7 +885,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#F4F7F5',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -947,8 +947,8 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12.5,
-    fontWeight: '700',
-    color: COLORS.textMuted,
+    fontWeight: '800',
+    color: COLORS.textDark,
     paddingLeft: 2,
   },
   inputContainer: {
@@ -959,7 +959,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 10,
     height: 46,
     paddingHorizontal: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   inputError: {
     borderColor: '#EF4444',
@@ -996,7 +996,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 10,
     height: 46,
     paddingHorizontal: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   selectBoxLeft: {
     flexDirection: 'row',

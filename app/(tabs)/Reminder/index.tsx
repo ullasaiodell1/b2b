@@ -307,7 +307,7 @@ export default function ReminderScreen() {
 
       {/* ── FAB ─────────────────────────────────────── */}
       <TouchableOpacity
-        style={[s.fab, { bottom: Math.max(insets.bottom + 90, 100), backgroundColor: primaryColor, shadowColor: primaryColor }]}
+        style={[s.fab, { bottom: Math.max(insets.bottom + 120, 130), backgroundColor: primaryColor, shadowColor: primaryColor }]}
         activeOpacity={0.85}
         onPress={handleAdd}
       >

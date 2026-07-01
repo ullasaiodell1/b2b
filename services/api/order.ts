@@ -66,3 +66,16 @@ export const deleteOrder = (id: string) => {
     url: `/orders/${id}`
   });
 };
+
+// POST /inventory/reservations/release — release inventory reservations
+export const releaseInventoryReservations = (refId: string, refType: string = 'QUOTATION') => {
+  return axios({
+    method: 'POST',
+    url: `/inventory/reservations/release`,
+    data: {
+      ref_id: refId,
+      ref_type: refType
+    }
+  });
+};
+

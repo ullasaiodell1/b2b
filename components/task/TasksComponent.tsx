@@ -4,7 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTasks, useUpdateTask } from '@/hooks/useTasks';
 import { TaskRecord } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -98,6 +98,12 @@ export function TasksComponent({
   apiParams.offset = 0;
 
   const { data: responseData, isLoading, isFetching, refetch } = useTasks(apiParams) as any;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const tasks = Array.isArray(responseData)
     ? responseData
     : (Array.isArray(responseData?.data)
@@ -295,7 +301,7 @@ export function TasksComponent({
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 90, 100) }]}
+        style={[styles.fab, { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 120, 130) }]}
         activeOpacity={0.85}
         onPress={() => {
           const isLeadFlow = route.name?.startsWith('lead-') || !!effectiveLeadId;

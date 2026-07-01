@@ -203,9 +203,26 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
 
   const handleStatusChange = (newStatus: string) => {
     if (!id) return;
+    let title = 'Update Status';
+    let message = `Change status to ${newStatus}?`;
+    let successMsg = 'Status updated successfully';
+    if (newStatus === 'PROFORMA_CREATED') {
+      title = 'Convert to Proforma';
+      message = 'Are you sure you want to convert this quotation to a proforma invoice?';
+      successMsg = 'Quotation successfully converted to Proforma Invoice';
+    } else if (newStatus === 'APPROVED') {
+      title = 'Approve Quotation';
+      message = 'Are you sure you want to approve this quotation?';
+      successMsg = 'Quotation approved successfully';
+    } else if (newStatus === 'REJECTED') {
+      title = 'Reject Quotation';
+      message = 'Are you sure you want to reject this quotation?';
+      successMsg = 'Quotation rejected successfully';
+    }
+
     Alert.alert(
-      'Update Status',
-      `Change status to ${newStatus}?`,
+      title,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -215,7 +232,7 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
               { id, status: newStatus },
               {
                 onSuccess: () => {
-                  Alert.alert('Success', 'Status updated successfully');
+                  Alert.alert('Success', successMsg);
                   refetch();
                 },
                 onError: (err: any) => {
@@ -359,12 +376,12 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionBtnHalf, { backgroundColor: '#10B981' }]}
-              onPress={() => handleStatusChange('ACCEPTED')}
+              onPress={() => handleStatusChange('APPROVED')}
               activeOpacity={0.85}
               disabled={updateStatusMutation.isPending}
             >
               <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>Accept</Text>
+              <Text style={styles.actionBtnText}>Approved</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtnHalf, { backgroundColor: '#EF4444' }]}
@@ -376,6 +393,17 @@ export const QuotationDetailsComponent: React.FC<QuotationDetailsComponentProps>
               <Text style={styles.actionBtnText}>Reject</Text>
             </TouchableOpacity>
           </View>
+        )}
+        {quotation.status === 'APPROVED' && (
+          <TouchableOpacity
+            style={styles.convertToProformaBtn}
+            onPress={() => handleStatusChange('PROFORMA_CREATED')}
+            activeOpacity={0.85}
+            disabled={updateStatusMutation.isPending}
+          >
+            <Ionicons name="document-text-outline" size={18} color="#D97706" style={{ marginRight: 8 }} />
+            <Text style={styles.convertToProformaBtnText}>CONVERT TO PROFORMA</Text>
+          </TouchableOpacity>
         )}
 
         {/* Items Section */}
@@ -1045,5 +1073,22 @@ const getStyles = (theme: any) => StyleSheet.create({
   fullImage: {
     width: '100%',
     height: '80%',
+  },
+  convertToProformaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginVertical: 10,
+  },
+  convertToProformaBtnText: {
+    color: '#D97706',
+    fontSize: 13.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

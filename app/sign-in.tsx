@@ -120,11 +120,12 @@ export default function SignInScreen() {
               params: { code: trimmed, token: data.token, password }
             });
           } else if (data?.token) {
-            const { saveAuthToken, saveUserData } = require('@/utils/storage');
+            const { saveAuthToken, saveUserData, saveUserPassword } = require('@/utils/storage');
             await saveAuthToken(data.token);
             if (data.user) {
               await saveUserData(data.user);
             }
+            await saveUserPassword(password);
             router.replace('/(tabs)');
           } else {
             router.push({

@@ -794,8 +794,8 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
       meta: order?.meta || null,
       company_id: companyId ? String(companyId) : '0364bbec-99cf-42d1-8d3f-1efbb6a0c9e2',
       additional_charges: addChargesAmt > 0 ? addChargesAmt : null,
-      service_gst: null,
-      service_tax_total: null,
+      service_gst: addChargesAmt > 0 ? (parseFloat(chargesGst) || 0) : null,
+      service_tax_total: addChargesAmt > 0 ? parseFloat(addChargesGstAmt.toFixed(2)) : null,
 
       items: items.map((item) => {
         const { amount: itemTaxable, gst_amount: itemGstAmount, total } = calcItem(item);
@@ -1487,6 +1487,7 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
       <Modal
         visible={showCompanyPicker}
         transparent={true}
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setShowCompanyPicker(false)}
       >
@@ -1496,7 +1497,7 @@ export const EditOrderComponent: React.FC<EditOrderComponentProps> = ({
           onPress={() => setShowCompanyPicker(false)}
         >
           <TouchableOpacity
-            style={styles.modalContent}
+            style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}
             activeOpacity={1}
             onPress={() => { }}
           >

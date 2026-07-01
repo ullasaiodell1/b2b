@@ -30,17 +30,6 @@ const GRID_COLORS = [
   '#4F46E5', '#EC4899', '#F59E0B', '#06B6D4',
 ];
 
-const APPLIED_SCREENS = [
-  'Dashboard / Home',
-  'Attendance Tracker',
-  'Leads Management',
-  'Company Directory',
-  'Orders & Quotations',
-  'Meetings Schedule',
-  'Tasks List',
-  'Profile Settings',
-];
-
 export default function ThemeSettingsScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -49,7 +38,6 @@ export default function ThemeSettingsScreen() {
   const { primaryColor, setPrimaryColor } = useTheme();
 
   const [selectedColor, setSelectedColor] = useState(primaryColor);
-  const [activeTab, setActiveTab] = useState<'solid' | 'gradient' | 'palette'>('solid');
 
   const handleSave = () => {
     setPrimaryColor(selectedColor);
@@ -72,40 +60,6 @@ export default function ThemeSettingsScreen() {
           <Text style={styles.previewText}>SP</Text>
         </View>
 
-        {/* Tab Selector */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'gradient' && styles.tabBtnActive] as any}
-            onPress={() => setActiveTab('gradient')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'gradient' && styles.tabBtnTextActive] as any}>
-              Gradient
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'solid' && styles.tabBtnActive] as any}
-            onPress={() => setActiveTab('solid')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'solid' && styles.tabBtnTextActive] as any}>
-              Solid Colour
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'palette' && styles.tabBtnActive] as any}
-            onPress={() => setActiveTab('palette')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'palette' && styles.tabBtnTextActive] as any}>
-              Palette
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Choose Label */}
-        <Text style={styles.chooseLabel}>
-          Choose {activeTab === 'solid' ? 'Solid' : activeTab === 'gradient' ? 'Gradient' : 'Palette'}:
-        </Text>
 
         {/* Colors Grid */}
         <View style={styles.gridContainer}>
@@ -124,16 +78,6 @@ export default function ThemeSettingsScreen() {
               }}
               activeOpacity={0.8}
             />
-          ))}
-        </View>
-
-        {/* Applied Screens List */}
-        <Text style={styles.chooseLabel}>Theme Applied In:</Text>
-        <View style={styles.appliedScreensList}>
-          {APPLIED_SCREENS.map((screen, idx) => (
-            <Text key={idx} style={styles.screenText}>
-              • {screen}
-            </Text>
           ))}
         </View>
       </ScrollView>
@@ -182,35 +126,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 1.5,
-  },
-
-  // Tabs
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBtnActive: {
-    backgroundColor: theme.primaryLight,
-  },
-  tabBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  tabBtnTextActive: {
-    color: theme.primaryColor,
-    fontWeight: '800',
   },
 
   chooseLabel: {
@@ -268,19 +183,5 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.5,
-  },
-  appliedScreensList: {
-    backgroundColor: COLORS.bgWhite,
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 6,
-    marginTop: 8,
-  },
-  screenText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: COLORS.textMid,
   },
 });

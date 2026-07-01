@@ -8,7 +8,7 @@ import {
   useUpdateLeadContact,
 } from '@/hooks/useContacts';
 import { Ionicons } from '@expo/vector-icons';
-import * as Contacts from 'expo-contacts/legacy';
+import * as Contacts from 'expo-contacts';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -160,11 +160,11 @@ export default function LeadContactsScreen() {
           ],
           emails: email.trim()
             ? [
-                {
-                  email: email.trim(),
-                  label: 'work',
-                },
-              ]
+              {
+                email: email.trim(),
+                label: 'work',
+              },
+            ]
             : [],
           jobTitle: designation.trim(),
           department: department.trim(),
@@ -442,7 +442,8 @@ export default function LeadContactsScreen() {
       {/* ADD / EDIT MODAL */}
       <Modal
         visible={modalVisible}
-        transparent={false}
+        transparent={true}
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
@@ -469,8 +470,32 @@ export default function LeadContactsScreen() {
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.formContainer, { padding: 16, paddingBottom: 40 }]}
+              contentContainerStyle={[styles.formContainer, { padding: 10, paddingBottom: 16 }]}
             >
+              {/* Row 1: Save to Phone Contacts */}
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Save to Phone Contacts</Text>
+                <Switch
+                  value={saveToPhone}
+                  onValueChange={setSaveToPhone}
+                  trackColor={{ false: '#CBD5E1', true: theme.primaryColor + '80' }}
+                  thumbColor={saveToPhone ? theme.primaryColor : '#F1F5F9'}
+                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                />
+              </View>
+
+              {/* Row 2: Mark as Primary Contact */}
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Mark as Primary Contact</Text>
+                <Switch
+                  value={isPrimary}
+                  onValueChange={setIsPrimary}
+                  trackColor={{ false: '#CBD5E1', true: theme.primaryColor + '80' }}
+                  thumbColor={isPrimary ? theme.primaryColor : '#F1F5F9'}
+                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                />
+              </View>
+
               {/* Full Name */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>
@@ -554,28 +579,6 @@ export default function LeadContactsScreen() {
                   numberOfLines={3}
                   value={notes}
                   onChangeText={setNotes}
-                />
-              </View>
-
-              {/* Primary switch */}
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Mark as Primary Contact</Text>
-                <Switch
-                  value={isPrimary}
-                  onValueChange={setIsPrimary}
-                  trackColor={{ false: '#CBD5E1', true: theme.primaryColor + '80' }}
-                  thumbColor={isPrimary ? theme.primaryColor : '#F1F5F9'}
-                />
-              </View>
-
-              {/* Save to Phone switch */}
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Save to Phone Contacts</Text>
-                <Switch
-                  value={saveToPhone}
-                  onValueChange={setSaveToPhone}
-                  trackColor={{ false: '#CBD5E1', true: theme.primaryColor + '80' }}
-                  thumbColor={saveToPhone ? theme.primaryColor : '#F1F5F9'}
                 />
               </View>
             </ScrollView>
@@ -829,9 +832,9 @@ const getStyles = (theme: any) =>
       fontWeight: '600',
       maxWidth: 180,
     },
-    formContainer: { gap: 16 },
-    formRow: { flexDirection: 'row', gap: 12 },
-    inputGroup: { gap: 3 },
+    formContainer: { gap: 3 },
+    formRow: { flexDirection: 'row', gap: 8 },
+    inputGroup: { gap: 2 },
     inputLabel: {
       fontSize: 12,
       fontWeight: '800',
@@ -861,9 +864,8 @@ const getStyles = (theme: any) =>
       borderRadius: 8,
       borderWidth: 1.5,
       borderColor: '#E2E8F0',
-      paddingVertical: 10,
+      paddingVertical: 4,
       paddingHorizontal: 12,
-      marginTop: 4,
     },
     switchLabel: {
       fontSize: 13,
@@ -872,11 +874,11 @@ const getStyles = (theme: any) =>
     },
     modalActionsRow: {
       flexDirection: 'row',
-      gap: 12,
+      gap: 5,
       backgroundColor: COLORS.bgWhite,
       borderTopWidth: 1,
       borderTopColor: COLORS.border,
-      paddingTop: 12,
+      paddingTop: 8,
     },
     cancelBtn: {
       flex: 1,

@@ -6,7 +6,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useOrders } from '@/hooks/useOrders';
 import { cleanOrderParams } from '@/utils/orderHelper';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -74,6 +74,12 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
   }, [filterState, leadId]);
 
   const { data: orders = [], isLoading, refetch } = useOrders(cleanedFilter);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const updateFilter = updateOrderFilterState;
 
   React.useEffect(() => {
@@ -324,7 +330,7 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.primaryColor} />
+          <RefreshControl refreshing={isLoading && filteredOrders.length > 0} onRefresh={refetch} tintColor={theme.primaryColor} />
         }
       >
         {isLoading && filteredOrders.length === 0 ? (
@@ -350,7 +356,7 @@ export const OrdersComponent: React.FC<OrdersComponentProps> = ({
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[s.fab, { bottom: Math.max(insets.bottom + 90, 100) }]}
+        style={[s.fab, { bottom: Math.max(insets.bottom + 120, 130) }]}
         onPress={handleAddOrderPress}
         activeOpacity={0.85}
       >

@@ -1,17 +1,21 @@
 import CustomHeader from '@/components/custom/CustomHeader';
+import { MonthYearPicker } from '@/components/custom/MonthYearPicker';
 import QuickBall from '@/components/custom/QuickBall';
+import { updateOrderFilterState } from '@/components/order&quotations/OrderState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAnalysis } from '@/hooks/useAnalysis';
-import { useHolidays } from '@/hooks/useHolidays';
 import { useAppPermissions } from '@/hooks/useAppPermissions';
+import { useHolidays } from '@/hooks/useHolidays';
 import { syncDeviceCallLogs } from '@/utils/callLogSync';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -52,12 +56,17 @@ const LEAD_DATA_MOCK = {
 
 function formatAnalysisData(raw: any) {
   if (!raw) return null;
-  const { dashboardData, orderData, visitsData } = raw;
+  const { dashboardData, orderData, visitsData, dealerStats } = raw;
 
-  const dash = (dashboardData as any)?.data || {};
+  const dash = (dashboardData as any)?.data || dashboardData || {};
   const order = (orderData as any)?.data || orderData || {};
   const visits = (visitsData as any)?.data || [];
   const totalVisits = (visitsData as any)?.total ?? visits.length ?? 0;
+
+  const dealer = (dealerStats as any)?.data || dealerStats || {};
+  const dealerSummary = dealer.summary || {};
+
+  const counters = dash.counters || {};
 
   // Parse Monthly lead creation/revenue trends
   const monthlyRevenue = dash.monthlyRevenue || [];
@@ -74,23 +83,66 @@ function formatAnalysisData(raw: any) {
   // Format return object to conform to HomeScreen expectations
   return {
     total_visits: totalVisits,
-    revenue_generated: `₹${(dash.counters?.totalRevenue || 0).toLocaleString('en-IN')}`,
-    assigned_target: `₹${(dash.counters?.pipelineValue || 0).toLocaleString('en-IN')}`,
+    revenue_generated: `₹${(counters.totalRevenue || 0).toLocaleString('en-IN')}`,
+    assigned_target: `₹${(counters.pipelineValue || 0).toLocaleString('en-IN')}`,
+
+    // Detailed metrics for our grid sections:
+    crm: {
+      totalLeads: counters.totalLeads ?? 0,
+      totalCustomers: counters.totalCustomers ?? 0,
+      activeDeals: counters.activeDeals ?? 0,
+      conversionRate: `${counters.conversionRate ?? 0}%`,
+      pipelineValue: `₹${(counters.pipelineValue || 0).toLocaleString('en-IN')}`,
+    },
+    financials: {
+      netRevenue: `₹${(counters.txnNetRevenue || 0).toLocaleString('en-IN')}`,
+      totalSales: `₹${(counters.txnTotalSales || 0).toLocaleString('en-IN')}`,
+      totalPurchases: `₹${(counters.txnTotalPurchases || 0).toLocaleString('en-IN')}`,
+      saleReturns: `₹${(counters.txnSaleReturns || 0).toLocaleString('en-IN')}`,
+      totalRevenue: `₹${(counters.totalRevenue || 0).toLocaleString('en-IN')}`,
+    },
+    orderSummary: {
+      totalOrders: order.summary?.total_orders ?? 0,
+      completedOrders: order.summary?.completed_orders ?? 0,
+      pendingOrders: order.summary?.pending_orders ?? 0,
+      customOrders: order.summary?.custom_orders_count ?? order.summary?.custom_orders ?? 0,
+      avgOrderValue: `₹${(order.summary?.avg_order_value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+      totalRevenue: `₹${(order.summary?.total_revenue || 0).toLocaleString('en-IN')}`,
+    },
+    bookingAnalysis: {
+      productsBooked: order.bookingAnalysis?.products_booked ?? 0,
+      totalBooked: order.bookingAnalysis?.total_booked ?? 0,
+      tempBooked: order.bookingAnalysis?.total_temp_booked ?? 0,
+    },
+    dealerStats: {
+      totalDealers: dealerSummary.totalDealers ?? 0,
+      totalQuotations: dealerSummary.totalQuotations ?? 0,
+      convertedOrders: dealerSummary.convertedOrders ?? 0,
+      conversionRatio: dealerSummary.conversionRatio ?? 0,
+      totalRevenue: dealerSummary.totalRevenue ?? 0,
+      totalOutstanding: dealerSummary.totalOutstanding ?? 0
+    },
+
     lead_data: {
       Daily: null, // will fall back to mock
       Weekly: null, // will fall back to mock
       Monthly: monthlyData
     },
     lead_conversion_ratio: {
-      leads: dash.counters?.totalLeads || 0,
-      quotations: dash.counters?.activeDeals || 0,
-      orders: order.summary?.total_orders || 0,
-      average_ratio: `${dash.counters?.conversionRate || 0}%`
+      leads: dealerSummary.totalDealers || 0,
+      quotations: dealerSummary.totalQuotations || 0,
+      orders: dealerSummary.convertedOrders || 0,
+      average_ratio: `${dealerSummary.conversionRatio ?? 0}%`
     },
     order_status_summary: {
       pending: order.summary?.pending_orders || 0,
       confirmed: Math.max(0, (order.summary?.total_orders || 0) - (order.summary?.pending_orders || 0) - (order.summary?.completed_orders || 0)),
-      completed: order.summary?.completed_orders || 0
+      completed: order.summary?.completed_orders || 0,
+      items: (order.statusBreakdown || order.status_breakdown || []).map((item: any) => {
+        const label = String(item?.status || item?.label || item?.state || '');
+        const count = Number(item?.count ?? item?._count ?? item?.value ?? item?.total ?? 0);
+        return { label, count };
+      }).filter((item: any) => item.label && item.count > 0)
     }
   };
 }
@@ -100,9 +152,38 @@ function formatAnalysisData(raw: any) {
 export default function HomeScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
+  const router = useRouter();
+
+  // BackHandler logic is moved below to be in scope of refetch queries.
+
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showPeriodModal, setShowPeriodModal] = useState<boolean>(false);
+
+  const selectedYear = selectedDate.getFullYear();
+  const selectedMonth = selectedDate.getMonth() + 1;
+
+  const formatPeriodLabel = (date: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const handleStatusClick = (statusLabel: string) => {
+    const statusValue = statusLabel.toUpperCase();
+
+    updateOrderFilterState({
+      status: statusValue,
+      dateRange: '',
+      payment_status: '',
+      order_type: '',
+      source_type: '',
+      startDate: '',
+      endDate: '',
+    });
+    router.navigate('/(tabs)/Order' as any);
+  };
 
   const insets = useSafeAreaInsets();
-  const [leadFilter, setLeadFilter] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
+  const [leadFilter, setLeadFilter] = useState<'Daily' | 'Monthly'>('Daily');
   const { primaryColor } = useTheme();
 
   // Build chartConfig inside render so it reacts to primaryColor changes
@@ -158,13 +239,31 @@ export default function HomeScreen() {
   }, []);
 
   // Fetch analysis data from API using hook
-  const { data: rawData, isLoading, isFetching, refetch } = useAnalysis();
+  const { data: rawData, isLoading, isFetching, refetch } = useAnalysis({
+    year: selectedYear,
+    month: selectedMonth
+  });
   const { data: holidaysData, refetch: refetchHolidays } = useHolidays();
 
   const handleRefresh = () => {
     refetch();
     refetchHolidays();
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+      refetchHolidays();
+
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [refetch, refetchHolidays])
+  );
 
   const apiData = React.useMemo(() => {
     return formatAnalysisData(rawData);
@@ -190,6 +289,51 @@ export default function HomeScreen() {
 
   const revenueGenerated = apiData?.revenue_generated ?? '₹0';
   const assignedTarget = apiData?.assigned_target ?? '₹0';
+
+  const crmMetrics = apiData?.crm || {
+    totalLeads: 0,
+    totalCustomers: 0,
+    activeDeals: 0,
+    conversionRate: '0%',
+    pipelineValue: '₹0'
+  };
+
+  const financialMetrics = apiData?.financials || {
+    netRevenue: '₹0',
+    totalSales: '₹0',
+    totalPurchases: '₹0',
+    saleReturns: '₹0',
+    totalRevenue: '₹0'
+  };
+
+  const bookingMetrics = apiData?.bookingAnalysis || {
+    productsBooked: 0,
+    totalBooked: 0,
+    tempBooked: 0
+  };
+
+  const crmItems = [
+    { label: 'Total Leads', value: crmMetrics.totalLeads, icon: 'people-outline', iconColor: primaryColor },
+    { label: 'Total Customers', value: crmMetrics.totalCustomers, icon: 'person-add-outline', iconColor: COLORS.info },
+    { label: 'Active Deals', value: crmMetrics.activeDeals, icon: 'briefcase-outline', iconColor: COLORS.warning },
+    { label: 'Conversion Rate', value: crmMetrics.conversionRate, icon: 'trending-up-outline', iconColor: COLORS.success },
+    { label: 'Pipeline Value', value: crmMetrics.pipelineValue, icon: 'analytics-outline', iconColor: COLORS.peach, fullWidth: true },
+  ];
+
+  const financialItems = [
+    { label: 'Net Revenue', value: financialMetrics.netRevenue, icon: 'cash-outline', iconColor: COLORS.success },
+    { label: 'Total Sales', value: financialMetrics.totalSales, icon: 'wallet-outline', iconColor: COLORS.info },
+    { label: 'Total Purchases', value: financialMetrics.totalPurchases, icon: 'cart-outline', iconColor: COLORS.danger },
+    { label: 'Sale Returns', value: financialMetrics.saleReturns, icon: 'refresh-circle-outline', iconColor: COLORS.warning },
+    { label: 'Total Revenue (Other)', value: financialMetrics.totalRevenue, icon: 'stats-chart-outline', iconColor: primaryColor, fullWidth: true },
+  ];
+
+  const bookingItems = [
+    { label: 'Products Booked', value: bookingMetrics.productsBooked, icon: 'cube-outline', iconColor: COLORS.info },
+    { label: 'Total Booked Units', value: bookingMetrics.totalBooked, icon: 'bookmark-outline', iconColor: COLORS.success },
+    { label: 'Temporary Booked', value: bookingMetrics.tempBooked, icon: 'hourglass-outline', iconColor: COLORS.warning },
+    { label: 'Total Visits', value: totalVisits, icon: 'eye-outline', iconColor: primaryColor },
+  ];
 
   // Lead created data parsing
   const apiLeadData = apiData?.lead_data as any;
@@ -228,6 +372,15 @@ export default function HomeScreen() {
   const pieOrders = apiPieData?.orders ?? 0;
   const averageRatio = apiPieData?.average_ratio ?? '0%';
 
+  const dealerSummary = apiData?.dealerStats || {
+    totalDealers: 0,
+    totalQuotations: 0,
+    convertedOrders: 0,
+    conversionRatio: 0,
+    totalRevenue: 0,
+    totalOutstanding: 0
+  };
+
   const hasPieData = pieLeads > 0 || pieQuotations > 0 || pieOrders > 0;
   const displayLeads = hasPieData ? pieLeads : 0;
   const displayQuotations = hasPieData ? pieQuotations : 0;
@@ -258,14 +411,45 @@ export default function HomeScreen() {
   ];
 
   // Bar chart data parsing
-  const apiBarData = apiData?.order_status_summary;
-  const barPending = apiBarData?.pending ?? 0;
-  const barConfirmed = apiBarData?.confirmed ?? 0;
-  const barCompleted = apiBarData?.completed ?? 0;
+  const apiBarData = apiData?.order_status_summary as any;
+
+  const getStatusCountFromItems = (statusName: string) => {
+    const norm = statusName.toUpperCase();
+    if (apiBarData?.items && Array.isArray(apiBarData.items) && apiBarData.items.length > 0) {
+      const found = apiBarData.items.find((item: any) =>
+        String(item?.label || '').toUpperCase() === norm
+      );
+      if (found) return Number(found.count || 0);
+    }
+
+    // Fallback to counters if items list is empty
+    if (norm === 'PENDING') return apiBarData?.pending ?? 0;
+    if (norm === 'COMPLETED') return apiBarData?.completed ?? 0;
+    if (norm === 'APPROVED') return apiBarData?.confirmed ?? 0;
+    return 0;
+  };
+
+  const barItems = [
+    { label: 'Pending', count: getStatusCountFromItems('PENDING'), color: COLORS.peach },
+    { label: 'Approved', count: getStatusCountFromItems('APPROVED'), color: COLORS.darkBrown },
+    { label: 'Dispatched', count: getStatusCountFromItems('DISPATCHED'), color: COLORS.info },
+    { label: 'Completed', count: getStatusCountFromItems('COMPLETED'), color: primaryColor },
+    { label: 'Cancelled', count: getStatusCountFromItems('CANCELLED'), color: COLORS.danger },
+  ];
+
+  const formatStatusLabel = (label: string) => {
+    return label
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  const barLabels = barItems.map((item: any) => formatStatusLabel(item.label));
+  const barCounts = barItems.map((item: any) => item.count);
 
   const barData = {
-    labels: ['Pending', 'Confirmed', 'Completed'],
-    datasets: [{ data: [barPending, barConfirmed, barCompleted] }],
+    labels: barLabels,
+    datasets: [{ data: barCounts }],
   };
 
   const upcomingHolidays = React.useMemo(() => {
@@ -313,8 +497,25 @@ export default function HomeScreen() {
         <View style={[styles.heroCard, { backgroundColor: primaryColor }]}>
           <View style={styles.heroCircle1} />
           <View style={styles.heroCircle2} />
-          <Text style={styles.heroLabel}>Total Visit</Text>
-          <Text style={styles.heroValue}>{totalVisits}</Text>
+          <View style={styles.heroRow}>
+            <View>
+              <Text style={styles.heroLabel}>Total Visit</Text>
+              <Text style={styles.heroValue}>{totalVisits}</Text>
+            </View>
+
+            {/* Year & Month Selector */}
+            <TouchableOpacity
+              style={styles.selectorBtn}
+              onPress={() => setShowPeriodModal(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="calendar-outline" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={styles.selectorText}>
+                {formatPeriodLabel(selectedDate)}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Upcoming Holidays Card */}
@@ -358,7 +559,7 @@ export default function HomeScreen() {
 
           {/* Tabs */}
           <View style={styles.tabContainer}>
-            {(['Daily', 'Weekly', 'Monthly'] as const).map((filter) => {
+            {(['Daily', 'Monthly'] as const).map((filter) => {
               const isActive = leadFilter === filter;
               return (
                 <TouchableOpacity
@@ -396,7 +597,7 @@ export default function HomeScreen() {
 
         {/* ── Lead Conversion Ratio – Pie Chart ── */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>LEAD CONVERSION RATIO</Text>
+          <Text style={styles.cardTitle}>CRM</Text>
 
           {hasPieData ? (
             <PieChart
@@ -425,18 +626,73 @@ export default function HomeScreen() {
             <Text style={[styles.ratioValue, { color: primaryColor }]}>{averageRatio}</Text>
             <Text style={styles.ratioLabel}>Average Conversion Ratio</Text>
           </View>
-        </View>
 
-        {/* ── Revenue Generated ── */}
-        <View style={styles.card}>
-          <Text style={styles.metricLabel}>Revenue Generated</Text>
-          <Text style={styles.metricValue}>{revenueGenerated}</Text>
-        </View>
+          {/* Detailed Dealer Stats Grid */}
+          <View style={styles.gridContainer}>
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="people-outline" size={16} color="#0284C7" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Total Dealers</Text>
+                <Text style={styles.gridItemValue}>{dealerSummary.totalDealers}</Text>
+              </View>
+            </View>
 
-        {/* ── Assigned Target ── */}
-        <View style={styles.card}>
-          <Text style={styles.metricLabel}>Assigned Target</Text>
-          <Text style={styles.metricValue}>{assignedTarget}</Text>
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="document-text-outline" size={16} color="#D97706" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Total Quotations</Text>
+                <Text style={styles.gridItemValue}>{dealerSummary.totalQuotations}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="cart-outline" size={16} color="#15803D" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Converted Orders</Text>
+                <Text style={styles.gridItemValue}>{dealerSummary.convertedOrders}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="stats-chart-outline" size={16} color="#7C3AED" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Conversion Ratio</Text>
+                <Text style={styles.gridItemValue}>{dealerSummary.conversionRatio}%</Text>
+              </View>
+            </View>
+
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="cash-outline" size={16} color="#0284C7" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Total Revenue</Text>
+                <Text style={styles.gridItemValue} numberOfLines={1}>
+                  ₹{(dealerSummary.totalRevenue ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.gridItem, styles.gridItemHalf]}>
+              <View style={[styles.gridIconContainer, { backgroundColor: dealerSummary.totalOutstanding >= 0 ? '#DCFCE7' : '#FEE2E2' }]}>
+                <Ionicons name="wallet-outline" size={16} color={dealerSummary.totalOutstanding >= 0 ? '#15803D' : '#DC2626'} />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridItemLabel}>Total Outstanding</Text>
+                <Text style={styles.gridItemValue} numberOfLines={1}>
+                  ₹{(dealerSummary.totalOutstanding ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* ── Order Status Summary – Bar Chart ── */}
@@ -454,6 +710,8 @@ export default function HomeScreen() {
             }}
             style={styles.chartStyle}
             withInnerLines={true}
+            withHorizontalLabels={false}
+            withVerticalLabels={false}
             showValuesOnTopOfBars={true}
             yAxisLabel=""
             yAxisSuffix=""
@@ -462,20 +720,32 @@ export default function HomeScreen() {
 
           {/* Legend */}
           <View style={styles.barLegendRow}>
-            {[
-              { label: 'Pending', count: barPending, color: COLORS.peach },
-              { label: 'Confirmed', count: barConfirmed, color: COLORS.darkBrown },
-              { label: 'Completed', count: barCompleted, color: primaryColor },
-            ].map((item) => (
-              <View key={item.label} style={styles.barLegendItem}>
+            {barItems.map((item: any) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.barLegendItem}
+                onPress={() => handleStatusClick(item.label)}
+                activeOpacity={0.7}
+              >
                 <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                <Text style={styles.barLegendText}>{item.label}</Text>
+                <Text style={styles.barLegendText}>{formatStatusLabel(item.label)}</Text>
                 <Text style={styles.barLegendCount}>{item.count}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
       </ScrollView>
+
+      {/* Year & Month Selector Modal */}
+      <MonthYearPicker
+        visible={showPeriodModal}
+        onClose={() => setShowPeriodModal(false)}
+        selectedDate={selectedDate}
+        onSelect={(date) => {
+          setSelectedDate(date);
+          setShowPeriodModal(false);
+        }}
+      />
 
       {/* Quick Ball / Smart Toolbox (shows only on home screen) */}
       <QuickBall />
@@ -691,8 +961,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   // ── Bar legend ──
   barLegendRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-around',
     marginTop: 4,
+    gap: 8,
   },
   barLegendItem: {
     alignItems: 'center',
@@ -767,6 +1039,72 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#94A3B8',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  gridItem: {
+    backgroundColor: '#F8FAF9',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#EDF2F0',
+  },
+  gridItemHalf: {
+    width: '48.5%',
+  },
+  gridItemFull: {
+    width: '100%',
+  },
+  gridIconContainer: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridTextContainer: {
+    flex: 1,
+  },
+  gridItemLabel: {
+    fontSize: 9,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  gridItemValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  selectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  selectorText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 

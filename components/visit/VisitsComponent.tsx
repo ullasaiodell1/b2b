@@ -90,6 +90,12 @@ export function VisitsComponent({
   }, [params.status, params.dateRange, leadId]);
 
   const { data: responseData, isLoading, refetch } = useVisits(apiFilterParams) as any;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const visits = Array.isArray(responseData)
     ? responseData
     : (Array.isArray(responseData?.data)
@@ -357,7 +363,7 @@ export function VisitsComponent({
 
       {/* FLOATING ACTION BUTTON */}
       <TouchableOpacity
-        style={[styles.fabBtn, { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 90, 100) }]}
+        style={[styles.fabBtn, { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 120, 130) }]}
         onPress={() => {
           const targetScreen = leadId ? 'lead-add-visit' : 'add-visit';
           navigation.navigate(targetScreen, { leadId: leadId || '' });

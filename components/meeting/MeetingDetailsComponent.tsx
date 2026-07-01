@@ -69,7 +69,7 @@ export const MeetingDetailsComponent: React.FC<MeetingDetailsComponentProps> = (
   if (!meeting) {
     return (
       <View style={styles.loading}>
-        <Text style={styles.loadingText}>Meeting details not found...</Text>
+        <Text style={styles.loadingText}>follow up details not found...</Text>
       </View>
     );
   }
@@ -92,7 +92,7 @@ export const MeetingDetailsComponent: React.FC<MeetingDetailsComponentProps> = (
           <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.8}>
             <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>MEETINGS</Text>
+          <Text style={styles.headerTitle}>FOLLOW UP</Text>
         </View>
       )}
 
@@ -111,7 +111,7 @@ export const MeetingDetailsComponent: React.FC<MeetingDetailsComponentProps> = (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.verticalBar} />
-              <Text style={styles.detailCardTitle}>MEETINGS INFORMATION</Text>
+              <Text style={styles.detailCardTitle}>FOLLOW UP INFORMATION</Text>
             </View>
 
             <View style={styles.fieldsList}>
@@ -120,7 +120,7 @@ export const MeetingDetailsComponent: React.FC<MeetingDetailsComponentProps> = (
                 <Text style={styles.fieldValue}>{meeting.title}</Text>
               </View>
               <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>Meeting Venue <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                <Text style={styles.fieldLabel}>Follow up Venue <Text style={{ color: COLORS.danger }}>*</Text></Text>
                 <Text style={styles.fieldValue}>{meeting.venue || 'Client Location'}</Text>
               </View>
               <View style={styles.fieldRow}>
@@ -168,7 +168,7 @@ export const MeetingDetailsComponent: React.FC<MeetingDetailsComponentProps> = (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.verticalBar} />
-              <Text style={styles.detailCardTitle}>MEETING ADDITIONAL INFORMATION</Text>
+              <Text style={styles.detailCardTitle}>FOLLOW UP ADDITIONAL INFORMATION</Text>
             </View>
 
             <View style={styles.fieldsList}>

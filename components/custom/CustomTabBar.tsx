@@ -52,7 +52,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   // Hide the tab bar on specific sub-screens/nested stack screens
   const hiddenTabBarScreens = [
     'add-meeting', 'meeting-details',
-    'add-lead', 'lead-details', 'leads-filter', 'select-company', 'select-owner', 'edit-lead', 'select-category',
+    'add-lead', 'lead-details', 'lead-verify', 'leads-filter', 'select-company', 'select-owner', 'edit-lead', 'select-category',
     'lead-activity', 'interested-products', 'lead-attachments', 'lead-contacts', 'add-reminder',
     'add-order', 'order-details', 'order-filter', 'edit-order',
     'add-quotation', 'quotation-details', 'quotation-filter',
@@ -67,6 +67,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     'lead-order', 'lead-add-order', 'lead-order-details', 'lead-order-filter',
     'lead-visit', 'lead-add-visit', 'lead-visit-details', 'lead-visit-filter',
     'lead-meeting', 'lead-add-meeting', 'lead-meeting-details', 'lead-meeting-filter',
+    'lead-proforma', 'lead-proforma-filter', 'lead-proforma-details', 'proforma-details', 'proforma-filter',
     'apply', 'approvals'
   ];
 

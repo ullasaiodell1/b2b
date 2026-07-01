@@ -2,9 +2,9 @@ import CustomHeader from '@/components/custom/CustomHeader';
 import { updateLeadsState } from '@/components/lead/LeadState';
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeads } from '@/hooks/useLeads';
+import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -63,6 +63,12 @@ export default function LeadsScreen() {
   const leadsQuery = useLeads(apiParams);
   const { data: rawLeads = [], isLoading, isFetching, refetch } = leadsQuery;
 
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   useEffect(() => {
     if (leadsQuery.data) {
       console.log('[useLeads] Query success data count:', leadsQuery.data.length);
@@ -77,6 +83,19 @@ export default function LeadsScreen() {
   }, [leadsQuery.isError, leadsQuery.error]);
 
   const { primaryColor, primaryLight } = useTheme();
+
+  const { data: leadStatuses = [] } = useLeadStatuses();
+
+  // Build a status-name → color map from the backend data
+  const statusColorMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    (Array.isArray(leadStatuses) ? leadStatuses : []).forEach((s: any) => {
+      if (s.name && s.color) {
+        map[s.name.toLowerCase()] = s.color;
+      }
+    });
+    return map;
+  }, [leadStatuses]);
 
   const leads = React.useMemo(() => {
     return rawLeads.map((item: any) => {
@@ -400,9 +419,37 @@ export default function LeadsScreen() {
                     </View>
                   )}
                 </View>
-                <View style={styles.tagBadge}>
-                  <Text style={styles.tagText}>{lead.tag}</Text>
-                </View>
+              {lead.status && lead.status !== '----' ? (() => {
+                const badgeColor = statusColorMap[(lead.status || '').toLowerCase()] || '#9CA3AF';
+                return (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: badgeColor + '22',
+                    borderWidth: 1.5,
+                    borderColor: badgeColor,
+                    borderRadius: 20,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    gap: 4,
+                  }}>
+                    <View style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: badgeColor,
+                    }} />
+                    <Text style={{
+                      fontSize: 10,
+                      fontWeight: '800',
+                      color: badgeColor,
+                      letterSpacing: 0.2,
+                    }}>
+                      {lead.status}
+                    </Text>
+                  </View>
+                );
+              })() : null}
               </View>
 
               {/* Company Row */}
@@ -459,7 +506,7 @@ export default function LeadsScreen() {
       {/* PRIMARY GREEN ROUND FAB – opens add lead */}
       <View style={[
         styles.primaryFabWrapper,
-        { bottom: Math.max(insets.bottom + 90, 100) }
+        { bottom: Math.max(insets.bottom + 120, 130) }
       ]}>
         <TouchableOpacity
           style={[styles.primaryFab, { backgroundColor: primaryColor, shadowColor: primaryColor }]}
@@ -626,6 +673,29 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeGreen: {
+    backgroundColor: '#DCFCE7',
+  },
+  statusBadgeRed: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusBadgeBlue: {
+    backgroundColor: '#DBEAFE',
+  },
+  statusBadgeDefault: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   tagBadge: {
     flexDirection: 'row',

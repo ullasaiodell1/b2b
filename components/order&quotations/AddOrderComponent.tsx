@@ -11,8 +11,6 @@ import { useCouriers } from '@/hooks/useCourier';
 import { useDealers } from '@/hooks/useDealers';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useLeads } from '@/hooks/useLeads';
-import AddTransportModal from './edit-order/AddTransportModal';
-import EditAddressModal from './edit-order/EditAddressModal';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 import { useProfile } from '@/hooks/useProfile';
@@ -21,7 +19,6 @@ import { uploadFile } from '@/services/api/file';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -36,13 +33,14 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AddTransportModal from './edit-order/AddTransportModal';
+import EditAddressModal from './edit-order/EditAddressModal';
 
 const STATUS_OPTIONS = ['Complete', 'Pending', 'Inprogress', 'Out Of Delivery', 'Delivered'];
 const PAYMENT_OPTIONS = ['Advance Payment', 'Cash on Delivery', 'Bank Transfer'];
@@ -84,6 +82,8 @@ interface ItemLine {
   updated_at?: string | null;
   ref_id?: string | null;
   mrp?: string | null;
+  unit?: string | null;
+  base_unit?: string | null;
   manual_scanned_qty?: string | null;
 }
 
@@ -125,6 +125,8 @@ function makeEmptyItem(): ItemLine {
     updated_at: new Date().toISOString(),
     ref_id: null,
     mrp: '0',
+    unit: '',
+    base_unit: '',
     manual_scanned_qty: '0',
   };
 }
@@ -794,8 +796,8 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
       meta: null,
       company_id: companyId ? String(companyId) : '0364bbec-99cf-42d1-8d3f-1efbb6a0c9e2',
       additional_charges: addChargesAmt > 0 ? addChargesAmt : null,
-      service_gst: null,
-      service_tax_total: null,
+      service_gst: addChargesAmt > 0 ? (parseFloat(chargesGst) || 0) : null,
+      service_tax_total: addChargesAmt > 0 ? parseFloat(addChargesGstAmt.toFixed(2)) : null,
 
       // Items
       items: items.map((item) => {
@@ -830,6 +832,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
           manual_scanned_qty: parseFloat(item.manual_scanned_qty || '') || 0,
           source: item.source || 'MANUAL',
           barcodes: item.barcodes || null,
+          base_unit: item.base_unit || item.unit || null,
         };
       }),
 
@@ -1104,9 +1107,10 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                     <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
-
+                {/* Form fields (only visible when expanded) */}
                 {!item.isCollapsed ? (
                   <View style={{ gap: 12, marginTop: 4 }}>
+                    {/* Item Name Picker */}
                     <View style={styles.formField}>
                       <Text style={styles.inputLabel}>Item Name <Text style={{ color: COLORS.danger }}>*</Text></Text>
                       <TouchableOpacity
@@ -1123,6 +1127,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       </TouchableOpacity>
                     </View>
 
+                    {/* Item Code (labeled 'Code') */}
                     <View style={styles.formField}>
                       <Text style={styles.inputLabel}>Code</Text>
                       <TextInput
@@ -1134,6 +1139,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       />
                     </View>
 
+                    {/* Description */}
                     <View style={styles.formField}>
                       <Text style={styles.inputLabel}>Description</Text>
                       <TextInput
@@ -1145,6 +1151,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       />
                     </View>
 
+                    {/* Qty & Price inputs */}
                     <View style={styles.gridRow}>
                       <View style={[styles.formField, { flex: 1 }]}>
                         <Text style={styles.inputLabel}>Qty <Text style={{ color: COLORS.danger }}>*</Text></Text>
@@ -1156,7 +1163,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                         />
                       </View>
                       <View style={[styles.formField, { flex: 1 }]}>
-                        <Text style={styles.inputLabel}>Price <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                        <Text style={styles.inputLabel}>MRP<Text style={{ color: COLORS.danger }}>*</Text></Text>
                         <TextInput
                           style={styles.textInputBox}
                           keyboardType="numeric"
@@ -1166,6 +1173,32 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       </View>
                     </View>
 
+                    {/* MRP & Unit Row */}
+                    <View style={styles.gridRow}>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Price</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          keyboardType="numeric"
+                          placeholder="0.00"
+                          placeholderTextColor="#9CA3AF"
+                          value={item.mrp ?? ''}
+                          editable={false}
+                        />
+                      </View>
+                      <View style={[styles.formField, { flex: 1 }]}>
+                        <Text style={styles.inputLabel}>Unit</Text>
+                        <TextInput
+                          style={styles.textInputBox}
+                          placeholder="e.g. pcs"
+                          placeholderTextColor="#9CA3AF"
+                          value={item.base_unit ?? ''}
+                          editable={false}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Tax & Discount inputs */}
                     <View style={styles.gridRow}>
                       <View style={[styles.formField, { flex: 1 }]}>
                         <Text style={styles.inputLabel}>Tax (%)</Text>
@@ -1187,6 +1220,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       </View>
                     </View>
 
+                    {/* Item total preview */}
                     <View style={styles.itemTotalRow}>
                       <Text style={styles.itemTotalLabel}>
                         Taxable: <Text style={styles.itemTotalVal}>{formatAmount(itemTaxable)}</Text>
@@ -1195,6 +1229,7 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                       <Text style={[styles.itemGrandTotal, { color: primaryColor }]}>{formatAmount(itemTotal)}</Text>
                     </View>
 
+                    {/* Selected images preview */}
                     {item.images && item.images.length > 0 && (
                       <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                         {item.images.map((imgUrl, imgIdx) => (
@@ -1405,6 +1440,8 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
                   category_id: pendingProduct.category_id || null,
                   category_name: pendingProduct.category_name || null,
                   mrp: String(pendingProduct.mrp ?? pendingProduct.selling_price ?? pendingProduct.dealer_price ?? 0),
+                  unit: pendingProduct.unit || pendingProduct.unit_of_measure || pendingProduct.uom || '',
+                  base_unit: pendingProduct.base_unit || pendingProduct.unit || pendingProduct.unit_of_measure || pendingProduct.uom || '',
                 };
                 return next;
               });
@@ -1674,13 +1711,13 @@ export const AddOrderComponent: React.FC<AddOrderComponentProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)}>
+      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)} statusBarTranslucent={true}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowCompanyPicker(false)}
         >
-          <View style={[styles.modalContent, { height: '45%' }]}>
+          <View style={[styles.modalContent, { height: '45%', paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Company</Text>
               <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>

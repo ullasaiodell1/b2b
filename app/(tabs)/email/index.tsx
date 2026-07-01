@@ -259,7 +259,7 @@ export default function EmailScreen() {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 90, 100) }]}
+        style={[styles.fabBtn, { bottom: Math.max(insets.bottom + 120, 130) }]}
         onPress={() => navigation.navigate('email', { screen: 'AddEmail' } as any)}
         activeOpacity={0.85}
       >

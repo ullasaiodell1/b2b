@@ -346,6 +346,9 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
 
   const locationStr = [dbLead?.city_name || dbLead?.city, dbLead?.state_name || dbLead?.state].filter(Boolean).join(', ');
 
+  const isVerified = dbLead?.is_verified === true || dbLead?.is_verified === 1 || String(dbLead?.is_verified) === 'true';
+  const isCustomer = dbLead?.is_customer === true || dbLead?.is_customer === 1 || String(dbLead?.is_customer) === 'true' || dbLead?.lead_type === 'CUSTOMER' || dbLead?.leadType === 'CUSTOMER' || rawLead?.lead_type === 'CUSTOMER' || rawLead?.leadType === 'CUSTOMER';
+
   return (
     <View style={styles.profileCard}>
       <Modal
@@ -450,20 +453,54 @@ export default function LeadInfoCard({ rawLead, dbLead, onStatusUpdated }: LeadI
               <View />
             )}
 
-            {/* ── Verify Button ── */}
-            <TouchableOpacity
-              style={[styles.verifyBtn, { borderColor: theme.primaryColor, backgroundColor: theme.primaryColor + '12', marginTop: 0 }]}
-              onPress={() =>
-                navigation.navigate('lead-verify' as never, {
-                  id: dbLead?.id,
-                  leadName: dbLead?.name || rawLead?.name || '',
-                } as never)
-              }
-              activeOpacity={0.8}
-            >
-              <Ionicons name="shield-checkmark-outline" size={13} color={theme.primaryColor} style={{ marginRight: 5 }} />
-              <Text style={[styles.verifyBtnText, { color: theme.primaryColor }]}>Verify Lead</Text>
-            </TouchableOpacity>
+            {/* ── Verify, Customer, or Verify Lead Edit Button ── */}
+            {!isVerified && !isCustomer && (
+              <TouchableOpacity
+                style={[styles.verifyBtn, { borderColor: theme.primaryColor, backgroundColor: theme.primaryColor + '12', marginTop: 0 }]}
+                onPress={() =>
+                  navigation.navigate('lead-verify' as never, {
+                    id: dbLead?.id,
+                    leadName: dbLead?.name || rawLead?.name || '',
+                  } as never)
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark-outline" size={13} color={theme.primaryColor} style={{ marginRight: 5 }} />
+                <Text style={[styles.verifyBtnText, { color: theme.primaryColor }]}>Verify Lead</Text>
+              </TouchableOpacity>
+            )}
+
+            {isVerified && !isCustomer && (
+              <TouchableOpacity
+                style={[styles.verifyBtn, { borderColor: '#2563EB', backgroundColor: '#2563EB12', marginTop: 0 }]}
+                onPress={() =>
+                  navigation.navigate('convert-customer' as never, {
+                    id: dbLead?.id,
+                    leadName: dbLead?.name || rawLead?.name || '',
+                  } as never)
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-circle-outline" size={13} color="#2563EB" style={{ marginRight: 5 }} />
+                <Text style={[styles.verifyBtnText, { color: '#2563EB' }]}>Customer</Text>
+              </TouchableOpacity>
+            )}
+
+            {isCustomer && (
+              <TouchableOpacity
+                style={[styles.verifyBtn, { borderColor: theme.primaryColor, backgroundColor: theme.primaryColor + '12', marginTop: 0 }]}
+                onPress={() =>
+                  navigation.navigate('lead-verify' as never, {
+                    id: dbLead?.id,
+                    leadName: dbLead?.name || rawLead?.name || '',
+                  } as never)
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="create-outline" size={13} color={theme.primaryColor} style={{ marginRight: 5 }} />
+                <Text style={[styles.verifyBtnText, { color: theme.primaryColor }]}>Verify Lead Edit</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

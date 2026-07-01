@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMeetings } from '@/hooks/useMeetings';
 import { MeetingRecord, MeetingStatus } from '@/types/meeting';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -73,6 +73,12 @@ export function MeetingsComponent({
   );
 
   const { isLoading, isFetching, refetch } = query;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const rawMeetings: any[] = Array.isArray(query.data)
     ? query.data
     : (query.data?.data || query.data?.followups || query.data?.results || []);
@@ -437,7 +443,7 @@ export function MeetingsComponent({
         </Text>
         <View style={{ flex: 1 }} />
         <Text style={s.meetingCountLabel}>
-          {meetings.length} meeting{meetings.length !== 1 ? 's' : ''}
+          {meetings.length} Follow-up{meetings.length !== 1 ? 's' : ''}
         </Text>
       </View>
 
@@ -453,7 +459,7 @@ export function MeetingsComponent({
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
             <ActivityIndicator size="large" color={theme.primaryColor} />
             <Text style={{ marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }}>
-              Loading meetings...
+              Loading follow-ups...
             </Text>
           </View>
         ) : filteredMeetings.length > 0 ? (
@@ -467,7 +473,7 @@ export function MeetingsComponent({
         ) : (
           <View style={s.emptyState}>
             <Ionicons name="calendar-clear-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-            <Text style={s.emptyStateText}>No meetings on this day.</Text>
+            <Text style={s.emptyStateText}>No Follow-ups on this day.</Text>
             <Text style={s.emptyStateSubtext}>{"Tap the \"+\" button below to schedule a new one."}</Text>
           </View>
         )}
@@ -477,7 +483,7 @@ export function MeetingsComponent({
       <TouchableOpacity
         style={[
           s.fab,
-          { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 90, 100) },
+          { bottom: isEmbedded ? 20 : Math.max(insets.bottom + 120, 130) },
         ]}
         activeOpacity={0.85}
         onPress={handleAddMeetingPress}

@@ -6,13 +6,13 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
-  ScrollView,
 } from 'react-native';
 
 interface LeadSelectCardProps {

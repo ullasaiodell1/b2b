@@ -959,7 +959,7 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                       />
                     </View>
                     <View style={[styles.formField, { flex: 1 }]}>
-                      <Text style={styles.inputLabel}>Price <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                      <Text style={styles.inputLabel}>MRP <Text style={{ color: COLORS.danger }}>*</Text></Text>
                       <TextInput
                         style={styles.textInputBox}
                         keyboardType="numeric"
@@ -969,23 +969,30 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
                     </View>
                   </View>
 
-                  {/* MRP + Unit info row (shown after product selected) */}
-                  {(item.mrp || item.base_unit) ? (
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                      {item.mrp ? (
-                        <View style={styles.mrpBadge}>
-                          <Text style={styles.mrpBadgeLabel}>MRP</Text>
-                          <Text style={styles.mrpBadgeValue}>₹ {item.mrp}</Text>
-                        </View>
-                      ) : null}
-                      {item.base_unit ? (
-                        <View style={styles.unitBadge}>
-                          <Text style={styles.unitBadgeLabel}>UNIT</Text>
-                          <Text style={styles.unitBadgeValue}>{item.base_unit}</Text>
-                        </View>
-                      ) : null}
+                  {/* MRP & Unit Row */}
+                  <View style={styles.gridRow}>
+                    <View style={[styles.formField, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>Price</Text>
+                      <TextInput
+                        style={styles.textInputBox}
+                        keyboardType="numeric"
+                        placeholder="0.00"
+                        placeholderTextColor="#9CA3AF"
+                        value={item.mrp ?? ''}
+                        editable={false}
+                      />
                     </View>
-                  ) : null}
+                    <View style={[styles.formField, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>Unit</Text>
+                      <TextInput
+                        style={styles.textInputBox}
+                        placeholder="e.g. pcs"
+                        placeholderTextColor="#9CA3AF"
+                        value={item.base_unit ?? ''}
+                        editable={false}
+                      />
+                    </View>
+                  </View>
 
                   {/* Tax & Discount inputs */}
                   <View style={styles.gridRow}>
@@ -1263,13 +1270,13 @@ export const AddQuotationComponent: React.FC<AddQuotationComponentProps> = ({
       </Modal>
 
       {/* ── COMPANY PICKER MODAL ─────────────── */}
-      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)}>
+      <Modal transparent animationType="slide" visible={showCompanyPicker} onRequestClose={() => setShowCompanyPicker(false)} statusBarTranslucent={true}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowCompanyPicker(false)}
         >
-          <View style={[styles.modalContent, { height: '45%' }]}>
+          <View style={[styles.modalContent, { height: '45%', paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Company</Text>
               <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>

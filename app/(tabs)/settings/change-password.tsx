@@ -1,10 +1,15 @@
 import { COLORS } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useForgotPassword, useLogin, useResetPassword, useVerifyForgotPasswordOTP } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { getUserPassword, saveUserPassword } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,13 +18,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Dimensions,
-  ActivityIndicator
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLogin, useForgotPassword, useVerifyForgotPasswordOTP, useResetPassword } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
 
 const { width } = Dimensions.get('window');
 const BOX_SIZE = (width - 48 - 32) / 6;
@@ -54,7 +55,7 @@ export default function ChangePasswordScreen() {
   const verifyOTPMutation = useVerifyForgotPasswordOTP();
   const resetPasswordMutation = useResetPassword();
 
-  const handleVerifyCurrentPassword = () => {
+  const handleVerifyCurrentPassword = async () => {
     if (!currentPassword.trim()) {
       Alert.alert('Validation Error', 'Please enter your current password.');
       return;
@@ -66,32 +67,47 @@ export default function ChangePasswordScreen() {
       return;
     }
 
-    loginMutation.mutate(
-      { identifier: email, password: currentPassword },
-      {
-        onSuccess: () => {
-          forgotPasswordMutation.mutate(
-            { email },
-            {
-              onSuccess: (res: any) => {
-                const token = res?.token || '';
-                setResetToken(token);
-                setStep('verify');
-                setErrorMessage('');
-              },
-              onError: (error: any) => {
-                const msg = error?.message || 'Failed to send verification code. Please try again.';
-                Alert.alert('Error', msg);
-              },
-            }
-          );
-        },
-        onError: (error: any) => {
-          const msg = error?.message || 'Incorrect current password.';
-          Alert.alert('Error', msg);
-        },
+    const storedPassword = await getUserPassword();
+
+    const triggerSendOTP = () => {
+      forgotPasswordMutation.mutate(
+        { email },
+        {
+          onSuccess: (res: any) => {
+            const token = res?.token || '';
+            setResetToken(token);
+            setStep('verify');
+            setErrorMessage('');
+          },
+          onError: (error: any) => {
+            const msg = error?.message || 'Failed to send verification code. Please try again.';
+            Alert.alert('Error', msg);
+          },
+        }
+      );
+    };
+
+    if (storedPassword) {
+      if (storedPassword === currentPassword) {
+        triggerSendOTP();
+      } else {
+        Alert.alert('Error', 'Incorrect current password.');
       }
-    );
+    } else {
+      loginMutation.mutate(
+        { identifier: email, password: currentPassword },
+        {
+          onSuccess: () => {
+            saveUserPassword(currentPassword).catch((err) => console.error('Error storing password:', err));
+            triggerSendOTP();
+          },
+          onError: (error: any) => {
+            const msg = error?.message || 'Incorrect current password.';
+            Alert.alert('Error', msg);
+          },
+        }
+      );
+    }
   };
 
   const handleVerifyCode = () => {
@@ -158,7 +174,12 @@ export default function ChangePasswordScreen() {
     resetPasswordMutation.mutate(
       { token: resetAuthorizedToken, password: newPassword },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          try {
+            await saveUserPassword(newPassword);
+          } catch (e) {
+            console.error('Error saving password to storage:', e);
+          }
           setStep('success');
         },
         onError: (error: any) => {
@@ -259,9 +280,9 @@ export default function ChangePasswordScreen() {
             </View>
 
             {/* Action Button */}
-            <TouchableOpacity 
-              onPress={handleVerifyCurrentPassword} 
-              style={[styles.saveBtn, (loginMutation.isPending || forgotPasswordMutation.isPending) && styles.disabledButton]} 
+            <TouchableOpacity
+              onPress={handleVerifyCurrentPassword}
+              style={[styles.saveBtn, (loginMutation.isPending || forgotPasswordMutation.isPending) && styles.disabledButton]}
               activeOpacity={0.9}
               disabled={loginMutation.isPending || forgotPasswordMutation.isPending}
             >
@@ -392,9 +413,9 @@ export default function ChangePasswordScreen() {
               </View>
             </View>
 
-            <TouchableOpacity 
-              onPress={handleUpdatePassword} 
-              style={[styles.saveBtn, resetPasswordMutation.isPending && styles.disabledButton]} 
+            <TouchableOpacity
+              onPress={handleUpdatePassword}
+              style={[styles.saveBtn, resetPasswordMutation.isPending && styles.disabledButton]}
               activeOpacity={0.9}
               disabled={resetPasswordMutation.isPending}
             >

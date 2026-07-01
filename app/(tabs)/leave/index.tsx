@@ -4,7 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useApprovals, useDeleteLeave, useLeaves } from '@/hooks/useLeave';
 import { getUserData } from '@/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -50,6 +50,14 @@ export default function LeaveScreen() {
           user_id: currentUserId,
         }
       : undefined
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (currentUserId) {
+        refetchMyLeaves();
+      }
+    }, [currentUserId, refetchMyLeaves])
   );
 
   // Query approvals banner count — only run after user is loaded
@@ -256,7 +264,7 @@ export default function LeaveScreen() {
 
       {/* Floating Action Button '+' (Apply Leave) */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 90, 100) }]}
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 120, 130) }]}
         activeOpacity={0.85}
         onPress={() => router.push('/(tabs)/leave/apply')}
       >
